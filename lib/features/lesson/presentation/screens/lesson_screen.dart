@@ -10,12 +10,12 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/api/api_client.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
+import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../../features/module/presentation/providers/module_provider.dart';
 import '../../data/models/lesson_model.dart';
 import '../providers/lesson_provider.dart';
-import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 
@@ -84,6 +84,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _audioReady = false;
   String? _audioError;
   int _lastReportedProgress = 0;
+  bool _completionSyncInFlight = false;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -167,14 +168,40 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     final value = _videoController!.value;
     if (!value.isInitialized || value.duration.inSeconds == 0) return;
 
-    final currentProgress =
-    ((value.position.inSeconds / value.duration.inSeconds) * 100).round();
+    final duration = value.duration;
+    final position = value.position;
+    final reachedEnd = value.isCompleted ||
+        position >= duration - const Duration(seconds: 1);
+    final currentProgress = reachedEnd
+        ? 100
+        : ((position.inSeconds / duration.inSeconds) * 100).round();
 
-    if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
+    if (currentProgress == 100 &&
+        _lastReportedProgress < 100 &&
+        !_completionSyncInFlight) {
+      _lastReportedProgress = 100;
+      _syncCompletionState();
+      return;
+    }
+
+    if (currentProgress >= _lastReportedProgress + 5 && currentProgress < 100) {
       _lastReportedProgress = currentProgress;
       ref
           .read(lessonRepositoryProvider)
           .updateProgress(widget.lesson.id, currentProgress);
+    }
+  }
+
+  Future<void> _syncCompletionState() async {
+    _completionSyncInFlight = true;
+    try {
+      await ref.read(lessonRepositoryProvider).updateProgress(widget.lesson.id, 100);
+      ref.invalidate(lessonDetailProvider(widget.lesson.id));
+      ref.invalidate(moduleDetailProvider(widget.lesson.module.id));
+      ref.invalidate(moduleListProvider);
+      ref.invalidate(dashboardProvider);
+    } finally {
+      _completionSyncInFlight = false;
     }
   }
 

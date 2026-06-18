@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/assessment_provider.dart';
 
 /// Netflix-inspired palette, scoped to this screen only so the rest of the
 /// app's shared theme (AppColors) stays untouched. Kept in sync with the
@@ -14,7 +16,7 @@ abstract class _NetflixPalette {
   static const Color divider = Color(0xFF3A3A3A);
 }
 
-class AssessmentResultScreen extends StatelessWidget {
+class AssessmentResultScreen extends ConsumerWidget {
   final int lessonId;
   final int attemptId;
 
@@ -25,14 +27,52 @@ class AssessmentResultScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resultAsync = ref.watch(
+      assessmentResultProvider((lessonId: lessonId, attemptId: attemptId)),
+    );
+
     return Scaffold(
       backgroundColor: _NetflixPalette.background,
-      body: SafeArea(
-        child: _ResultContent(
-          lessonId: lessonId,
-          attemptId: attemptId,
-          status: 'completed',
+      body: resultAsync.when(
+        loading: () => const SafeArea(
+          child: Center(
+            child: CircularProgressIndicator(color: _NetflixPalette.red),
+          ),
+        ),
+        error: (error, _) => SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: _NetflixPalette.grey,
+                    size: 40,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    error.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontFamily: 'Montserrat',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        data: (result) => SafeArea(
+          child: _ResultContent(
+            lessonId: lessonId,
+            attemptId: attemptId,
+            status: result.status ?? result.mode,
+          ),
         ),
       ),
     );
@@ -120,7 +160,9 @@ class _ResultContentState extends State<_ResultContent>
 
   @override
   Widget build(BuildContext context) {
-    final isCompleted = widget.status == 'completed';
+    final normalizedStatus = widget.status.toLowerCase();
+    final isCompleted =
+        normalizedStatus == 'completed' || normalizedStatus == 'result';
 
     return Padding(
       padding: const EdgeInsets.all(32),

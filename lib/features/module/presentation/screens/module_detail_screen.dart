@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../data/models/module_model.dart';
 import '../providers/module_provider.dart';
@@ -477,12 +476,6 @@ class _ModuleHeader extends StatelessWidget {
                 icon: Icons.assignment_outlined,
                 label: '${module.assignmentsCount} assignments',
               ),
-            if (module.certificateEnabled)
-              const _MetaItem(
-                icon: Icons.workspace_premium_outlined,
-                label: 'Certificate',
-                accent: true,
-              ),
             if (module.ebookEnabled)
               const _MetaItem(
                 icon: Icons.menu_book_outlined,
@@ -498,12 +491,10 @@ class _ModuleHeader extends StatelessWidget {
 class _MetaItem extends StatelessWidget {
   final IconData icon;
   final String label;
-  final bool accent;
 
   const _MetaItem({
     required this.icon,
     required this.label,
-    this.accent = false,
   });
 
   @override
@@ -511,13 +502,12 @@ class _MetaItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon,
-            color: accent ? _kNetflixRed : _kTextMuted, size: 14),
+        Icon(icon, color: _kTextMuted, size: 14),
         const SizedBox(width: 4),
         Text(
           label,
-          style: TextStyle(
-            color: accent ? _kNetflixRed : _kTextMuted,
+          style: const TextStyle(
+            color: _kTextMuted,
             fontSize: 12,
             fontFamily: 'Montserrat',
           ),

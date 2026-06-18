@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -99,12 +100,35 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
             return const _NetflixLoader();
           }
 
+          final assessment = data.assessment;
+          final question = data.question;
+          if (assessment == null || question == null) {
+            return _AttemptError(
+              message: 'Assessment data is incomplete.',
+              onBack: () => context.pop(),
+              onRetry: () => ref
+                  .read(assessmentAttemptProvider(
+                (lessonId: widget.lessonId, attemptId: widget.attemptId),
+              ).notifier)
+                  .load(),
+            );
+          }
+
           if (_selectedOptionIds.isEmpty &&
-              data.question.saved.optionIds.isNotEmpty) {
+              question.saved.optionIds.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               setState(() {
-                _selectedOptionIds =
-                    List.from(data.question.saved.optionIds);
+                _selectedOptionIds = List.from(question.saved.optionIds);
+              });
+            });
+          }
+
+          if ((_answerText == null || _answerText!.isEmpty) &&
+              question.saved.answerText != null &&
+              question.saved.answerText!.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              setState(() {
+                _answerText = question.saved.answerText;
               });
             });
           }
@@ -114,15 +138,15 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
               children: [
                 // Header
                 _AssessmentHeader(
-                  assessment: data.assessment,
+                  assessment: assessment,
                   canGoBack: data.canGoBack,
                   onBack: () => _handleBack(context),
                   onClose: () => _handleClose(context),
                 ),
 
                 // Slim progress bar
-                if (data.assessment.showProgressBar)
-                  _NetflixProgressBar(progress: data.assessment.progress),
+                if (assessment.showProgressBar)
+                  _NetflixProgressBar(progress: assessment.progress),
 
                 // Question content — animated
                 Expanded(
@@ -134,12 +158,12 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                         padding:
                         const EdgeInsets.fromLTRB(24, 32, 24, 24),
                         child: _QuestionBody(
-                          question: data.question,
+                          question: question,
                           selectedOptionIds: _selectedOptionIds,
                           answerText: _answerText,
                           onOptionSelected: (optionId) {
                             setState(() {
-                              if (data.question.allowMultiSelect) {
+                              if (question.allowMultiSelect) {
                                 if (_selectedOptionIds.contains(optionId)) {
                                   _selectedOptionIds.remove(optionId);
                                 } else {
@@ -163,8 +187,9 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                 _BottomAction(
                   isLastQuestion: data.isLastQuestion,
                   submitting: _submitting,
-                  hasAnswer: _hasAnswer(data.question),
-                  isRequired: data.question.required,
+                  hasAnswer: _hasAnswer(question),
+                  isRequired: question.required,
+                  isCorrectnessGateBlocked: _isCorrectnessGateBlocked(question),
                   onSubmit: () => _handleSubmit(context, data),
                 ),
               ],
@@ -186,9 +211,32 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
     return true;
   }
 
+  bool _isCorrectnessGateBlocked(AssessmentQuestion question) {
+    if (!question.hasCorrectnessGate) return false;
+    if (question.questionType != 'radio_buttons' &&
+        question.questionType != 'checkboxes') {
+      return false;
+    }
+
+    final correctOptionIds = question.options
+        .where((option) => option.isCorrect)
+        .map((option) => option.id)
+        .toSet();
+
+    if (correctOptionIds.isEmpty || _selectedOptionIds.isEmpty) {
+      return false;
+    }
+
+    return !setEquals(_selectedOptionIds.toSet(), correctOptionIds);
+  }
+
   Future<void> _handleSubmit(
       BuildContext context, AssessmentAttemptData data) async {
     final question = data.question;
+    if (question == null) {
+      _showNetflixSnack(context, 'Assessment question is unavailable.');
+      return;
+    }
     final isRequired = question.required;
 
     if (isRequired && !_hasAnswer(question)) {
@@ -196,42 +244,64 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       return;
     }
 
+    if (_isCorrectnessGateBlocked(question)) {
+      _showNetflixSnack(
+        context,
+        'Choose the correct answer before continuing.',
+      );
+      return;
+    }
+
     setState(() => _submitting = true);
 
-    await ref
-        .read(assessmentAttemptProvider(
-      (lessonId: widget.lessonId, attemptId: widget.attemptId),
-    ).notifier)
-        .submitAnswer(
-      questionId: question.id,
-      optionIds: _selectedOptionIds.isNotEmpty ? _selectedOptionIds : null,
-      answerText: _answerText,
-    );
+    try {
+      await ref
+          .read(assessmentAttemptProvider(
+        (lessonId: widget.lessonId, attemptId: widget.attemptId),
+      ).notifier)
+          .submitAnswer(
+        questionId: question.id,
+        optionIds: _selectedOptionIds.isNotEmpty ? _selectedOptionIds : null,
+        answerText: _answerText,
+      );
 
-    if (mounted) {
-      setState(() {
-        _submitting = false;
-        _selectedOptionIds = [];
-        _answerText = null;
-      });
-      _replayEntrance();
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _selectedOptionIds = [];
+          _answerText = null;
+        });
+        _replayEntrance();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        _showNetflixSnack(context, e.toString());
+      }
     }
   }
 
   Future<void> _handleBack(BuildContext context) async {
     setState(() => _submitting = true);
-    await ref
-        .read(assessmentAttemptProvider(
-      (lessonId: widget.lessonId, attemptId: widget.attemptId),
-    ).notifier)
-        .goBack();
-    if (mounted) {
-      setState(() {
-        _submitting = false;
-        _selectedOptionIds = [];
-        _answerText = null;
-      });
-      _replayEntrance();
+    try {
+      await ref
+          .read(assessmentAttemptProvider(
+        (lessonId: widget.lessonId, attemptId: widget.attemptId),
+      ).notifier)
+          .goBack();
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _selectedOptionIds = [];
+          _answerText = null;
+        });
+        _replayEntrance();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        _showNetflixSnack(context, e.toString());
+      }
     }
   }
 
@@ -646,6 +716,7 @@ class _QuestionBody extends StatelessWidget {
           )
         else if (question.questionType == 'text')
           _NetflixTextField(
+            initialValue: answerText,
             onChanged: onTextChanged,
             characterLimit: question.characterLimit,
           ),
@@ -823,10 +894,15 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
 // ─── Netflix Text Field ───────────────────────────────────────────────────────
 
 class _NetflixTextField extends StatefulWidget {
+  final String? initialValue;
   final void Function(String) onChanged;
   final int? characterLimit;
 
-  const _NetflixTextField({required this.onChanged, this.characterLimit});
+  const _NetflixTextField({
+    this.initialValue,
+    required this.onChanged,
+    this.characterLimit,
+  });
 
   @override
   State<_NetflixTextField> createState() => _NetflixTextFieldState();
@@ -840,6 +916,21 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
   void dispose() {
     _ctrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.text = widget.initialValue ?? '';
+  }
+
+  @override
+  void didUpdateWidget(covariant _NetflixTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextValue = widget.initialValue ?? '';
+    if (nextValue != _ctrl.text) {
+      _ctrl.text = nextValue;
+    }
   }
 
   @override
@@ -904,6 +995,7 @@ class _BottomAction extends StatelessWidget {
   final bool submitting;
   final bool hasAnswer;
   final bool isRequired;
+  final bool isCorrectnessGateBlocked;
   final VoidCallback onSubmit;
 
   const _BottomAction({
@@ -911,6 +1003,7 @@ class _BottomAction extends StatelessWidget {
     required this.submitting,
     required this.hasAnswer,
     required this.isRequired,
+    required this.isCorrectnessGateBlocked,
     required this.onSubmit,
   });
 
@@ -931,64 +1024,85 @@ class _BottomAction extends StatelessWidget {
       ),
       child: SizedBox(
         width: double.infinity,
-        height: 54,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          child: ElevatedButton(
-            onPressed: submitting || !canProceed ? null : onSubmit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-              canProceed ? AppColors.primary : const Color(0xFF2A2A2A),
-              disabledBackgroundColor: const Color(0xFF2A2A2A),
-              elevation: canProceed ? 4 : 0,
-              shadowColor: AppColors.primary.withOpacity(0.4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            child: submitting
-                ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2.5,
-              ),
-            )
-                : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  isLastQuestion ? 'Submit Assessment' : 'Next Question',
-                  style: TextStyle(
-                    color: canProceed
-                        ? Colors.white
-                        : AppColors.textMuted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isCorrectnessGateBlocked)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  'Choose the correct answer to unlock the next question.',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
                     fontFamily: 'Montserrat',
-                    letterSpacing: 0.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                child: ElevatedButton(
+                  onPressed: submitting || !canProceed ? null : onSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                    canProceed ? AppColors.primary : const Color(0xFF2A2A2A),
+                    disabledBackgroundColor: const Color(0xFF2A2A2A),
+                    elevation: canProceed ? 4 : 0,
+                    shadowColor: AppColors.primary.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  child: submitting
+                      ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                      : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        isLastQuestion ? 'Submit Assessment' : 'Next Question',
+                        style: TextStyle(
+                          color: canProceed
+                              ? Colors.white
+                              : AppColors.textMuted,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      if (canProceed && !isLastQuestion) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ],
+                      if (canProceed && isLastQuestion) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.check_circle_outline_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (canProceed && !isLastQuestion) ...[
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ],
-                if (canProceed && isLastQuestion) ...[
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.check_circle_outline_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/widgets/auth_network_image.dart';
+import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
 import '../providers/dashboard_provider.dart';
 import '../../data/models/dashboard_model.dart';
@@ -63,7 +63,7 @@ class _DashboardContentState extends State<_DashboardContent>
   late final List<Animation<double>> _fades;
   late final List<Animation<Offset>> _slides;
 
-  static const int _sectionCount = 6;
+  static const int _sectionCount = 5;
 
   @override
   void initState() {
@@ -140,8 +140,6 @@ class _DashboardContentState extends State<_DashboardContent>
                   continueLearningSection: data.continueLearningSection,
                 ),
               ),
-              const SizedBox(height: 32),
-              _animated(5, _CertificateSection(milestone: data.certificateMilestone)),
               const SizedBox(height: 56),
             ],
           ),
@@ -1229,14 +1227,10 @@ class _ModuleCardState extends State<_ModuleCard>
                 fit: StackFit.expand,
                 children: [
                   module.thumbnailUrl != null
-                      ? AuthNetworkImage(
-                    imageUrl: module.thumbnailUrl!,
-                    fit: BoxFit.cover,
-                    placeholderBuilder: (_) =>
-                        _ModuleThumbnailPlaceholder(title: module.title),
-                    errorBuilderWidget: (_, __) =>
-                        _ModuleThumbnailPlaceholder(title: module.title),
-                  )
+                      ? _AvailableModuleThumbnail(
+                          imageUrl: module.thumbnailUrl!,
+                          title: module.title,
+                        )
                       : _ModuleThumbnailPlaceholder(title: module.title),
                   // Gradient
                   Container(
@@ -1335,6 +1329,96 @@ class _ModuleCardState extends State<_ModuleCard>
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AvailableModuleThumbnail extends StatefulWidget {
+  final String imageUrl;
+  final String title;
+
+  const _AvailableModuleThumbnail({
+    required this.imageUrl,
+    required this.title,
+  });
+
+  @override
+  State<_AvailableModuleThumbnail> createState() =>
+      _AvailableModuleThumbnailState();
+}
+
+class _AvailableModuleThumbnailState extends State<_AvailableModuleThumbnail> {
+  late final Future<String?> _tokenFuture;
+  bool _retryWithoutAuth = false;
+  bool _didLogAttempt = false;
+  bool _didLogSuccess = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tokenFuture = SecureStorageService.getToken();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _tokenFuture,
+      builder: (context, snapshot) {
+        final token = snapshot.data;
+        final useAuthHeader =
+            !_retryWithoutAuth && token != null && token.isNotEmpty;
+
+        if (!_didLogAttempt) {
+          _didLogAttempt = true;
+          debugPrint(
+            '[AvailableModulesImage] loading '
+            'url=${widget.imageUrl} '
+            'useAuthHeader=$useAuthHeader',
+          );
+        }
+
+        return Image.network(
+          widget.imageUrl,
+          fit: BoxFit.cover,
+          headers: useAuthHeader ? {'Authorization': 'Bearer $token'} : null,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if ((wasSynchronouslyLoaded || frame != null) && !_didLogSuccess) {
+              _didLogSuccess = true;
+              debugPrint(
+                '[AvailableModulesImage] success '
+                'url=${widget.imageUrl} '
+                'useAuthHeader=$useAuthHeader',
+              );
+            }
+            return child;
+          },
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return _ModuleThumbnailPlaceholder(title: widget.title);
+          },
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint(
+              '[AvailableModulesImage] error '
+              'url=${widget.imageUrl} '
+              'useAuthHeader=$useAuthHeader '
+              'error=$error',
+            );
+
+            if (useAuthHeader && mounted && !_retryWithoutAuth) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || _retryWithoutAuth) return;
+                setState(() {
+                  _retryWithoutAuth = true;
+                  _didLogAttempt = false;
+                  _didLogSuccess = false;
+                });
+              });
+            }
+
+            return _ModuleThumbnailPlaceholder(title: widget.title);
+          },
+        );
+      },
     );
   }
 }

@@ -99,21 +99,6 @@ class _ProfileContent extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => context.push('/certificates'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                            side: const BorderSide(color: AppColors.divider),
-                          ),
-                          child: const Text('Certificates'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
                   _SectionCard(
                     title: 'Account',
                     children: [

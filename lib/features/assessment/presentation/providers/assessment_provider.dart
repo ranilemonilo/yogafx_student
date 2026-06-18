@@ -11,6 +11,14 @@ FutureProvider.family<AssessmentIntroData, int>((ref, lessonId) async {
   return ref.read(assessmentRepositoryProvider).getIntro(lessonId);
 });
 
+final assessmentResultProvider = FutureProvider.family<
+    AssessmentResultData,
+    ({int lessonId, int attemptId})>((ref, params) async {
+  return ref
+      .read(assessmentRepositoryProvider)
+      .getResult(params.lessonId, params.attemptId);
+});
+
 // State untuk attempt yang sedang berjalan
 class AssessmentAttemptNotifier
     extends StateNotifier<AsyncValue<AssessmentAttemptData?>> {
@@ -43,7 +51,7 @@ class AssessmentAttemptNotifier
     String? answerText,
     num? answerNumber,
   }) async {
-    state = const AsyncValue.loading();
+    final previousState = state;
     try {
       final data = await _repository.storeAnswer(
         lessonId: lessonId,
@@ -55,17 +63,19 @@ class AssessmentAttemptNotifier
       );
       state = AsyncValue.data(data);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      state = previousState;
+      Error.throwWithStackTrace(e, st);
     }
   }
 
   Future<void> goBack() async {
-    state = const AsyncValue.loading();
+    final previousState = state;
     try {
       final data = await _repository.goBack(lessonId, attemptId);
       state = AsyncValue.data(data);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      state = previousState;
+      Error.throwWithStackTrace(e, st);
     }
   }
 }

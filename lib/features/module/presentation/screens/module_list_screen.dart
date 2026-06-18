@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
 import '../../data/models/module_model.dart';
@@ -459,14 +458,6 @@ class _ModuleCardState extends State<_ModuleCard>
                             label: '${module.assignmentsCount} assignments',
                           ),
                         ],
-                        if (module.certificateEnabled) ...[
-                          const SizedBox(width: 12),
-                          const _MetaChip(
-                            icon: Icons.workspace_premium_outlined,
-                            label: 'Certificate',
-                            accent: true,
-                          ),
-                        ],
                       ],
                     ),
 
@@ -518,12 +509,10 @@ class _ModuleCardState extends State<_ModuleCard>
 class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final bool accent;
 
   const _MetaChip({
     required this.icon,
     required this.label,
-    this.accent = false,
   });
 
   @override
@@ -533,14 +522,14 @@ class _MetaChip extends StatelessWidget {
       children: [
         Icon(
           icon,
-          color: accent ? _kNetflixRed : _kTextMuted,
+          color: _kTextMuted,
           size: 14,
         ),
         const SizedBox(width: 4),
         Text(
           label,
-          style: TextStyle(
-            color: accent ? _kNetflixRed : _kTextMuted,
+          style: const TextStyle(
+            color: _kTextMuted,
             fontSize: 12,
             fontFamily: 'Montserrat',
           ),

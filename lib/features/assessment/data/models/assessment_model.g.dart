@@ -225,14 +225,19 @@ _$AssessmentAttemptDataImpl _$$AssessmentAttemptDataImplFromJson(
         Map<String, dynamic> json) =>
     _$AssessmentAttemptDataImpl(
       mode: json['mode'] as String,
-      assessment: AssessmentPlayInfo.fromJson(
-          json['assessment'] as Map<String, dynamic>),
-      attempt: AssessmentAttemptInfo.fromJson(
-          json['attempt'] as Map<String, dynamic>),
-      question:
-          AssessmentQuestion.fromJson(json['question'] as Map<String, dynamic>),
-      canGoBack: json['can_go_back'] as bool,
-      isLastQuestion: json['is_last_question'] as bool,
+      assessment: json['assessment'] == null
+          ? null
+          : AssessmentPlayInfo.fromJson(
+              json['assessment'] as Map<String, dynamic>),
+      attempt: json['attempt'] == null
+          ? null
+          : AssessmentAttemptInfo.fromJson(
+              json['attempt'] as Map<String, dynamic>),
+      question: json['question'] == null
+          ? null
+          : AssessmentQuestion.fromJson(json['question'] as Map<String, dynamic>),
+      canGoBack: json['can_go_back'] as bool? ?? false,
+      isLastQuestion: json['is_last_question'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$$AssessmentAttemptDataImplToJson(
@@ -251,6 +256,7 @@ _$AssessmentResultDataImpl _$$AssessmentResultDataImplFromJson(
     _$AssessmentResultDataImpl(
       mode: json['mode'] as String,
       attemptId: (json['attempt_id'] as num).toInt(),
+      status: json['status'] as String?,
     );
 
 Map<String, dynamic> _$$AssessmentResultDataImplToJson(
@@ -258,4 +264,5 @@ Map<String, dynamic> _$$AssessmentResultDataImplToJson(
     <String, dynamic>{
       'mode': instance.mode,
       'attempt_id': instance.attemptId,
+      'status': instance.status,
     };

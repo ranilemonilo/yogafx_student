@@ -162,11 +162,11 @@ class AssessmentPlayInfo with _$AssessmentPlayInfo {
 class AssessmentAttemptData with _$AssessmentAttemptData {
   const factory AssessmentAttemptData({
     required String mode,
-    required AssessmentPlayInfo assessment,
-    required AssessmentAttemptInfo attempt,
-    required AssessmentQuestion question,
-    @JsonKey(name: 'can_go_back') required bool canGoBack,
-    @JsonKey(name: 'is_last_question') required bool isLastQuestion,
+    AssessmentPlayInfo? assessment,
+    AssessmentAttemptInfo? attempt,
+    AssessmentQuestion? question,
+    @JsonKey(name: 'can_go_back') @Default(false) bool canGoBack,
+    @JsonKey(name: 'is_last_question') @Default(false) bool isLastQuestion,
   }) = _AssessmentAttemptData;
 
   factory AssessmentAttemptData.fromJson(Map<String, dynamic> json) =>
@@ -180,6 +180,7 @@ class AssessmentResultData with _$AssessmentResultData {
   const factory AssessmentResultData({
     required String mode,
     @JsonKey(name: 'attempt_id') required int attemptId,
+    String? status,
   }) = _AssessmentResultData;
 
   factory AssessmentResultData.fromJson(Map<String, dynamic> json) =>

@@ -2588,9 +2588,9 @@ AssessmentAttemptData _$AssessmentAttemptDataFromJson(
 /// @nodoc
 mixin _$AssessmentAttemptData {
   String get mode => throw _privateConstructorUsedError;
-  AssessmentPlayInfo get assessment => throw _privateConstructorUsedError;
-  AssessmentAttemptInfo get attempt => throw _privateConstructorUsedError;
-  AssessmentQuestion get question => throw _privateConstructorUsedError;
+  AssessmentPlayInfo? get assessment => throw _privateConstructorUsedError;
+  AssessmentAttemptInfo? get attempt => throw _privateConstructorUsedError;
+  AssessmentQuestion? get question => throw _privateConstructorUsedError;
   @JsonKey(name: 'can_go_back')
   bool get canGoBack => throw _privateConstructorUsedError;
   @JsonKey(name: 'is_last_question')
@@ -2610,15 +2610,15 @@ abstract class $AssessmentAttemptDataCopyWith<$Res> {
   @useResult
   $Res call(
       {String mode,
-      AssessmentPlayInfo assessment,
-      AssessmentAttemptInfo attempt,
-      AssessmentQuestion question,
+      AssessmentPlayInfo? assessment,
+      AssessmentAttemptInfo? attempt,
+      AssessmentQuestion? question,
       @JsonKey(name: 'can_go_back') bool canGoBack,
       @JsonKey(name: 'is_last_question') bool isLastQuestion});
 
-  $AssessmentPlayInfoCopyWith<$Res> get assessment;
-  $AssessmentAttemptInfoCopyWith<$Res> get attempt;
-  $AssessmentQuestionCopyWith<$Res> get question;
+  $AssessmentPlayInfoCopyWith<$Res>? get assessment;
+  $AssessmentAttemptInfoCopyWith<$Res>? get attempt;
+  $AssessmentQuestionCopyWith<$Res>? get question;
 }
 
 /// @nodoc
@@ -2647,18 +2647,18 @@ class _$AssessmentAttemptDataCopyWithImpl<$Res,
           ? _value.mode
           : mode // ignore: cast_nullable_to_non_nullable
               as String,
-      assessment: null == assessment
+      assessment: freezed == assessment
           ? _value.assessment
           : assessment // ignore: cast_nullable_to_non_nullable
-              as AssessmentPlayInfo,
-      attempt: null == attempt
+              as AssessmentPlayInfo?,
+      attempt: freezed == attempt
           ? _value.attempt
           : attempt // ignore: cast_nullable_to_non_nullable
-              as AssessmentAttemptInfo,
-      question: null == question
+              as AssessmentAttemptInfo?,
+      question: freezed == question
           ? _value.question
           : question // ignore: cast_nullable_to_non_nullable
-              as AssessmentQuestion,
+              as AssessmentQuestion?,
       canGoBack: null == canGoBack
           ? _value.canGoBack
           : canGoBack // ignore: cast_nullable_to_non_nullable
@@ -2672,24 +2672,33 @@ class _$AssessmentAttemptDataCopyWithImpl<$Res,
 
   @override
   @pragma('vm:prefer-inline')
-  $AssessmentPlayInfoCopyWith<$Res> get assessment {
-    return $AssessmentPlayInfoCopyWith<$Res>(_value.assessment, (value) {
+  $AssessmentPlayInfoCopyWith<$Res>? get assessment {
+    if (_value.assessment == null) {
+      return null;
+    }
+    return $AssessmentPlayInfoCopyWith<$Res>(_value.assessment!, (value) {
       return _then(_value.copyWith(assessment: value) as $Val);
     });
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $AssessmentAttemptInfoCopyWith<$Res> get attempt {
-    return $AssessmentAttemptInfoCopyWith<$Res>(_value.attempt, (value) {
+  $AssessmentAttemptInfoCopyWith<$Res>? get attempt {
+    if (_value.attempt == null) {
+      return null;
+    }
+    return $AssessmentAttemptInfoCopyWith<$Res>(_value.attempt!, (value) {
       return _then(_value.copyWith(attempt: value) as $Val);
     });
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $AssessmentQuestionCopyWith<$Res> get question {
-    return $AssessmentQuestionCopyWith<$Res>(_value.question, (value) {
+  $AssessmentQuestionCopyWith<$Res>? get question {
+    if (_value.question == null) {
+      return null;
+    }
+    return $AssessmentQuestionCopyWith<$Res>(_value.question!, (value) {
       return _then(_value.copyWith(question: value) as $Val);
     });
   }
@@ -2706,18 +2715,18 @@ abstract class _$$AssessmentAttemptDataImplCopyWith<$Res>
   @useResult
   $Res call(
       {String mode,
-      AssessmentPlayInfo assessment,
-      AssessmentAttemptInfo attempt,
-      AssessmentQuestion question,
+      AssessmentPlayInfo? assessment,
+      AssessmentAttemptInfo? attempt,
+      AssessmentQuestion? question,
       @JsonKey(name: 'can_go_back') bool canGoBack,
       @JsonKey(name: 'is_last_question') bool isLastQuestion});
 
   @override
-  $AssessmentPlayInfoCopyWith<$Res> get assessment;
+  $AssessmentPlayInfoCopyWith<$Res>? get assessment;
   @override
-  $AssessmentAttemptInfoCopyWith<$Res> get attempt;
+  $AssessmentAttemptInfoCopyWith<$Res>? get attempt;
   @override
-  $AssessmentQuestionCopyWith<$Res> get question;
+  $AssessmentQuestionCopyWith<$Res>? get question;
 }
 
 /// @nodoc
@@ -2733,9 +2742,9 @@ class __$$AssessmentAttemptDataImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? mode = null,
-    Object? assessment = null,
-    Object? attempt = null,
-    Object? question = null,
+    Object? assessment = freezed,
+    Object? attempt = freezed,
+    Object? question = freezed,
     Object? canGoBack = null,
     Object? isLastQuestion = null,
   }) {
@@ -2744,18 +2753,18 @@ class __$$AssessmentAttemptDataImplCopyWithImpl<$Res>
           ? _value.mode
           : mode // ignore: cast_nullable_to_non_nullable
               as String,
-      assessment: null == assessment
+      assessment: freezed == assessment
           ? _value.assessment
           : assessment // ignore: cast_nullable_to_non_nullable
-              as AssessmentPlayInfo,
-      attempt: null == attempt
+              as AssessmentPlayInfo?,
+      attempt: freezed == attempt
           ? _value.attempt
           : attempt // ignore: cast_nullable_to_non_nullable
-              as AssessmentAttemptInfo,
-      question: null == question
+              as AssessmentAttemptInfo?,
+      question: freezed == question
           ? _value.question
           : question // ignore: cast_nullable_to_non_nullable
-              as AssessmentQuestion,
+              as AssessmentQuestion?,
       canGoBack: null == canGoBack
           ? _value.canGoBack
           : canGoBack // ignore: cast_nullable_to_non_nullable
@@ -2773,11 +2782,11 @@ class __$$AssessmentAttemptDataImplCopyWithImpl<$Res>
 class _$AssessmentAttemptDataImpl implements _AssessmentAttemptData {
   const _$AssessmentAttemptDataImpl(
       {required this.mode,
-      required this.assessment,
-      required this.attempt,
-      required this.question,
-      @JsonKey(name: 'can_go_back') required this.canGoBack,
-      @JsonKey(name: 'is_last_question') required this.isLastQuestion});
+      this.assessment,
+      this.attempt,
+      this.question,
+      @JsonKey(name: 'can_go_back') this.canGoBack = false,
+      @JsonKey(name: 'is_last_question') this.isLastQuestion = false});
 
   factory _$AssessmentAttemptDataImpl.fromJson(Map<String, dynamic> json) =>
       _$$AssessmentAttemptDataImplFromJson(json);
@@ -2785,11 +2794,11 @@ class _$AssessmentAttemptDataImpl implements _AssessmentAttemptData {
   @override
   final String mode;
   @override
-  final AssessmentPlayInfo assessment;
+  final AssessmentPlayInfo? assessment;
   @override
-  final AssessmentAttemptInfo attempt;
+  final AssessmentAttemptInfo? attempt;
   @override
-  final AssessmentQuestion question;
+  final AssessmentQuestion? question;
   @override
   @JsonKey(name: 'can_go_back')
   final bool canGoBack;
@@ -2842,12 +2851,12 @@ class _$AssessmentAttemptDataImpl implements _AssessmentAttemptData {
 abstract class _AssessmentAttemptData implements AssessmentAttemptData {
   const factory _AssessmentAttemptData(
       {required final String mode,
-      required final AssessmentPlayInfo assessment,
-      required final AssessmentAttemptInfo attempt,
-      required final AssessmentQuestion question,
-      @JsonKey(name: 'can_go_back') required final bool canGoBack,
+      final AssessmentPlayInfo? assessment,
+      final AssessmentAttemptInfo? attempt,
+      final AssessmentQuestion? question,
+      @JsonKey(name: 'can_go_back') final bool canGoBack,
       @JsonKey(name: 'is_last_question')
-      required final bool isLastQuestion}) = _$AssessmentAttemptDataImpl;
+      final bool isLastQuestion}) = _$AssessmentAttemptDataImpl;
 
   factory _AssessmentAttemptData.fromJson(Map<String, dynamic> json) =
       _$AssessmentAttemptDataImpl.fromJson;
@@ -2855,11 +2864,11 @@ abstract class _AssessmentAttemptData implements AssessmentAttemptData {
   @override
   String get mode;
   @override
-  AssessmentPlayInfo get assessment;
+  AssessmentPlayInfo? get assessment;
   @override
-  AssessmentAttemptInfo get attempt;
+  AssessmentAttemptInfo? get attempt;
   @override
-  AssessmentQuestion get question;
+  AssessmentQuestion? get question;
   @override
   @JsonKey(name: 'can_go_back')
   bool get canGoBack;
@@ -2881,6 +2890,7 @@ mixin _$AssessmentResultData {
   String get mode => throw _privateConstructorUsedError;
   @JsonKey(name: 'attempt_id')
   int get attemptId => throw _privateConstructorUsedError;
+  String? get status => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -2894,7 +2904,10 @@ abstract class $AssessmentResultDataCopyWith<$Res> {
           $Res Function(AssessmentResultData) then) =
       _$AssessmentResultDataCopyWithImpl<$Res, AssessmentResultData>;
   @useResult
-  $Res call({String mode, @JsonKey(name: 'attempt_id') int attemptId});
+  $Res call(
+      {String mode,
+      @JsonKey(name: 'attempt_id') int attemptId,
+      String? status});
 }
 
 /// @nodoc
@@ -2913,6 +2926,7 @@ class _$AssessmentResultDataCopyWithImpl<$Res,
   $Res call({
     Object? mode = null,
     Object? attemptId = null,
+    Object? status = freezed,
   }) {
     return _then(_value.copyWith(
       mode: null == mode
@@ -2923,6 +2937,10 @@ class _$AssessmentResultDataCopyWithImpl<$Res,
           ? _value.attemptId
           : attemptId // ignore: cast_nullable_to_non_nullable
               as int,
+      status: freezed == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -2935,7 +2953,10 @@ abstract class _$$AssessmentResultDataImplCopyWith<$Res>
       __$$AssessmentResultDataImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String mode, @JsonKey(name: 'attempt_id') int attemptId});
+  $Res call(
+      {String mode,
+      @JsonKey(name: 'attempt_id') int attemptId,
+      String? status});
 }
 
 /// @nodoc
@@ -2951,6 +2972,7 @@ class __$$AssessmentResultDataImplCopyWithImpl<$Res>
   $Res call({
     Object? mode = null,
     Object? attemptId = null,
+    Object? status = freezed,
   }) {
     return _then(_$AssessmentResultDataImpl(
       mode: null == mode
@@ -2961,6 +2983,10 @@ class __$$AssessmentResultDataImplCopyWithImpl<$Res>
           ? _value.attemptId
           : attemptId // ignore: cast_nullable_to_non_nullable
               as int,
+      status: freezed == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -2970,7 +2996,8 @@ class __$$AssessmentResultDataImplCopyWithImpl<$Res>
 class _$AssessmentResultDataImpl implements _AssessmentResultData {
   const _$AssessmentResultDataImpl(
       {required this.mode,
-      @JsonKey(name: 'attempt_id') required this.attemptId});
+      @JsonKey(name: 'attempt_id') required this.attemptId,
+      this.status});
 
   factory _$AssessmentResultDataImpl.fromJson(Map<String, dynamic> json) =>
       _$$AssessmentResultDataImplFromJson(json);
@@ -2980,10 +3007,12 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
   @override
   @JsonKey(name: 'attempt_id')
   final int attemptId;
+  @override
+  final String? status;
 
   @override
   String toString() {
-    return 'AssessmentResultData(mode: $mode, attemptId: $attemptId)';
+    return 'AssessmentResultData(mode: $mode, attemptId: $attemptId, status: $status)';
   }
 
   @override
@@ -2993,12 +3022,13 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
             other is _$AssessmentResultDataImpl &&
             (identical(other.mode, mode) || other.mode == mode) &&
             (identical(other.attemptId, attemptId) ||
-                other.attemptId == attemptId));
+                other.attemptId == attemptId) &&
+            (identical(other.status, status) || other.status == status));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, mode, attemptId);
+  int get hashCode => Object.hash(runtimeType, mode, attemptId, status);
 
   @JsonKey(ignore: true)
   @override
@@ -3019,7 +3049,8 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
 abstract class _AssessmentResultData implements AssessmentResultData {
   const factory _AssessmentResultData(
           {required final String mode,
-          @JsonKey(name: 'attempt_id') required final int attemptId}) =
+          @JsonKey(name: 'attempt_id') required final int attemptId,
+          final String? status}) =
       _$AssessmentResultDataImpl;
 
   factory _AssessmentResultData.fromJson(Map<String, dynamic> json) =
@@ -3030,6 +3061,8 @@ abstract class _AssessmentResultData implements AssessmentResultData {
   @override
   @JsonKey(name: 'attempt_id')
   int get attemptId;
+  @override
+  String? get status;
   @override
   @JsonKey(ignore: true)
   _$$AssessmentResultDataImplCopyWith<_$AssessmentResultDataImpl>
