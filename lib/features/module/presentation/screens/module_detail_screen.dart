@@ -918,7 +918,7 @@ class _LessonRowState extends State<_LessonRow>
               ),
               const SizedBox(height: 14),
               Text(
-                reason ?? 'Complete the previous lesson to unlock this one.',
+                reason ?? 'You need to complete the previous lesson first.',
                 style: const TextStyle(
                   color: _kTextSecondary,
                   fontSize: 13,

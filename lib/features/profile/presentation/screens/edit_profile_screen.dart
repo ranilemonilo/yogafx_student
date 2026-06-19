@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/data/country_options.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/country_picker_field.dart';
 import '../../data/models/profile_model.dart';
 import '../providers/profile_provider.dart';
 
@@ -17,9 +19,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _whatsAppController = TextEditingController();
+  final _whatsAppNumberController = TextEditingController();
   final _instagramController = TextEditingController();
-  final _countryController = TextEditingController();
   final _birthDateController = TextEditingController();
   final _genderController = TextEditingController();
   final _practicingController = TextEditingController();
@@ -33,15 +34,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _initialized = false;
   bool _saving = false;
   String? _error;
+  CountryOption? _selectedCountry;
+  CountryOption? _selectedDialCountry;
 
   @override
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
-    _whatsAppController.dispose();
+    _whatsAppNumberController.dispose();
     _instagramController.dispose();
-    _countryController.dispose();
     _birthDateController.dispose();
     _genderController.dispose();
     _practicingController.dispose();
@@ -86,11 +88,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   const SizedBox(height: 14),
                   _buildField(_emailController, 'Email'),
                   const SizedBox(height: 14),
-                  _buildField(_whatsAppController, 'WhatsApp'),
+                  _buildWhatsAppField(),
                   const SizedBox(height: 14),
                   _buildField(_instagramController, 'Instagram'),
                   const SizedBox(height: 14),
-                  _buildField(_countryController, 'Country'),
+                  CountryPickerField(
+                    label: 'Country',
+                    hintText: 'Select a country',
+                    selectedOption: _selectedCountry,
+                    onSelected: (option) {
+                      setState(() {
+                        _selectedCountry = option;
+                        _selectedDialCountry = option;
+                      });
+                    },
+                    validator: (value) {
+                      if (_selectedCountry == null) {
+                        return 'Country is required';
+                      }
+                      return null;
+                    },
+                    labelBuilder: (option) => option.name,
+                  ),
                   const SizedBox(height: 14),
                   _buildField(_birthDateController, 'Birth date'),
                   const SizedBox(height: 14),
@@ -146,9 +165,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _firstNameController.text = profile.firstName;
     _lastNameController.text = profile.lastName;
     _emailController.text = profile.email;
-    _whatsAppController.text = profile.whatsapp ?? '';
+    final phoneData = splitPhoneNumber(profile.whatsapp);
+    _selectedDialCountry = phoneData.country;
+    _whatsAppNumberController.text = phoneData.localNumber;
     _instagramController.text = profile.instagram ?? '';
-    _countryController.text = profile.country ?? '';
+    _selectedCountry = findCountryByName(profile.country);
+    _selectedDialCountry ??= _selectedCountry;
     _birthDateController.text = profile.birthDate ?? '';
     _genderController.text = profile.gender ?? '';
     _practicingController.text = profile.practicingYogaFor ?? '';
@@ -179,6 +201,45 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
+  Widget _buildWhatsAppField() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 5,
+          child: CountryPickerField(
+            label: 'Code',
+            hintText: 'Choose code',
+            selectedOption: _selectedDialCountry,
+            onSelected: (option) {
+              setState(() => _selectedDialCountry = option);
+            },
+            labelBuilder: (option) => '${option.dialCode} ${option.name}',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 7,
+          child: TextFormField(
+            controller: _whatsAppNumberController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'WhatsApp Number'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _buildWhatsAppValue() {
+    final number = _whatsAppNumberController.text.trim();
+    final dialCode = _selectedDialCountry?.dialCode ?? '';
+    if (number.isEmpty) {
+      return '';
+    }
+    final normalized = number.startsWith('0') ? number.substring(1) : number;
+    return '$dialCode$normalized';
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -190,9 +251,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         'first_name': _firstNameController.text.trim(),
         'last_name': _lastNameController.text.trim(),
         'email': _emailController.text.trim(),
-        'whatsapp': _whatsAppController.text.trim(),
+        'whatsapp': _buildWhatsAppValue(),
         'instagram': _instagramController.text.trim(),
-        'country': _countryController.text.trim(),
+        'country': _selectedCountry?.name ?? '',
         'birth_date': _birthDateController.text.trim(),
         'gender': _genderController.text.trim(),
         'practicing_yoga_for': _practicingController.text.trim(),

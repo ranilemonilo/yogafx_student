@@ -7,12 +7,13 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../module/presentation/providers/module_provider.dart';
 import '../../data/models/lesson_model.dart';
 import '../providers/lesson_provider.dart';
 import '../../../../features/lesson/data/repositories/lesson_repository.dart';
@@ -29,6 +30,7 @@ const _kTextPrimary = Colors.white;
 const _kTextSecondary = Color(0xFFB3B3B3);
 const _kTextMuted = Color(0xFF6B6B6B);
 const _kGreen = Color(0xFF46D369);
+final _lessonContentKey = GlobalKey<_LessonContentState>();
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -40,16 +42,32 @@ class LessonScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lessonAsync = ref.watch(lessonDetailProvider(lessonId));
 
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: lessonAsync.when(
-        loading: () => const _LessonSkeleton(),
-        error: (e, _) => _LessonError(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(lessonDetailProvider(lessonId)),
-          onBack: () => _handleLessonBack(context),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final state = _lessonContentKey.currentState;
+        if (state != null) {
+          await state.prepareForNavigation(context);
+        }
+        if (context.mounted) {
+          _handleLessonBack(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: _kBg,
+        body: lessonAsync.when(
+          loading: () => const _LessonSkeleton(),
+          error: (e, _) => _LessonError(
+            message: e.toString(),
+            onRetry: () => ref.invalidate(lessonDetailProvider(lessonId)),
+            onBack: () => _handleLessonBack(context),
+          ),
+          data: (lesson) => _LessonContent(
+            key: _lessonContentKey,
+            lesson: lesson,
+          ),
         ),
-        data: (lesson) => _LessonContent(lesson: lesson),
       ),
     );
   }
@@ -63,11 +81,25 @@ void _handleLessonBack(BuildContext context) {
   context.go(AppRoutes.modules);
 }
 
+void _showLockedSnackBar(
+  BuildContext context, {
+  required String fallbackMessage,
+  String? reason,
+}) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(reason ?? fallbackMessage),
+      ),
+    );
+}
+
 // ─── Content ──────────────────────────────────────────────────────────────────
 
 class _LessonContent extends ConsumerStatefulWidget {
   final LessonDetail lesson;
-  const _LessonContent({required this.lesson});
+  const _LessonContent({super.key, required this.lesson});
 
   @override
   ConsumerState<_LessonContent> createState() => _LessonContentState();
@@ -76,7 +108,6 @@ class _LessonContent extends ConsumerStatefulWidget {
 class _LessonContentState extends ConsumerState<_LessonContent>
     with TickerProviderStateMixin {
   VideoPlayerController? _videoController;
-  ChewieController? _chewieController;
   AudioPlayer? _audioPlayer;
   bool _videoInitialized = false;
   bool _videoError = false;
@@ -84,6 +115,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _audioReady = false;
   String? _audioError;
   int _lastReportedProgress = 0;
+  int? _autoNextRemainingSeconds;
+  bool _isAutoNavigating = false;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -139,22 +172,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         await _videoController!.seekTo(seekTo);
       }
 
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
-        autoPlay: false,
-        looping: false,
-        allowFullScreen: true,
-        allowMuting: true,
-        showControlsOnInitialize: true,
-        materialProgressColors: ChewieProgressColors(
-          playedColor: _kRed,
-          handleColor: _kRed,
-          bufferedColor: _kTextMuted,
-          backgroundColor: _kDivider,
-        ),
-        placeholder: Container(color: Colors.black),
-      );
-
       _videoController!.addListener(_onVideoProgress);
       if (mounted) setState(() => _videoInitialized = true);
     } catch (e) {
@@ -175,7 +192,56 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       ref
           .read(lessonRepositoryProvider)
           .updateProgress(widget.lesson.id, currentProgress);
+      if (currentProgress >= 100) {
+        _refreshLearningState();
+      }
     }
+
+    _handleAutoNext(value);
+  }
+
+  void _handleAutoNext(VideoPlayerValue value) {
+    final nextLesson = widget.lesson.nextLesson;
+    final shouldAutoNavigate =
+        nextLesson != null &&
+        nextLesson.isUnlocked &&
+        widget.lesson.assessment == null;
+
+    if (!shouldAutoNavigate) {
+      if (_autoNextRemainingSeconds != null && mounted) {
+        setState(() => _autoNextRemainingSeconds = null);
+      }
+      return;
+    }
+
+    final remaining = value.duration - value.position;
+    final remainingSeconds = remaining.inSeconds;
+
+    if (remainingSeconds > 10 || remainingSeconds <= 0) {
+      if (_autoNextRemainingSeconds != null && mounted) {
+        setState(() => _autoNextRemainingSeconds = null);
+      }
+      return;
+    }
+
+    if (_autoNextRemainingSeconds != remainingSeconds && mounted) {
+      setState(() => _autoNextRemainingSeconds = remainingSeconds);
+    }
+
+    if (remainingSeconds == 1 && !_isAutoNavigating) {
+      _isAutoNavigating = true;
+      Future.microtask(() async {
+        if (!mounted) return;
+        await _navigateToLesson(context, nextLesson.id);
+      });
+    }
+  }
+
+  void _refreshLearningState() {
+    ref.invalidate(lessonDetailProvider(widget.lesson.id));
+    ref.invalidate(moduleDetailProvider(widget.lesson.module.id));
+    ref.invalidate(moduleListProvider);
+    ref.invalidate(dashboardProvider);
   }
 
   Future<void> _initAudio() async {
@@ -212,16 +278,110 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     }
   }
 
+  Future<void> prepareForNavigation(BuildContext context) async {
+    _isAutoNavigating = true;
+    _refreshLearningState();
+
+    if (context.mounted) {
+      Navigator.of(
+        context,
+        rootNavigator: false,
+      ).popUntil((route) => route.settings.name != null || route.isFirst);
+    }
+
+    await _videoController?.pause();
+    await _audioPlayer?.pause();
+
+    if (mounted) {
+      setState(() => _videoInitialized = false);
+    }
+
+    await Future.delayed(Duration.zero);
+
+    await _audioPlayer?.dispose();
+    _audioPlayer = null;
+
+    _videoController?.removeListener(_onVideoProgress);
+    await _videoController?.dispose();
+    _videoController = null;
+  }
+
+  Future<void> _handleBack(BuildContext context) async {
+    await prepareForNavigation(context);
+    if (!mounted) return;
+    _handleLessonBack(context);
+  }
+
+  Future<void> _navigateToLesson(BuildContext context, int lessonId) async {
+    await prepareForNavigation(context);
+    if (!mounted) return;
+    context.go('/lessons/$lessonId');
+  }
+
   @override
   void dispose() {
     _videoController?.removeListener(_onVideoProgress);
-    _chewieController?.dispose();
+
     _videoController?.dispose();
+    _videoController = null;
+
     _audioPlayer?.dispose();
+    _audioPlayer = null;
     _fadeCtrl.dispose();
     _progressCtrl.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
+  }
+
+  Future<void> _toggleVideoPlayback() async {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    if (controller.value.isPlaying) {
+      await controller.pause();
+    } else {
+      await controller.play();
+    }
+  }
+
+  Future<void> _seekVideo(Duration position) async {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final duration = controller.value.duration;
+    final safePosition = position > duration ? duration : position;
+    await controller.seekTo(safePosition < Duration.zero ? Duration.zero : safePosition);
+  }
+
+  Future<void> _toggleMute() async {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final nextMuted = controller.value.volume > 0;
+    await controller.setVolume(nextMuted ? 0 : 1);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openFullscreen() async {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (!mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _FullscreenVideoScreen(
+          controller: controller,
+          onTogglePlayback: _toggleVideoPlayback,
+          onSeek: _seekVideo,
+          onToggleMute: _toggleMute,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -237,8 +397,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             lesson: lesson,
             videoInitialized: _videoInitialized,
             videoError: _videoError,
-            chewieController: _chewieController,
+            videoController: _videoController,
             onRetry: _initVideo,
+            onBack: () => _handleBack(context),
+            onTogglePlayback: _toggleVideoPlayback,
+            onSeek: _seekVideo,
+            onToggleMute: _toggleMute,
+            onOpenFullscreen: _openFullscreen,
           ),
         ),
 
@@ -312,13 +477,22 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                     _NavigationSection(
                       navigation: lesson.navigation,
                       currentLessonId: lesson.id,
+                      onNavigate: (lessonId) =>
+                          _navigateToLesson(context, lessonId),
                     ),
                     const SizedBox(height: 28),
                   ],
 
                   // Next lesson
                   if (lesson.nextLesson != null)
-                    _NextLessonBanner(nextLesson: lesson.nextLesson!),
+                    _NextLessonBanner(
+                      nextLesson: lesson.nextLesson!,
+                      countdownSeconds: lesson.assessment == null
+                          ? _autoNextRemainingSeconds
+                          : null,
+                      onNavigate: (lessonId) =>
+                          _navigateToLesson(context, lessonId),
+                    ),
                 ],
               ),
             ),
@@ -335,15 +509,25 @@ class _VideoSection extends StatelessWidget {
   final LessonDetail lesson;
   final bool videoInitialized;
   final bool videoError;
-  final ChewieController? chewieController;
+  final VideoPlayerController? videoController;
   final VoidCallback onRetry;
+  final VoidCallback onBack;
+  final Future<void> Function() onTogglePlayback;
+  final Future<void> Function(Duration position) onSeek;
+  final Future<void> Function() onToggleMute;
+  final Future<void> Function() onOpenFullscreen;
 
   const _VideoSection({
     required this.lesson,
     required this.videoInitialized,
     required this.videoError,
-    required this.chewieController,
+    required this.videoController,
     required this.onRetry,
+    required this.onBack,
+    required this.onTogglePlayback,
+    required this.onSeek,
+    required this.onToggleMute,
+    required this.onOpenFullscreen,
   });
 
   @override
@@ -359,10 +543,10 @@ class _VideoSection extends StatelessWidget {
         ),
         // Back button overlay
         Positioned(
-          top: MediaQuery.of(context).padding.top + 8,
+          top: MediaQuery.paddingOf(context).top + 8,
           left: 12,
           child: GestureDetector(
-            onTap: () => _handleLessonBack(context),
+            onTap: onBack,
             child: Container(
               width: 36,
               height: 36,
@@ -390,13 +574,13 @@ class _VideoSection extends StatelessWidget {
     if (lesson.video == null || !lesson.video!.isReady) {
       return _VideoPlaceholder(
         thumbnailUrl: lesson.thumbnailUrl,
-        message: 'Video tidak tersedia',
+        message: 'Video is not available.',
       );
     }
     if (videoError) {
       return _VideoPlaceholder(
         thumbnailUrl: lesson.thumbnailUrl,
-        message: 'Gagal memuat video',
+        message: 'Failed to load video.',
         showRetry: true,
         onRetry: onRetry,
       );
@@ -424,8 +608,327 @@ class _VideoSection extends StatelessWidget {
         ],
       );
     }
-    return Chewie(controller: chewieController!);
+    final controller = videoController;
+    if (controller == null) {
+      return _VideoPlaceholder(
+        thumbnailUrl: lesson.thumbnailUrl,
+        message: 'Video is not available.',
+      );
+    }
+
+    return _InlineVideoPlayer(
+      controller: controller,
+      onTogglePlayback: onTogglePlayback,
+      onSeek: onSeek,
+      onToggleMute: onToggleMute,
+      onOpenFullscreen: onOpenFullscreen,
+    );
   }
+}
+
+class _InlineVideoPlayer extends StatelessWidget {
+  final VideoPlayerController controller;
+  final Future<void> Function() onTogglePlayback;
+  final Future<void> Function(Duration position) onSeek;
+  final Future<void> Function() onToggleMute;
+  final Future<void> Function() onOpenFullscreen;
+
+  const _InlineVideoPlayer({
+    required this.controller,
+    required this.onTogglePlayback,
+    required this.onSeek,
+    required this.onToggleMute,
+    required this.onOpenFullscreen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<VideoPlayerValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final duration = value.duration;
+        final position = value.position > duration ? duration : value.position;
+        final isMuted = value.volume == 0;
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: value.size.width,
+                height: value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            ),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x66000000),
+                    Color(0x11000000),
+                    Color(0x77000000),
+                  ],
+                ),
+              ),
+            ),
+            Center(
+              child: GestureDetector(
+                onTap: onTogglePlayback,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.45),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.16),
+                    ),
+                  ),
+                  child: Icon(
+                    value.isPlaying
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 34,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 10,
+              child: _VideoControlsBar(
+                duration: duration,
+                position: position,
+                isPlaying: value.isPlaying,
+                isMuted: isMuted,
+                onTogglePlayback: onTogglePlayback,
+                onSeek: onSeek,
+                onToggleMute: onToggleMute,
+                onOpenFullscreen: onOpenFullscreen,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _VideoControlsBar extends StatelessWidget {
+  final Duration duration;
+  final Duration position;
+  final bool isPlaying;
+  final bool isMuted;
+  final Future<void> Function() onTogglePlayback;
+  final Future<void> Function(Duration position) onSeek;
+  final Future<void> Function() onToggleMute;
+  final Future<void> Function() onOpenFullscreen;
+
+  const _VideoControlsBar({
+    required this.duration,
+    required this.position,
+    required this.isPlaying,
+    required this.isMuted,
+    required this.onTogglePlayback,
+    required this.onSeek,
+    required this.onToggleMute,
+    required this.onOpenFullscreen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final maxMillis = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
+    final currentMillis = position.inMilliseconds.clamp(0, maxMillis);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.58),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2.5,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+              activeTrackColor: _kRed,
+              inactiveTrackColor: Colors.white24,
+              thumbColor: _kRed,
+              overlayColor: _kRed.withOpacity(0.18),
+            ),
+            child: Slider(
+              value: currentMillis.toDouble(),
+              max: maxMillis.toDouble(),
+              onChanged: (value) => onSeek(Duration(milliseconds: value.round())),
+            ),
+          ),
+          Row(
+            children: [
+              _VideoControlButton(
+                icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                onTap: onTogglePlayback,
+              ),
+              _VideoControlButton(
+                icon: isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                onTap: onToggleMute,
+              ),
+              Expanded(
+                child: Text(
+                  '${_formatVideoDuration(position)} / ${_formatVideoDuration(duration)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Montserrat',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              _VideoControlButton(
+                icon: Icons.fullscreen_rounded,
+                onTap: onOpenFullscreen,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoControlButton extends StatelessWidget {
+  final IconData icon;
+  final Future<void> Function() onTap;
+
+  const _VideoControlButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 32,
+        height: 32,
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+}
+
+class _FullscreenVideoScreen extends StatefulWidget {
+  final VideoPlayerController controller;
+  final Future<void> Function() onTogglePlayback;
+  final Future<void> Function(Duration position) onSeek;
+  final Future<void> Function() onToggleMute;
+
+  const _FullscreenVideoScreen({
+    required this.controller,
+    required this.onTogglePlayback,
+    required this.onSeek,
+    required this.onToggleMute,
+  });
+
+  @override
+  State<_FullscreenVideoScreen> createState() => _FullscreenVideoScreenState();
+}
+
+class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        Navigator.of(context).pop();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: AspectRatio(
+                  aspectRatio: widget.controller.value.aspectRatio == 0
+                      ? 16 / 9
+                      : widget.controller.value.aspectRatio,
+                  child: _InlineVideoPlayer(
+                    controller: widget.controller,
+                    onTogglePlayback: widget.onTogglePlayback,
+                    onSeek: widget.onSeek,
+                    onToggleMute: widget.onToggleMute,
+                    onOpenFullscreen: () async => Navigator.of(context).pop(),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                left: 12,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatVideoDuration(Duration duration) {
+  final totalSeconds = duration.inSeconds;
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  final seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return '${hours.toString().padLeft(2, '0')}:'
+        '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
+  }
+
+  return '${minutes.toString().padLeft(2, '0')}:'
+      '${seconds.toString().padLeft(2, '0')}';
 }
 
 class _VideoPlaceholder extends StatelessWidget {
@@ -488,7 +991,7 @@ class _VideoPlaceholder extends StatelessWidget {
                       ],
                     ),
                     child: const Text(
-                      'Coba lagi',
+                      'Try again',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -590,7 +1093,7 @@ class _LessonProgressBar extends StatelessWidget {
                   color: _kGreen, size: 13),
               const SizedBox(width: 5),
               const Text(
-                'Selesai',
+                'Completed',
                 style: TextStyle(
                   color: _kGreen,
                   fontSize: 11,
@@ -600,7 +1103,7 @@ class _LessonProgressBar extends StatelessWidget {
               ),
             ] else ...[
               Text(
-                '${progress.watchProgress}% ditonton',
+                '${progress.watchProgress}% watched',
                 style: const TextStyle(
                   color: _kTextMuted,
                   fontSize: 11,
@@ -679,10 +1182,10 @@ class _ActionRow extends StatelessWidget {
           _ActionChip(
             icon: Icons.headphones_rounded,
             label: audioLoading
-                ? 'Memuat Audio...'
+                ? 'Loading audio...'
                 : audioReady
                 ? 'Audio'
-                : 'Audio Tidak Tersedia',
+                : 'Audio Unavailable',
             onTap: lesson.audio.url == null
                 ? null
                 : () => _openAudio(context),
@@ -785,7 +1288,7 @@ class _ContentSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel(text: 'Tentang Lesson Ini'),
+        const _SectionLabel(text: 'About This Lesson'),
         const SizedBox(height: 12),
         Text(
           content,
@@ -860,7 +1363,7 @@ class _WorkbookSection extends StatelessWidget {
                       ),
                       SizedBox(height: 3),
                       Text(
-                        'Buka atau download workbook',
+                        'Open or download the workbook',
                         style: TextStyle(
                           color: _kTextMuted,
                           fontSize: 11,
@@ -891,7 +1394,7 @@ class _WorkbookSheet extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     messenger.showSnackBar(
-      const SnackBar(content: Text('Mengunduh workbook...')),
+      const SnackBar(content: Text('Downloading workbook...')),
     );
     navigator.pop();
     try {
@@ -901,11 +1404,11 @@ class _WorkbookSheet extends StatelessWidget {
       final dio = ApiClient.create();
       await dio.download(url, targetPath);
       messenger.showSnackBar(
-        SnackBar(content: Text('Tersimpan di $targetPath')),
+        SnackBar(content: Text('Saved to $targetPath')),
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal download: $e')),
+        SnackBar(content: Text('Download failed: $e')),
       );
     }
   }
@@ -914,11 +1417,11 @@ class _WorkbookSheet extends StatelessWidget {
     if (Platform.isAndroid) {
       final publicDownloads = Directory('/storage/emulated/0/Download');
       if (await publicDownloads.exists()) return publicDownloads;
-      throw const FileSystemException('Folder download tidak ditemukan');
+      throw const FileSystemException('Download folder not found');
     }
     final downloadsDir = await getDownloadsDirectory();
     if (downloadsDir != null) return downloadsDir;
-    throw const FileSystemException('Folder download tidak ditemukan');
+    throw const FileSystemException('Download folder not found');
   }
 
   String _buildFileName(String? rawName) {
@@ -972,7 +1475,7 @@ class _WorkbookSheet extends StatelessWidget {
 
           if (workbook.url != null)
             _SheetButton(
-              label: 'Buka Workbook',
+              label: 'Open Workbook',
               icon: Icons.open_in_new_rounded,
               isPrimary: true,
               onTap: () {
@@ -1051,7 +1554,7 @@ class _AudioSheet extends StatelessWidget {
           const SizedBox(height: 6),
           if (audioLoading)
             const Text(
-              'Memuat audio...',
+              'Loading audio...',
               style: TextStyle(
                   color: _kTextMuted, fontSize: 12, fontFamily: 'Montserrat'),
             )
@@ -1065,14 +1568,14 @@ class _AudioSheet extends StatelessWidget {
             )
           else
             const Text(
-              'Putar audio untuk lesson ini',
+              'Play the audio for this lesson',
               style: TextStyle(
                   color: _kTextMuted, fontSize: 12, fontFamily: 'Montserrat'),
             ),
           const SizedBox(height: 24),
           if (audioReady && audioPlayer != null)
             StreamBuilder<PlayerState>(
-              stream: audioPlayer!.playerStateStream,
+              stream: audioPlayer?.playerStateStream ?? const Stream.empty(),
               builder: (context, snapshot) {
                 final playing = snapshot.data?.playing ?? false;
                 return _SheetButton(
@@ -1082,6 +1585,7 @@ class _AudioSheet extends StatelessWidget {
                       : Icons.play_arrow_rounded,
                   isPrimary: true,
                   onTap: () async {
+                    if (audioPlayer == null) return;
                     if (playing) {
                       await audioPlayer!.pause();
                     } else {
@@ -1093,7 +1597,7 @@ class _AudioSheet extends StatelessWidget {
             )
           else
             _SheetButton(
-              label: 'Coba Lagi',
+              label: 'Try Again',
               icon: Icons.refresh_rounded,
               isPrimary: false,
               onTap: onRetryAudio,
@@ -1204,9 +1708,17 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (_, __) => GestureDetector(
-        onTap: isUnlocked
-            ? () => context.push('/lessons/${widget.lessonId}/assessment')
-            : null,
+        onTap: () {
+          if (isUnlocked) {
+            context.push('/lessons/${widget.lessonId}/assessment');
+            return;
+          }
+          _showLockedSnackBar(
+            context,
+            fallbackMessage:
+                'You need to complete this lesson before accessing the assessment.',
+          );
+        },
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1252,7 +1764,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isUnlocked ? 'Assessment Tersedia' : 'Assessment Terkunci',
+                      isUnlocked ? 'Assessment Available' : 'Assessment Locked',
                       style: TextStyle(
                         color: isUnlocked ? _kTextPrimary : _kTextMuted,
                         fontSize: 13,
@@ -1263,8 +1775,8 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                     const SizedBox(height: 3),
                     Text(
                       isUnlocked
-                          ? 'Mulai assessment sekarang'
-                          : 'Tonton minimal 95% video untuk membuka',
+                          ? 'Start the assessment now'
+                          : 'Watch at least 95% of the video to unlock it.',
                       style: const TextStyle(
                         color: _kTextMuted,
                         fontSize: 11,
@@ -1293,15 +1805,20 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
 class _NavigationSection extends StatelessWidget {
   final List<LessonNavItem> navigation;
   final int currentLessonId;
-  const _NavigationSection(
-      {required this.navigation, required this.currentLessonId});
+  final void Function(int lessonId) onNavigate;
+
+  const _NavigationSection({
+    required this.navigation,
+    required this.currentLessonId,
+    required this.onNavigate,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel(text: 'Semua Lesson'),
+        const _SectionLabel(text: 'All Lessons'),
         const SizedBox(height: 12),
         ...navigation.map(
               (item) => Padding(
@@ -1309,6 +1826,7 @@ class _NavigationSection extends StatelessWidget {
             child: _NavLessonRow(
               item: item,
               isCurrent: item.id == currentLessonId,
+              onNavigate: onNavigate,
             ),
           ),
         ),
@@ -1320,14 +1838,31 @@ class _NavigationSection extends StatelessWidget {
 class _NavLessonRow extends StatelessWidget {
   final LessonNavItem item;
   final bool isCurrent;
-  const _NavLessonRow({required this.item, required this.isCurrent});
+  final void Function(int lessonId) onNavigate;
+
+  const _NavLessonRow({
+    required this.item,
+    required this.isCurrent,
+    required this.onNavigate,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: item.isLocked || isCurrent
-          ? null
-          : () => context.pushReplacement('/lessons/${item.id}'),
+      onTap: () {
+        if (isCurrent) {
+          return;
+        }
+        if (item.isLocked) {
+          _showLockedSnackBar(
+            context,
+            fallbackMessage: 'You need to complete the previous lesson first.',
+            reason: item.lockReason,
+          );
+          return;
+        }
+        onNavigate(item.id);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
@@ -1421,7 +1956,14 @@ class _NavLessonRow extends StatelessWidget {
 
 class _NextLessonBanner extends StatefulWidget {
   final NextLesson nextLesson;
-  const _NextLessonBanner({required this.nextLesson});
+  final int? countdownSeconds;
+  final void Function(int lessonId) onNavigate;
+
+  const _NextLessonBanner({
+    required this.nextLesson,
+    required this.countdownSeconds,
+    required this.onNavigate,
+  });
 
   @override
   State<_NextLessonBanner> createState() => _NextLessonBannerState();
@@ -1453,11 +1995,20 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
   @override
   Widget build(BuildContext context) {
     final isUnlocked = widget.nextLesson.isUnlocked;
+    final countdownSeconds = widget.countdownSeconds;
 
     return GestureDetector(
-      onTap: isUnlocked
-          ? () => context.pushReplacement('/lessons/${widget.nextLesson.id}')
-          : null,
+      onTap: () {
+        if (isUnlocked) {
+          widget.onNavigate(widget.nextLesson.id);
+          return;
+        }
+        _showLockedSnackBar(
+          context,
+          fallbackMessage: 'You need to complete the previous lesson first.',
+          reason: widget.nextLesson.lockReason,
+        );
+      },
       onTapDown: isUnlocked ? (_) => _ctrl.forward() : null,
       onTapUp: isUnlocked ? (_) => _ctrl.reverse() : null,
       onTapCancel: isUnlocked ? () => _ctrl.reverse() : null,
@@ -1512,7 +2063,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'LESSON SELANJUTNYA',
+                      'NEXT LESSON',
                       style: TextStyle(
                         color: _kTextMuted,
                         fontSize: 9,
@@ -1533,6 +2084,18 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (isUnlocked && countdownSeconds != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Auto next in ${countdownSeconds}s',
+                        style: const TextStyle(
+                          color: _kRed,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1741,7 +2304,7 @@ class _LessonError extends StatelessWidget {
                       border: Border.all(color: _kDivider, width: 0.8),
                     ),
                     child: const Text(
-                      'Kembali',
+                      'Back',
                       style: TextStyle(
                         color: _kTextSecondary,
                         fontSize: 12,
@@ -1769,7 +2332,7 @@ class _LessonError extends StatelessWidget {
                       ],
                     ),
                     child: const Text(
-                      'Coba lagi',
+                      'Try again',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,

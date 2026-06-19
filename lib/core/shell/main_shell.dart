@@ -12,9 +12,7 @@ class MainShell extends ConsumerWidget {
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith(AppRoutes.modules)) return 1;
-    if (location.startsWith(AppRoutes.ebooks)) return 2;
-    if (location.startsWith(AppRoutes.courses)) return 3;
-    if (location.startsWith(AppRoutes.profile)) return 4;
+    if (location.startsWith(AppRoutes.profile)) return 2;
     return 0; // dashboard
   }
 
@@ -45,12 +43,6 @@ class MainShell extends ConsumerWidget {
                     context.go(AppRoutes.modules);
                     return;
                   case 2:
-                    context.go(AppRoutes.ebooks);
-                    return;
-                  case 3:
-                    context.go(AppRoutes.courses);
-                    return;
-                  case 4:
                     context.go(AppRoutes.profile);
                     return;
                 }
@@ -65,16 +57,6 @@ class MainShell extends ConsumerWidget {
                   icon: Icon(Icons.play_circle_outline),
                   activeIcon: Icon(Icons.play_circle),
                   label: 'Modules',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.menu_book_outlined),
-                  activeIcon: Icon(Icons.menu_book),
-                  label: 'Ebooks',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.ondemand_video_outlined),
-                  activeIcon: Icon(Icons.ondemand_video),
-                  label: 'Courses',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.person_outline),

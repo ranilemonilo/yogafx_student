@@ -161,7 +161,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'ISI PESAN',
+                          'MESSAGE CONTENT',
                           style: TextStyle(
                             color: _kTextMuted,
                             fontSize: 9,
@@ -190,7 +190,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                               color: _kTextMuted, size: 16),
                           SizedBox(width: 10),
                           Text(
-                            'Belum ada konten tersedia.',
+                            'No content available yet.',
                             style: TextStyle(
                               color: _kTextMuted,
                               fontSize: 13,
@@ -377,7 +377,7 @@ class _DialogDetailError extends StatelessWidget {
                     Icon(Icons.refresh_rounded, color: Colors.white, size: 15),
                     SizedBox(width: 6),
                     Text(
-                      'Coba lagi',
+                      'Try again',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
