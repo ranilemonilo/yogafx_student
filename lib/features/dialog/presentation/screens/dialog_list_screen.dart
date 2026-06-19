@@ -167,7 +167,7 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
                     opacity: _fades[0],
                     child: SlideTransition(
                       position: _slides[0],
-                      child: const _SectionLabel(text: 'Materi Tersedia'),
+                      child: const _SectionLabel(text: 'Available Content'),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -304,7 +304,7 @@ class _DialogCardState extends State<_DialogCard>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      preview ?? 'Belum ada konten.',
+                      preview ?? 'No content available yet.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -531,7 +531,7 @@ class _DialogError extends StatelessWidget {
                     Icon(Icons.refresh_rounded, color: Colors.white, size: 15),
                     SizedBox(width: 6),
                     Text(
-                      'Coba lagi',
+                      'Try again',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,

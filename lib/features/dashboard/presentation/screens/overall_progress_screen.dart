@@ -103,23 +103,23 @@ class OverallProgressScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _StatTile(
-              label: 'Total module',
+              label: 'Total modules',
               value: '$modulesTotal',
             ),
             _StatTile(
-              label: 'Module selesai',
+              label: 'Modules completed',
               value: '$modulesCompleted',
             ),
             _StatTile(
-              label: 'Total lesson',
+              label: 'Total lessons',
               value: '$lessonsTotal',
             ),
             _StatTile(
-              label: 'Lesson selesai',
+              label: 'Lessons completed',
               value: '$lessonsCompleted',
             ),
             _StatTile(
-              label: 'Persentase keseluruhan',
+              label: 'Overall percentage',
               value: '$overallProgressPercentage%',
               highlighted: true,
             ),

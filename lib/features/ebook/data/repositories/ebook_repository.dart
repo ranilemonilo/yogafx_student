@@ -8,17 +8,6 @@ class EbookRepository {
 
   EbookRepository() : _dio = ApiClient.create();
 
-  Future<EbookListData> getEbooks() async {
-    try {
-      final response = await _dio.get('/ebooks');
-      return EbookListData.fromJson(
-        response.data['data'] as Map<String, dynamic>,
-      );
-    } on DioException catch (e) {
-      throw e.error as AppException? ?? const ServerException();
-    }
-  }
-
   Future<EbookItem> getEbookDetail(int ebookId) async {
     try {
       final response = await _dio.get('/ebooks/$ebookId');

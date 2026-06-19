@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
 import '../providers/dashboard_provider.dart';
@@ -45,6 +46,185 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: _kSurface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: _kDivider,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Profile Menu',
+                style: TextStyle(
+                  color: _kTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const SizedBox(height: 16),
+              _ProfileMenuTile(
+                icon: Icons.person_outline_rounded,
+                title: 'View Profile',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  context.push(AppRoutes.profile);
+                },
+              ),
+              const SizedBox(height: 10),
+              _ProfileMenuTile(
+                icon: Icons.logout_rounded,
+                title: 'Log Out',
+                isDanger: true,
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  final confirmed = await _confirmLogout(context);
+                  if (confirmed == true) {
+                    await ref.read(authProvider.notifier).logout();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _showInstantDialogMenu(BuildContext context) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: _kSurface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: _kDivider,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Instant Access Dialog',
+                style: TextStyle(
+                  color: _kTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Choose the dialog you want to open.',
+                style: TextStyle(
+                  color: _kTextSecondary,
+                  fontSize: 12,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const SizedBox(height: 16),
+              _QuickDialogTile(
+                icon: Icons.accessibility_new_rounded,
+                title: 'Standing',
+                subtitle: 'Open the standing dialog sequence.',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  context.push('/dialogs/full-standing');
+                },
+              ),
+              const SizedBox(height: 10),
+              _QuickDialogTile(
+                icon: Icons.airline_seat_recline_normal_rounded,
+                title: 'Floor',
+                subtitle: 'Open the floor dialog sequence.',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  context.push('/dialogs/full-floor');
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<bool?> _confirmLogout(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor: _kSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Log Out',
+          style: TextStyle(
+            color: _kTextPrimary,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Montserrat',
+          ),
+        ),
+        content: const Text(
+          'Are you sure you want to log out of your account?',
+          style: TextStyle(
+            color: _kTextSecondary,
+            fontFamily: 'Montserrat',
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kRed,
+              foregroundColor: _kWhite,
+            ),
+            child: const Text('Log Out'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 // ─── Content ──────────────────────────────────────────────────────────────────
@@ -140,8 +320,6 @@ class _DashboardContentState extends State<_DashboardContent>
                   continueLearningSection: data.continueLearningSection,
                 ),
               ),
-              const SizedBox(height: 32),
-              _animated(5, _CertificateSection(milestone: data.certificateMilestone)),
               const SizedBox(height: 56),
             ],
           ),
@@ -153,12 +331,12 @@ class _DashboardContentState extends State<_DashboardContent>
 
 // ─── App Bar ──────────────────────────────────────────────────────────────────
 
-class _YogaFXAppBar extends StatelessWidget {
+class _YogaFXAppBar extends ConsumerWidget {
   final dynamic student;
   const _YogaFXAppBar({required this.student});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SliverAppBar(
       backgroundColor: Colors.transparent,
       expandedHeight: 0,
@@ -182,14 +360,16 @@ class _YogaFXAppBar extends StatelessWidget {
         fit: BoxFit.contain,
       ),
       actions: [
-        _AppBarIconBtn(
-          icon: Icons.chat_bubble_outline_rounded,
-          onTap: () => context.push(AppRoutes.dialogs),
+        Padding(
+          padding: const EdgeInsets.only(left: 8, right: 8),
+          child: _InstantDialogButton(
+            onTap: () => _showInstantDialogMenu(context),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.only(right: 16, left: 4),
           child: GestureDetector(
-            onTap: () => context.push(AppRoutes.profile),
+            onTap: () => _showProfileMenu(context, ref),
             child: Container(
               width: 32,
               height: 32,
@@ -206,18 +386,180 @@ class _YogaFXAppBar extends StatelessWidget {
   }
 }
 
-class _AppBarIconBtn extends StatelessWidget {
-  final IconData icon;
+class _InstantDialogButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _AppBarIconBtn({required this.icon, required this.onTap});
+
+  const _InstantDialogButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Icon(icon, color: _kTextPrimary, size: 22),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: _kSurfaceElevated,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: _kDivider, width: 0.8),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  'Instant Access Dialog',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _kTextPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ),
+              SizedBox(width: 6),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: _kTextSecondary,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickDialogTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _QuickDialogTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _kSurfaceElevated,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _kDivider, width: 0.8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _kRed.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: _kRed, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: _kTextPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: _kTextSecondary,
+                        fontSize: 12,
+                        fontFamily: 'Montserrat',
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _kTextSecondary,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileMenuTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final bool isDanger;
+  final VoidCallback onTap;
+
+  const _ProfileMenuTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.isDanger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isDanger ? AppColors.primary : _kTextPrimary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: _kSurfaceElevated,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kDivider, width: 0.8),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.chevron_right_rounded, color: color, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -919,7 +1261,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Lanjutkan assessment dari ${widget.continueLearningSection.lesson.title}',
+                        'Continue the assessment from ${widget.continueLearningSection.lesson.title}',
                         style: const TextStyle(
                           color: _kTextMuted,
                           fontSize: 11,
@@ -1039,7 +1381,7 @@ class _ModulesSectionState extends State<_ModulesSection>
                         fontFamily: 'Montserrat',
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Cari modul...',
+                        hintText: 'Search modules...',
                         hintStyle: const TextStyle(
                           color: _kTextMuted,
                           fontSize: 13,
@@ -1372,100 +1714,6 @@ class _ModuleThumbnailPlaceholder extends StatelessWidget {
   }
 }
 
-// ─── Certificate Section ──────────────────────────────────────────────────────
-
-class _CertificateSection extends StatelessWidget {
-  final CertificateMilestone milestone;
-  const _CertificateSection({required this.milestone});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionLabel(text: milestone.eyebrow),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: _kSurfaceElevated,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _kDivider, width: 0.8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.workspace_premium_rounded,
-                        color: _kRed, size: 18),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        milestone.title,
-                        style: const TextStyle(
-                          color: _kTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                ...milestone.milestones.map(
-                      (item) {
-                    final done = item.status.toLowerCase().contains('completed') ||
-                        item.status.toLowerCase() == 'included' ||
-                        item.status.toLowerCase() == 'not required';
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            done
-                                ? Icons.check_circle_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            color: done ? _kGreen : _kTextMuted,
-                            size: 15,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              item.label,
-                              style: TextStyle(
-                                color: done ? _kTextSecondary : _kTextMuted,
-                                fontSize: 12,
-                                fontFamily: 'Montserrat',
-                              ),
-                            ),
-                          ),
-                          Text(
-                            item.status,
-                            style: TextStyle(
-                              color: done ? _kGreen.withOpacity(0.8) : _kTextMuted,
-                              fontSize: 10,
-                              fontFamily: 'Montserrat',
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Access Time Section ──────────────────────────────────────────────────────
 
 class _AccessTimeSection extends StatelessWidget {
@@ -1676,13 +1924,14 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
               const SizedBox(height: 14),
               SizedBox(
                 height: 270,
-                child: Row(
-                  children: List.generate(
-                    3,
-                        (i) => Padding(
-                      padding: EdgeInsets.only(right: i < 2 ? 12 : 0),
-                      child: _Bone(width: 200, height: 270, color: shimmerColor),
-                    ),
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: 3,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (_, __) => _Bone(
+                    width: 200,
+                    height: 270,
+                    color: shimmerColor,
                   ),
                 ),
               ),
@@ -1752,7 +2001,7 @@ class _DashboardError extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             _RedButton(
-              label: 'Coba lagi',
+              label: 'Try again',
               icon: Icons.refresh_rounded,
               onTap: onRetry,
             ),

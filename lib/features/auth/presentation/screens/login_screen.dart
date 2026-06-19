@@ -18,12 +18,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
-  // Entrance animation
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
 
-  // Logo pulse
   late AnimationController _logoCtrl;
   late Animation<double> _logoScale;
 
@@ -135,25 +133,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildHeader() {
     return Row(
       children: [
-        // Logo mark — red "Y" box identical to Netflix "N" pattern
-        Container(
+        // ── Logo image ──
+        Image.asset(
+          'assets/images/yogafx_logo.png',
           width: 36,
           height: 36,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE50914),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: const Center(
-            child: Text(
-              'Y',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ),
+          fit: BoxFit.contain,
         ),
         const SizedBox(width: 10),
         Column(
@@ -434,13 +419,13 @@ class _NetflixFieldState extends State<_NetflixField> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(
-                  color: Color(0xFF3A3A3A), width: 1),
+              borderSide:
+              const BorderSide(color: Color(0xFF3A3A3A), width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(
-                  color: Color(0xFFE50914), width: 1.5),
+              borderSide:
+              const BorderSide(color: Color(0xFFE50914), width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
@@ -455,8 +440,8 @@ class _NetflixFieldState extends State<_NetflixField> {
               fontFamily: 'Montserrat',
               fontSize: 11,
             ),
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 16),
+            contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             suffixIcon: widget.onSuffixTap != null
                 ? IconButton(
               onPressed: widget.onSuffixTap,
@@ -509,8 +494,7 @@ class _SignInButtonState extends State<_SignInButton>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown:
-      widget.isLoading ? null : (_) => _scaleCtrl.reverse(),
+      onTapDown: widget.isLoading ? null : (_) => _scaleCtrl.reverse(),
       onTapUp: widget.isLoading
           ? null
           : (_) {
@@ -589,15 +573,12 @@ class _LinkButtonState extends State<_LinkButton> {
       child: AnimatedDefaultTextStyle(
         duration: const Duration(milliseconds: 120),
         style: TextStyle(
-          color: _hovering
-              ? Colors.white
-              : const Color(0xFF808080),
+          color: _hovering ? Colors.white : const Color(0xFF808080),
           fontSize: 12,
           fontFamily: 'Montserrat',
           fontWeight: FontWeight.w500,
-          decoration: _hovering
-              ? TextDecoration.underline
-              : TextDecoration.none,
+          decoration:
+          _hovering ? TextDecoration.underline : TextDecoration.none,
           decorationColor: Colors.white,
         ),
         child: Text(widget.label),

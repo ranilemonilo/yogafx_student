@@ -11,14 +11,11 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/certificate/presentation/screens/certificate_detail_screen.dart';
 import '../../features/certificate/presentation/screens/certificate_list_screen.dart';
-import '../../features/course/presentation/screens/course_detail_screen.dart';
-import '../../features/course/presentation/screens/course_list_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/dashboard/presentation/screens/overall_progress_screen.dart';
 import '../../features/dialog/presentation/screens/dialog_detail_screen.dart';
 import '../../features/dialog/presentation/screens/dialog_list_screen.dart';
 import '../../features/ebook/presentation/screens/ebook_detail_screen.dart';
-import '../../features/ebook/presentation/screens/ebook_list_screen.dart';
 import '../../features/lesson/presentation/screens/lesson_screen.dart';
 import '../../features/lesson/presentation/screens/workbook_viewer_screen.dart';
 import '../../features/module/presentation/screens/module_detail_screen.dart';
@@ -35,10 +32,7 @@ class AppRoutes {
   static const dashboard = '/dashboard';
   static const modules = '/modules';
   static const moduleDetail = '/modules/:moduleId';
-  static const ebooks = '/ebooks';
   static const ebookDetail = '/ebooks/:ebookId';
-  static const courses = '/courses';
-  static const courseDetail = '/courses/:courseId';
   static const certificates = '/certificates';
   static const certificateDetail = '/certificates/:certificateId';
   static const profile = '/profile';
@@ -165,39 +159,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
-            path: AppRoutes.ebooks,
-            name: 'ebooks',
-            builder: (context, state) => const EbookListScreen(),
-            routes: [
-              GoRoute(
-                path: ':ebookId',
-                name: 'ebookDetail',
-                builder: (context, state) => EbookDetailScreen(
-                  ebookId: int.parse(state.pathParameters['ebookId']!),
-                ),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: AppRoutes.courses,
-            name: 'courses',
-            builder: (context, state) => const CourseListScreen(),
-            routes: [
-              GoRoute(
-                path: ':courseId',
-                name: 'courseDetail',
-                builder: (context, state) => CourseDetailScreen(
-                  courseId: int.parse(state.pathParameters['courseId']!),
-                ),
-              ),
-            ],
-          ),
-          GoRoute(
             path: AppRoutes.profile,
             name: 'profile',
             builder: (context, state) => const ProfileScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/ebooks/:ebookId',
+        name: 'ebookDetail',
+        builder: (context, state) => EbookDetailScreen(
+          ebookId: int.parse(state.pathParameters['ebookId']!),
+        ),
       ),
       GoRoute(
         path: AppRoutes.certificates,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../data/models/profile_model.dart';
 import '../providers/profile_provider.dart';
 
@@ -36,6 +37,158 @@ void _handleProfileBack(BuildContext context) {
   context.go(AppRoutes.dashboard);
 }
 
+Future<void> _showProfileActions(BuildContext context, WidgetRef ref) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Profile Actions',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const SizedBox(height: 16),
+              _ProfileActionTile(
+                icon: Icons.person_outline_rounded,
+                title: 'View Profile',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  if (GoRouterState.of(context).matchedLocation !=
+                      AppRoutes.profile) {
+                    context.push(AppRoutes.profile);
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              _ProfileActionTile(
+                icon: Icons.logout_rounded,
+                title: 'Log Out',
+                isDanger: true,
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  final confirmed = await _confirmLogout(context);
+                  if (confirmed == true) {
+                    await ref.read(authProvider.notifier).logout();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<bool?> _confirmLogout(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Log Out',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Montserrat',
+          ),
+        ),
+        content: const Text(
+          'Are you sure you want to log out of your account?',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontFamily: 'Montserrat',
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Log Out'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<void> _sendPasswordResetEmail(
+  BuildContext context,
+  WidgetRef ref,
+  ProfileData profile,
+) async {
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    },
+  );
+
+  try {
+    await ref.read(authRepositoryProvider).forgotPassword(
+          email: profile.email,
+        );
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'A password reset email has been sent to ${profile.email}.',
+            ),
+          ),
+        );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.error,
+          ),
+        );
+    }
+  }
+}
+
 class _ProfileContent extends ConsumerWidget {
   final ProfileData profile;
 
@@ -63,6 +216,12 @@ class _ProfileContent extends ConsumerWidget {
               icon: const Icon(Icons.arrow_back_ios_new, size: 18),
             ),
             title: const Text('Profile'),
+            actions: [
+              IconButton(
+                onPressed: () => _showProfileActions(context, ref),
+                icon: const Icon(Icons.more_vert_rounded),
+              ),
+            ],
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -88,14 +247,13 @@ class _ProfileContent extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => context.push(
-                            '/profile/change-password?email=${Uri.encodeComponent(profile.email)}',
-                          ),
+                          onPressed: () =>
+                              _sendPasswordResetEmail(context, ref, profile),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textSecondary,
                             side: const BorderSide(color: AppColors.divider),
                           ),
-                          child: const Text('Change Password'),
+                          child: const Text('Reset Password'),
                         ),
                       ),
                     ],
@@ -114,6 +272,19 @@ class _ProfileContent extends ConsumerWidget {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showProfileActions(context, ref),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.divider),
+                      ),
+                      icon: const Icon(Icons.more_horiz_rounded),
+                      label: const Text('More Actions'),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _SectionCard(
@@ -177,6 +348,58 @@ class _ProfileContent extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final bool isDanger;
+  final VoidCallback onTap;
+
+  const _ProfileActionTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.isDanger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isDanger ? AppColors.primary : AppColors.textPrimary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.divider, width: 0.8),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.chevron_right_rounded, color: color, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

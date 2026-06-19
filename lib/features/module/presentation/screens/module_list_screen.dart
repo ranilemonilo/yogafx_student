@@ -667,7 +667,7 @@ class _ModuleListSkeletonState extends State<_ModuleListSkeleton>
       animation: _anim,
       builder: (context, _) {
         final c = Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,16 +685,17 @@ class _ModuleListSkeletonState extends State<_ModuleListSkeleton>
               const SizedBox(height: 20),
               ...List.generate(
                 3,
-                    (_) => Padding(
+                (_) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _Bone(
-                          width: double.infinity,
-                          height: 180,
-                          color: c,
-                          radius: 6),
+                        width: double.infinity,
+                        height: 180,
+                        color: c,
+                        radius: 6,
+                      ),
                       const SizedBox(height: 12),
                       _Bone(width: 200, height: 14, color: c),
                       const SizedBox(height: 8),

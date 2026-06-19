@@ -75,18 +75,3 @@ class EbookItem {
     );
   }
 }
-
-class EbookListData {
-  final List<EbookItem> items;
-
-  const EbookListData({required this.items});
-
-  factory EbookListData.fromJson(Map<String, dynamic> json) {
-    final rawItems = json['items'] as List<dynamic>? ?? const [];
-    return EbookListData(
-      items: rawItems
-          .map((item) => EbookItem.fromJson(item as Map<String, dynamic>))
-          .toList(),
-    );
-  }
-}

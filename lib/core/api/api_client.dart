@@ -4,9 +4,9 @@ import '../error/app_exception.dart';
 import '../storage/secure_storage.dart';
 
 class ApiClient {
-  static const _baseUrl =
-      'http://192.168.110.185:8000/api/mobile/v1'; //ini untuk laptop maharani aja
-  //static const _baseUrl = 'http://10.0.2.2:8000/api/mobile/v1'; //ini untuk lokal(emulator
+  //static const _baseUrl =
+     // 'http://192.168.18.246:8000/api/mobile/v1'; //ini untuk laptop maharani aja
+  static const _baseUrl = 'http://10.0.2.2:8000/api/mobile/v1'; //ini untuk lokal(emulator
   //static conts _baseUrl = BUATLAH API KALIAN KALAU MAU
   static Dio create() {
     final dio = Dio(
