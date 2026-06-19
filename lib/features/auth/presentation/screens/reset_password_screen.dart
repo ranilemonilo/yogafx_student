@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
-  const ResetPasswordScreen({super.key});
+  final String? initialToken;
+  final String? initialEmail;
+
+  const ResetPasswordScreen({
+    super.key,
+    this.initialToken,
+    this.initialEmail,
+  });
 
   @override
   ConsumerState<ResetPasswordScreen> createState() =>
@@ -13,8 +22,6 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
 
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _tokenController = TextEditingController();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _submitting = false;
@@ -23,8 +30,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   void dispose() {
-    _tokenController.dispose();
-    _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -32,6 +37,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final token = widget.initialToken?.trim();
+    final email = widget.initialEmail?.trim();
+
+    if (token == null || token.isEmpty || email == null || email.isEmpty) {
+      setState(() {
+        _error =
+            'Reset link tidak lengkap. Silakan buka kembali link dari email Anda.';
+      });
+      return;
+    }
+
     setState(() {
       _submitting = true;
       _message = null;
@@ -39,13 +55,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     });
     try {
       await ref.read(authRepositoryProvider).resetPassword(
-            token: _tokenController.text.trim(),
-            email: _emailController.text.trim(),
+            token: token,
+            email: email,
             password: _passwordController.text,
             passwordConfirmation: _confirmController.text,
           );
+      if (ref.read(authProvider).isAuthenticated) {
+        await ref.read(authProvider.notifier).logout();
+      }
       setState(() {
-        _message = 'Password reset successfully.';
+        _message = 'Password reset successfully. Please login again.';
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -56,6 +75,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasResetPayload =
+        (widget.initialToken?.trim().isNotEmpty ?? false) &&
+        (widget.initialEmail?.trim().isNotEmpty ?? false);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Reset Password')),
@@ -65,20 +88,24 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           key: _formKey,
           child: Column(
             children: [
-              TextFormField(
-                controller: _tokenController,
-                decoration: const InputDecoration(labelText: 'Reset Token'),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Token is required' : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Email is required' : null,
-              ),
+              if (hasResetPayload)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: Text(
+                    'Reset password untuk ${widget.initialEmail}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              if (hasResetPayload) const SizedBox(height: 14),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _passwordController,
@@ -124,6 +151,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 onPressed: _submitting ? null : _submit,
                 child: Text(_submitting ? 'Resetting...' : 'Reset Password'),
               ),
+              if (_message != null) ...[
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () => context.go(AppRoutes.login),
+                  child: const Text('Go to Login'),
+                ),
+              ],
             ],
           ),
         ),

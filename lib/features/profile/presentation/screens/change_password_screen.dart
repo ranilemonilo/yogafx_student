@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../providers/profile_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
-  const ChangePasswordScreen({super.key});
+  final String? initialEmail;
+
+  const ChangePasswordScreen({
+    super.key,
+    this.initialEmail,
+  });
 
   @override
   ConsumerState<ChangePasswordScreen> createState() =>
@@ -12,45 +20,51 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
 }
 
 class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
+  late final TextEditingController _emailController;
   final _formKey = GlobalKey<FormState>();
-  final _currentPasswordController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  bool _saving = false;
-  String? _message;
+  bool _submitting = false;
+  bool _emailSent = false;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail ?? '');
+  }
+
+  @override
   void dispose() {
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _sendResetEmail() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() {
-      _saving = true;
-      _message = null;
+      _submitting = true;
       _error = null;
     });
+
     try {
-      await ref.read(profileRepositoryProvider).changePassword(
-            currentPassword: _currentPasswordController.text,
-            newPassword: _newPasswordController.text,
-            newPasswordConfirmation: _confirmPasswordController.text,
+      await ref.read(authRepositoryProvider).forgotPassword(
+            email: _emailController.text.trim(),
           );
-      setState(() => _message = 'Password changed successfully.');
+
+      if (!mounted) return;
+      setState(() => _emailSent = true);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final email = _emailController.text.trim();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Change Password')),
@@ -59,44 +73,63 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password'),
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Current password is required'
-                    : null,
+              const Text(
+                'Password changes for student mobile now use email verification. We will send a reset link to your account email.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                  height: 1.6,
+                ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
               TextFormField(
-                controller: _newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password'),
-                validator: (value) =>
-                    value == null || value.length < 6 ? 'Minimum 6 characters' : null,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Account Email'),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) return 'Email is required';
+                  if (!text.contains('@')) return 'Enter a valid email';
+                  return null;
+                },
               ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration:
-                    const InputDecoration(labelText: 'Confirm New Password'),
-                validator: (value) => value != _newPasswordController.text
-                    ? 'Password confirmation does not match'
-                    : null,
-              ),
-              if (_message != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _message!,
-                  style: const TextStyle(
-                    color: AppColors.success,
-                    fontSize: 12,
-                    fontFamily: 'Montserrat',
+              const SizedBox(height: 16),
+              if (_emailSent)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.success.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Reset Email Sent',
+                        style: TextStyle(
+                          color: AppColors.success,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Link untuk mengganti password telah dikirim ke $email. Silakan cek email Anda, termasuk folder spam, lalu buka link tersebut untuk melanjutkan.',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
               if (_error != null) ...[
                 const SizedBox(height: 16),
                 Text(
@@ -104,15 +137,25 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   style: const TextStyle(
                     color: AppColors.error,
                     fontSize: 12,
-                    fontFamily: 'Montserrat',
                   ),
                 ),
               ],
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'Saving...' : 'Change Password'),
+                onPressed: _submitting ? null : _sendResetEmail,
+                child: Text(
+                  _submitting ? 'Sending...' : 'Send Reset Email',
+                ),
               ),
+              if (_emailSent) ...[
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () => context.push(
+                    '${AppRoutes.resetPassword}?email=${Uri.encodeComponent(email)}',
+                  ),
+                  child: const Text('I Already Have the Reset Link'),
+                ),
+              ],
             ],
           ),
         ),

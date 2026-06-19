@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,12 +11,13 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/api/api_client.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
+import '../../../../features/assessment/presentation/providers/assessment_provider.dart';
+import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../../data/models/lesson_model.dart';
 import '../providers/lesson_provider.dart';
-import '../../../../features/lesson/data/repositories/lesson_repository.dart';
+import '../../../../features/module/presentation/providers/module_provider.dart';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 
@@ -74,7 +76,7 @@ class _LessonContent extends ConsumerStatefulWidget {
 }
 
 class _LessonContentState extends ConsumerState<_LessonContent>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   AudioPlayer? _audioPlayer;
@@ -84,16 +86,22 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _audioReady = false;
   String? _audioError;
   int _lastReportedProgress = 0;
+  int _displayedProgress = 0;
+  int? _autoPlayCountdown;
+  bool _appIsInForeground = true;
+  bool _isSubmittingProgress = false;
+  bool _hasAutoAdvanced = false;
+  Timer? _progressRetryTimer;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
-  late AnimationController _progressCtrl;
-  late Animation<double> _progressAnim;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _lastReportedProgress = widget.lesson.progress.watchProgress;
+    _displayedProgress = widget.lesson.progress.watchProgress;
 
     _fadeCtrl = AnimationController(
       vsync: this,
@@ -101,19 +109,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
 
-    _progressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-    _progressAnim = Tween<double>(
-      begin: 0,
-      end: widget.lesson.progress.watchProgress / 100,
-    ).animate(CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOut));
-
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
         _fadeCtrl.forward();
-        _progressCtrl.forward();
       }
     });
 
@@ -122,6 +120,18 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     }
     if (widget.lesson.audio.isAvailable && widget.lesson.audio.url != null) {
       _initAudio();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appIsInForeground = state == AppLifecycleState.resumed;
+
+    if (!_appIsInForeground) {
+      _videoController?.pause();
+      if (mounted && _autoPlayCountdown != null) {
+        setState(() => _autoPlayCountdown = null);
+      }
     }
   }
 
@@ -168,14 +178,77 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (!value.isInitialized || value.duration.inSeconds == 0) return;
 
     final currentProgress =
-    ((value.position.inSeconds / value.duration.inSeconds) * 100).round();
+        ((value.position.inSeconds / value.duration.inSeconds) * 100).round();
+    final remaining = value.duration - value.position;
+    final countdownSeconds = remaining.inSeconds.clamp(0, 10).toInt();
+
+    if (_displayedProgress != currentProgress && mounted) {
+      setState(() => _displayedProgress = currentProgress.clamp(0, 100).toInt());
+    }
+
+    if (_appIsInForeground &&
+        value.isPlaying &&
+        countdownSeconds <= 10 &&
+        countdownSeconds > 0 &&
+        widget.lesson.nextLesson?.isUnlocked == true) {
+      if (_autoPlayCountdown != countdownSeconds && mounted) {
+        setState(() => _autoPlayCountdown = countdownSeconds);
+      }
+    } else if (_autoPlayCountdown != null && mounted) {
+      setState(() => _autoPlayCountdown = null);
+    }
 
     if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
       _lastReportedProgress = currentProgress;
-      ref
-          .read(lessonRepositoryProvider)
-          .updateProgress(widget.lesson.id, currentProgress);
+      unawaited(_submitProgress(currentProgress));
     }
+
+    if (!_hasAutoAdvanced &&
+        _appIsInForeground &&
+        widget.lesson.nextLesson?.isUnlocked == true &&
+        value.duration > Duration.zero &&
+        remaining.inMilliseconds <= 300 &&
+        currentProgress >= 95) {
+      _hasAutoAdvanced = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.pushReplacement('/lessons/${widget.lesson.nextLesson!.id}');
+      });
+    }
+  }
+
+  Future<void> _submitProgress(int progressPercent) async {
+    if (_isSubmittingProgress) {
+      _progressRetryTimer?.cancel();
+      _progressRetryTimer = Timer(
+        const Duration(milliseconds: 400),
+        () => unawaited(_submitProgress(progressPercent)),
+      );
+      return;
+    }
+
+    _isSubmittingProgress = true;
+    try {
+      await ref
+          .read(lessonRepositoryProvider)
+          .updateProgress(widget.lesson.id, progressPercent);
+
+      if (!mounted) return;
+
+      if (progressPercent >= 95 || progressPercent == 100) {
+        _refreshProgressDependentProviders();
+      }
+    } finally {
+      _isSubmittingProgress = false;
+    }
+  }
+
+  void _refreshProgressDependentProviders() {
+    ref.invalidate(lessonDetailProvider(widget.lesson.id));
+    ref.invalidate(assessmentIntroProvider(widget.lesson.id));
+    ref.invalidate(moduleDetailProvider(widget.lesson.module.id));
+    ref.invalidate(moduleListProvider);
+    ref.invalidate(dashboardProvider);
   }
 
   Future<void> _initAudio() async {
@@ -214,12 +287,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _progressRetryTimer?.cancel();
     _videoController?.removeListener(_onVideoProgress);
     _chewieController?.dispose();
     _videoController?.dispose();
     _audioPlayer?.dispose();
     _fadeCtrl.dispose();
-    _progressCtrl.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -227,6 +301,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   @override
   Widget build(BuildContext context) {
     final lesson = widget.lesson;
+    final effectiveProgress = lesson.progress.copyWith(
+      watchProgress: _displayedProgress,
+      isDone: lesson.progress.isDone || _displayedProgress >= 100,
+    );
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -238,6 +316,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             videoInitialized: _videoInitialized,
             videoError: _videoError,
             chewieController: _chewieController,
+            autoPlayCountdown: _autoPlayCountdown,
             onRetry: _initVideo,
           ),
         ),
@@ -270,8 +349,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
                   // Progress
                   _LessonProgressBar(
-                    progress: lesson.progress,
-                    animation: _progressAnim,
+                    progress: effectiveProgress,
                   ),
                   const SizedBox(height: 20),
 
@@ -302,7 +380,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                   if (lesson.assessment != null) ...[
                     _AssessmentBanner(
                       lessonId: lesson.id,
-                      progress: lesson.progress,
+                      watchProgress: effectiveProgress.watchProgress,
                     ),
                     const SizedBox(height: 28),
                   ],
@@ -336,6 +414,7 @@ class _VideoSection extends StatelessWidget {
   final bool videoInitialized;
   final bool videoError;
   final ChewieController? chewieController;
+  final int? autoPlayCountdown;
   final VoidCallback onRetry;
 
   const _VideoSection({
@@ -343,6 +422,7 @@ class _VideoSection extends StatelessWidget {
     required this.videoInitialized,
     required this.videoError,
     required this.chewieController,
+    required this.autoPlayCountdown,
     required this.onRetry,
   });
 
@@ -382,6 +462,28 @@ class _VideoSection extends StatelessWidget {
             ),
           ),
         ),
+        if (autoPlayCountdown != null && lesson.nextLesson != null)
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.72),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+              ),
+              child: Text(
+                'Next lesson in ${autoPlayCountdown}s',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -558,8 +660,7 @@ class _ModuleBreadcrumb extends StatelessWidget {
 
 class _LessonProgressBar extends StatelessWidget {
   final LessonProgress progress;
-  final Animation<double> animation;
-  const _LessonProgressBar({required this.progress, required this.animation});
+  const _LessonProgressBar({required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -568,12 +669,16 @@ class _LessonProgressBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AnimatedBuilder(
-          animation: animation,
-          builder: (_, __) => ClipRRect(
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(
+            begin: 0,
+            end: (progress.watchProgress / 100).clamp(0.0, 1.0).toDouble(),
+          ),
+          duration: const Duration(milliseconds: 350),
+          builder: (_, value, __) => ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
-              value: animation.value,
+              value: value,
               backgroundColor: _kDivider,
               valueColor: AlwaysStoppedAnimation<Color>(
                 isDone ? _kGreen : _kRed,
@@ -1168,8 +1273,11 @@ class _SheetButton extends StatelessWidget {
 
 class _AssessmentBanner extends StatefulWidget {
   final int lessonId;
-  final LessonProgress progress;
-  const _AssessmentBanner({required this.lessonId, required this.progress});
+  final int watchProgress;
+  const _AssessmentBanner({
+    required this.lessonId,
+    required this.watchProgress,
+  });
 
   @override
   State<_AssessmentBanner> createState() => _AssessmentBannerState();
@@ -1199,7 +1307,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
 
   @override
   Widget build(BuildContext context) {
-    final isUnlocked = widget.progress.watchProgress >= 95;
+    final isUnlocked = widget.watchProgress >= 95;
 
     return AnimatedBuilder(
       animation: _pulseAnim,

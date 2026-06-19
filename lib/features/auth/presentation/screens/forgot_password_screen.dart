@@ -37,7 +37,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             email: _emailController.text.trim(),
           );
       setState(() {
-        _message = 'Password reset email sent successfully.';
+        _message =
+            'Password reset email sent successfully. Please check your inbox and spam folder.';
       });
     } catch (e) {
       setState(() => _error = e.toString());

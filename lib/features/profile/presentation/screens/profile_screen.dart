@@ -88,7 +88,9 @@ class _ProfileContent extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => context.push('/profile/change-password'),
+                          onPressed: () => context.push(
+                            '/profile/change-password?email=${Uri.encodeComponent(profile.email)}',
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textSecondary,
                             side: const BorderSide(color: AppColors.divider),

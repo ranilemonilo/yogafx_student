@@ -5,7 +5,7 @@ import '../storage/secure_storage.dart';
 
 class ApiClient {
   static const _baseUrl =
-      'http://192.168.0.11:8000/api/mobile/v1'; //ini untuk laptop maharani aja
+      'http://192.168.110.185:8000/api/mobile/v1'; //ini untuk laptop maharani aja
   //static const _baseUrl = 'http://10.0.2.2:8000/api/mobile/v1'; //ini untuk lokal(emulator
   //static conts _baseUrl = BUATLAH API KALIAN KALAU MAU
   static Dio create() {
@@ -75,16 +75,23 @@ class ApiClient {
 
   static DioException _handleError(DioException error) {
     AppException appException;
+    final data = error.response?.data;
+    final message = data is Map ? data['message']?.toString() : null;
 
     switch (error.response?.statusCode) {
       case 401:
-        appException = const UnauthorizedException();
+        appException = UnauthorizedException(
+          message: message ?? 'Session expired. Please login again.',
+        );
       case 403:
-        appException = const ForbiddenException();
+        appException = ForbiddenException(
+          message: message ?? 'Access denied.',
+        );
       case 404:
-        appException = const NotFoundException();
+        appException = NotFoundException(
+          message: message ?? 'Resource not found.',
+        );
       case 422:
-        final data = error.response?.data;
         appException = ValidationException(
           message: data?['message'] ?? 'Validation failed.',
           errors: data?['errors'] ?? {},
@@ -92,7 +99,9 @@ class ApiClient {
       case null:
         appException = const NetworkException();
       default:
-        appException = const ServerException();
+        appException = ServerException(
+          message: message ?? 'Something went wrong. Please try again later.',
+        );
     }
 
     return DioException(
