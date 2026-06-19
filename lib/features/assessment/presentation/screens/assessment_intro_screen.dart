@@ -99,11 +99,18 @@ class AssessmentIntroScreen extends ConsumerWidget {
       }
 
       final data = await ref.read(assessmentRepositoryProvider).start(lessonId);
+      final attemptId = data.attemptId;
 
       if (context.mounted) {
-        context.pushReplacement(
-          '/lessons/$lessonId/assessment/attempts/${data.attemptId}',
-        );
+        if (data.mode == 'completed') {
+          context.pushReplacement(
+            '/lessons/$lessonId/assessment/attempts/$attemptId/result',
+          );
+        } else {
+          context.pushReplacement(
+            '/lessons/$lessonId/assessment/attempts/$attemptId',
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {

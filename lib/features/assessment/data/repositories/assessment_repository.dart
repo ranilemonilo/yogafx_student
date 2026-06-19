@@ -21,8 +21,7 @@ class AssessmentRepository {
 
   Future<AssessmentStartData> start(int lessonId) async {
     try {
-      final response =
-      await _dio.post('/lessons/$lessonId/assessment/start');
+      final response = await _dio.post('/lessons/$lessonId/assessment/start');
       return AssessmentStartData.fromJson(
         response.data['data'] as Map<String, dynamic>,
       );
@@ -31,8 +30,7 @@ class AssessmentRepository {
     }
   }
 
-  Future<AssessmentAttemptData> getAttempt(
-      int lessonId, int attemptId) async {
+  Future<AssessmentAttemptData> getAttempt(int lessonId, int attemptId) async {
     try {
       final response = await _dio.get(
         '/lessons/$lessonId/assessment/attempts/$attemptId',
@@ -71,8 +69,7 @@ class AssessmentRepository {
     }
   }
 
-  Future<AssessmentAttemptData> goBack(
-      int lessonId, int attemptId) async {
+  Future<AssessmentAttemptData> goBack(int lessonId, int attemptId) async {
     try {
       final response = await _dio.post(
         '/lessons/$lessonId/assessment/attempts/$attemptId/back',
@@ -86,12 +83,30 @@ class AssessmentRepository {
   }
 
   Future<AssessmentResultData> getResult(
-      int lessonId, int attemptId) async {
+    int lessonId,
+    int attemptId,
+  ) async {
     try {
       final response = await _dio.get(
         '/lessons/$lessonId/assessment/attempts/$attemptId/result',
       );
       return AssessmentResultData.fromJson(
+        response.data['data'] as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      throw e.error as AppException? ?? const ServerException();
+    }
+  }
+
+  Future<Map<String, dynamic>> getResultPayload(
+    int lessonId,
+    int attemptId,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '/lessons/$lessonId/assessment/attempts/$attemptId/result',
+      );
+      return Map<String, dynamic>.from(
         response.data['data'] as Map<String, dynamic>,
       );
     } on DioException catch (e) {

@@ -2,7 +2,9 @@
     <application
         android:label="yogafx_student"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true" android:enableOnBackInvokedCallback="true">
+    >
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,6 +25,25 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="yogafxstudent"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:pathPrefix="/profile/password/change"/>
+                <data android:scheme="http" android:pathPrefix="/profile/password/change"/>
+                <data android:scheme="https" android:pathPrefix="/reset-password"/>
+                <data android:scheme="https" android:pathPrefix="/password/reset"/>
+                <data android:scheme="https" android:pathPrefix="/lessons"/>
+                <data android:scheme="http" android:pathPrefix="/reset-password"/>
+                <data android:scheme="http" android:pathPrefix="/password/reset"/>
+                <data android:scheme="http" android:pathPrefix="/lessons"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

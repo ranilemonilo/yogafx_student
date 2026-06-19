@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../providers/dialog_provider.dart';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
@@ -79,17 +79,10 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
     super.dispose();
   }
 
-  String _plainText(String html) {
-    return html
-        .replaceAll(RegExp(r'<[^>]*>'), ' ')
-        .replaceAll('&nbsp;', ' ')
-        .trim();
-  }
-
   @override
   Widget build(BuildContext context) {
     final dialog = widget.dialog;
-    final content = _plainText(dialog.content);
+    final content = dialog.content.trim();
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -200,14 +193,19 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           ),
                         ],
                       )
-                          : Text(
-                        content,
-                        style: const TextStyle(
-                          color: _kTextSecondary,
-                          fontSize: 13,
-                          fontFamily: 'Montserrat',
-                          height: 1.75,
-                        ),
+                          : Html(
+                        data: content,
+                        style: {
+                          'body': Style(
+                            margin: Margins.zero,
+                            padding: HtmlPaddings.zero,
+                            color: _kTextSecondary,
+                            fontSize: FontSize(13),
+                            fontFamily: 'Montserrat',
+                            lineHeight: const LineHeight(1.75),
+                          ),
+                          'p': Style(margin: Margins.only(bottom: 14)),
+                        },
                       ),
                     ),
                   ],

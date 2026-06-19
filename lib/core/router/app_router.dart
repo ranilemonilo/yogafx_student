@@ -51,6 +51,48 @@ class AppRoutes {
   static const overallProgress = '/overall-progress';
 }
 
+String? mapDeepLinkToRoute(Uri uri) {
+  final path = uri.path.toLowerCase();
+  final segments = uri.pathSegments.map((segment) => segment.toLowerCase());
+  final query = Map<String, String>.from(uri.queryParameters);
+
+  if (path.contains('/profile/password/change/')) {
+    final token = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : null;
+    final email = query['email'];
+    final routeUri = Uri(
+      path: AppRoutes.resetPassword,
+      queryParameters: {
+        if (token != null && token.isNotEmpty) 'token': token,
+        if (email != null && email.isNotEmpty) 'email': email,
+      },
+    );
+    return routeUri.toString();
+  }
+
+  if (segments.contains('reset-password') || path.contains('password/reset')) {
+    final token = query['token'] ??
+        (uri.pathSegments.isNotEmpty ? uri.pathSegments.last : null);
+    final email = query['email'];
+    final routeUri = Uri(
+      path: AppRoutes.resetPassword,
+      queryParameters: {
+        if (token != null && token.isNotEmpty) 'token': token,
+        if (email != null && email.isNotEmpty) 'email': email,
+      },
+    );
+    return routeUri.toString();
+  }
+
+  if (path.startsWith('/lessons/')) {
+    return Uri(
+      path: uri.path,
+      queryParameters: uri.queryParameters.isEmpty ? null : uri.queryParameters,
+    ).toString();
+  }
+
+  return null;
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
 
@@ -89,7 +131,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.resetPassword,
         name: 'resetPassword',
-        builder: (context, state) => const ResetPasswordScreen(),
+        builder: (context, state) => ResetPasswordScreen(
+          initialToken: state.uri.queryParameters['token'],
+          initialEmail: state.uri.queryParameters['email'],
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
@@ -163,7 +208,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.changePassword,
         name: 'changePassword',
-        builder: (context, state) => const ChangePasswordScreen(),
+        builder: (context, state) => ChangePasswordScreen(
+          initialEmail: state.uri.queryParameters['email'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.lesson,

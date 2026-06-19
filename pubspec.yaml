@@ -44,6 +44,8 @@ dependencies:
 
   # Image
   cached_network_image: ^3.3.1
+  flutter_html: ^3.0.0
+  app_links: ^6.3.3
 
   # Utils
   intl: ^0.19.0
