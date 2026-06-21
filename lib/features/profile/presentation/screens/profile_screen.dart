@@ -290,15 +290,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                 letterSpacing: 0.3,
               ),
             ),
-            actions: [
-              IconButton(
-                onPressed: () => _showProfileActions(context, ref),
-                icon: const Icon(
-                  Icons.more_vert_rounded,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
           ),
 
           SliverToBoxAdapter(
@@ -336,29 +327,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       ),
                     ],
                   )),
-                  const SizedBox(height: 10),
-                  _a(3, Row(
-                    children: [
-                      Expanded(
-                        child: _NetflixButton(
-                          label: 'Certificates',
-                          icon: Icons.workspace_premium_outlined,
-                          onTap: () => context.push('/certificates'),
-                          filled: false,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _NetflixButton(
-                          label: 'More Actions',
-                          icon: Icons.more_horiz_rounded,
-                          onTap: () => _showProfileActions(context, ref),
-                          filled: false,
-                        ),
-                      ),
-                    ],
-                  )),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   _a(4, _SectionCard(
                     title: 'Account',
                     icon: Icons.person_outline_rounded,
@@ -721,7 +690,7 @@ class _SectionCard extends StatelessWidget {
         children: [
           // Section header with subtle left accent bar
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: AppColors.divider, width: 0.5),
@@ -751,7 +720,7 @@ class _SectionCard extends StatelessWidget {
           ),
           // Info rows
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
             child: Column(
               children: children,
             ),

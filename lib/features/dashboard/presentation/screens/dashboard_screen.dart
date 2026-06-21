@@ -356,13 +356,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
               ),
               const SizedBox(height: 32),
               _animated(3, _ModulesSection(section: data.availableModulesSection)),
-              const SizedBox(height: 32),
-              _animated(
-                4,
-                _AssessmentBanner(
-                  continueLearningSection: data.continueLearningSection,
-                ),
-              ),
               const SizedBox(height: 56),
             ],
           ),

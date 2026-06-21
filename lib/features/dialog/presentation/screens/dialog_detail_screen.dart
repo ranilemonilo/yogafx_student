@@ -168,17 +168,8 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                     ),
                     const SizedBox(height: 16),
 
-                    // Content card
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: _kSurfaceElevated,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _kDivider, width: 0.8),
-                      ),
-                      child: content.isEmpty
-                          ? Row(
+                    content.isEmpty
+                        ? Row(
                         children: const [
                           Icon(Icons.info_outline_rounded,
                               color: _kTextMuted, size: 16),
@@ -194,7 +185,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           ),
                         ],
                       )
-                          : Html(
+                        : Html(
                         data: content,
                         style: {
                           'html': Style(
@@ -214,10 +205,6 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           'p': Style(
                             margin: Margins.only(bottom: 14),
                           ),
-                          'span': Style(
-                            color: _kTextSecondary,
-                            fontFamily: 'Montserrat',
-                          ),
                           'div': Style(
                             margin: Margins.only(bottom: 14),
                           ),
@@ -226,11 +213,9 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           ),
                           'strong': Style(
                             fontWeight: FontWeight.w700,
-                            color: _kTextPrimary,
                           ),
                           'b': Style(
                             fontWeight: FontWeight.w700,
-                            color: _kTextPrimary,
                           ),
                           'em': Style(
                             fontStyle: FontStyle.italic,
@@ -242,46 +227,34 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                             textDecoration: TextDecoration.underline,
                           ),
                           'h1': Style(
-                            color: _kTextPrimary,
-                            fontFamily: 'Montserrat',
-                            fontSize: FontSize(28),
-                            fontWeight: FontWeight.w800,
                             margin: Margins.only(bottom: 16),
+                            fontFamily: 'Montserrat',
+                            lineHeight: const LineHeight(1.35),
                           ),
                           'h2': Style(
-                            color: _kTextPrimary,
-                            fontFamily: 'Montserrat',
-                            fontSize: FontSize(24),
-                            fontWeight: FontWeight.w800,
                             margin: Margins.only(bottom: 14),
+                            fontFamily: 'Montserrat',
+                            lineHeight: const LineHeight(1.35),
                           ),
                           'h3': Style(
-                            color: _kTextPrimary,
-                            fontFamily: 'Montserrat',
-                            fontSize: FontSize(20),
-                            fontWeight: FontWeight.w700,
                             margin: Margins.only(bottom: 12),
+                            fontFamily: 'Montserrat',
+                            lineHeight: const LineHeight(1.4),
                           ),
                           'h4': Style(
-                            color: _kTextPrimary,
-                            fontFamily: 'Montserrat',
-                            fontSize: FontSize(17),
-                            fontWeight: FontWeight.w700,
                             margin: Margins.only(bottom: 10),
+                            fontFamily: 'Montserrat',
+                            lineHeight: const LineHeight(1.45),
                           ),
                           'h5': Style(
-                            color: _kTextPrimary,
-                            fontFamily: 'Montserrat',
-                            fontSize: FontSize(15),
-                            fontWeight: FontWeight.w700,
                             margin: Margins.only(bottom: 10),
+                            fontFamily: 'Montserrat',
+                            lineHeight: const LineHeight(1.5),
                           ),
                           'h6': Style(
-                            color: _kTextPrimary,
-                            fontFamily: 'Montserrat',
-                            fontSize: FontSize(13),
-                            fontWeight: FontWeight.w700,
                             margin: Margins.only(bottom: 8),
+                            fontFamily: 'Montserrat',
+                            lineHeight: const LineHeight(1.5),
                           ),
                           'ul': Style(
                             margin: Margins.only(bottom: 14, left: 14),
@@ -308,7 +281,6 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           ),
                         },
                       ),
-                    ),
                   ],
                 ),
               ),
