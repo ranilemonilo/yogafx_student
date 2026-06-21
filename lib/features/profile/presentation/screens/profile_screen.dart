@@ -191,13 +191,71 @@ Future<void> _sendPasswordResetEmail(
 
 // ─── Content ────────────────────────────────────────────────────────────────
 
-class _ProfileContent extends ConsumerWidget {
+class _ProfileContent extends ConsumerStatefulWidget {
   final ProfileData profile;
 
   const _ProfileContent({required this.profile});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProfileContent> createState() => _ProfileContentState();
+}
+
+class _ProfileContentState extends ConsumerState<_ProfileContent>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  static const int _slots = 8;
+  late final List<Animation<double>> _fades;
+  late final List<Animation<Offset>> _slides;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 820),
+    );
+    _fades = List.generate(_slots, (i) {
+      final start = (i * 0.10).clamp(0.0, 1.0);
+      final end = (start + 0.45).clamp(0.0, 1.0);
+      return Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _ctrl,
+          curve: Interval(start, end, curve: Curves.easeOut),
+        ),
+      );
+    });
+    _slides = List.generate(_slots, (i) {
+      final start = (i * 0.10).clamp(0.0, 1.0);
+      final end = (start + 0.45).clamp(0.0, 1.0);
+      return Tween<Offset>(
+        begin: const Offset(0, 0.06),
+        end: Offset.zero,
+      ).animate(
+        CurvedAnimation(
+          parent: _ctrl,
+          curve: Interval(start, end, curve: Curves.easeOutCubic),
+        ),
+      );
+    });
+    Future.delayed(const Duration(milliseconds: 80), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Widget _a(int slot, Widget child) => FadeTransition(
+    opacity: _fades[slot],
+    child: SlideTransition(position: _slides[slot], child: child),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.profile;
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () async {
@@ -249,19 +307,14 @@ class _ProfileContent extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Running time chip ──────────────────────────────────
-                  Align(
+                  _a(0, Align(
                     alignment: Alignment.centerRight,
                     child: const RunningLoginTimeCard(),
-                  ),
+                  )),
                   const SizedBox(height: 8),
-
-                  // ── Hero header card ───────────────────────────────────
-                  _ProfileHeroCard(profile: profile),
+                  _a(1, _ProfileHeroCard(profile: profile)),
                   const SizedBox(height: 12),
-
-                  // ── Primary CTA row ────────────────────────────────────
-                  Row(
+                  _a(2, Row(
                     children: [
                       Expanded(
                         child: _NetflixButton(
@@ -282,11 +335,9 @@ class _ProfileContent extends ConsumerWidget {
                         ),
                       ),
                     ],
-                  ),
+                  )),
                   const SizedBox(height: 10),
-
-                  // ── Secondary CTA row ──────────────────────────────────
-                  Row(
+                  _a(3, Row(
                     children: [
                       Expanded(
                         child: _NetflixButton(
@@ -306,11 +357,9 @@ class _ProfileContent extends ConsumerWidget {
                         ),
                       ),
                     ],
-                  ),
+                  )),
                   const SizedBox(height: 28),
-
-                  // ── Info sections ──────────────────────────────────────
-                  _SectionCard(
+                  _a(4, _SectionCard(
                     title: 'Account',
                     icon: Icons.person_outline_rounded,
                     children: [
@@ -319,9 +368,9 @@ class _ProfileContent extends ConsumerWidget {
                       _InfoRow(label: 'WhatsApp', value: profile.whatsapp),
                       _InfoRow(label: 'Instagram', value: profile.instagram),
                     ],
-                  ),
+                  )),
                   const SizedBox(height: 12),
-                  _SectionCard(
+                  _a(5, _SectionCard(
                     title: 'Personal',
                     icon: Icons.badge_outlined,
                     children: [
@@ -329,9 +378,9 @@ class _ProfileContent extends ConsumerWidget {
                       _InfoRow(label: 'Birth date', value: profile.birthDate),
                       _InfoRow(label: 'Gender', value: profile.gender),
                     ],
-                  ),
+                  )),
                   const SizedBox(height: 12),
-                  _SectionCard(
+                  _a(6, _SectionCard(
                     title: 'Practice',
                     icon: Icons.self_improvement_rounded,
                     children: [
@@ -356,9 +405,9 @@ class _ProfileContent extends ConsumerWidget {
                         value: profile.flexibilityRating,
                       ),
                     ],
-                  ),
+                  )),
                   const SizedBox(height: 12),
-                  _SectionCard(
+                  _a(7, _SectionCard(
                     title: 'Motivation',
                     icon: Icons.emoji_objects_outlined,
                     children: [
@@ -369,7 +418,7 @@ class _ProfileContent extends ConsumerWidget {
                         value: profile.howDidYouFindUs,
                       ),
                     ],
-                  ),
+                  )),
                 ],
               ),
             ),
