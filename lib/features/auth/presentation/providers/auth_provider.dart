@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/error/app_exception.dart';
 import '../../data/models/auth_user.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../../../core/storage/secure_storage.dart';
@@ -62,22 +63,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> login({
-    required String email,
-    required String password,
+  Future<bool> verifyLoginOtp({
+    required String challengeToken,
+    required String otpCode,
+    String deviceName = 'flutter_app',
   }) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
 
     try {
-      final response = await _repository.login(
-        email: email,
-        password: password,
+      final response = await _repository.verifyLoginOtp(
+        challengeToken: challengeToken,
+        otpCode: otpCode,
+        deviceName: deviceName,
       );
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: response.user,
       );
       return true;
+    } on AppException catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: e.message,
+      );
+      return false;
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,

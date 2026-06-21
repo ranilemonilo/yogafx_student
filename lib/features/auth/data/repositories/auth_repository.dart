@@ -4,21 +4,43 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../models/auth_user.dart';
 import '../models/login_response.dart';
+import '../models/login_otp_challenge.dart';
 
 class AuthRepository {
   final Dio _dio;
 
   AuthRepository() : _dio = ApiClient.create();
 
-  Future<LoginResponse> login({
+  Future<LoginOtpChallenge> requestLoginOtp({
     required String email,
     required String password,
     String deviceName = 'flutter_app',
   }) async {
     try {
-      final response = await _dio.post('/auth/login', data: {
+      final response = await _dio.post('/auth/login/request-otp', data: {
         'email': email,
         'password': password,
+        'device_name': deviceName,
+      });
+
+      final data = Map<String, dynamic>.from(
+        response.data['data'] as Map<String, dynamic>,
+      );
+      return LoginOtpChallenge.fromJson(data);
+    } on DioException catch (e) {
+      throw e.error as AppException? ?? const ServerException();
+    }
+  }
+
+  Future<LoginResponse> verifyLoginOtp({
+    required String challengeToken,
+    required String otpCode,
+    String deviceName = 'flutter_app',
+  }) async {
+    try {
+      final response = await _dio.post('/auth/login/verify-otp', data: {
+        'challenge_token': challengeToken,
+        'otp_code': otpCode,
         'device_name': deviceName,
       });
 
@@ -30,6 +52,25 @@ class AuthRepository {
 
       await SecureStorageService.saveToken(loginResponse.token);
       return loginResponse;
+    } on DioException catch (e) {
+      throw e.error as AppException? ?? const ServerException();
+    }
+  }
+
+  Future<LoginOtpChallenge> resendLoginOtp({
+    required String challengeToken,
+    String deviceName = 'flutter_app',
+  }) async {
+    try {
+      final response = await _dio.post('/auth/login/resend-otp', data: {
+        'challenge_token': challengeToken,
+        'device_name': deviceName,
+      });
+
+      final data = Map<String, dynamic>.from(
+        response.data['data'] as Map<String, dynamic>,
+      );
+      return LoginOtpChallenge.fromJson(data);
     } on DioException catch (e) {
       throw e.error as AppException? ?? const ServerException();
     }

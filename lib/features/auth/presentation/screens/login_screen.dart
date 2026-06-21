@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/error/app_exception.dart';
 import '../../../../core/router/app_router.dart';
+import '../../data/repositories/auth_repository.dart';
+import 'login_otp_screen.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -17,6 +20,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isSubmitting = false;
+  String? _requestError;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -65,21 +70,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authProvider.notifier).login(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
+    setState(() {
+      _isSubmitting = true;
+      _requestError = null;
+    });
 
-    if (success && mounted) {
-      context.go(AppRoutes.dashboard);
+    try {
+      final challenge = await ref.read(authRepositoryProvider).requestLoginOtp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      context.push(
+        AppRoutes.loginOtp,
+        extra: LoginOtpScreenArgs(
+          challengeToken: challenge.challengeToken,
+          email: challenge.email,
+          expiresAt: challenge.expiresAt,
+        ),
+      );
+    } on AppException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _requestError = _resolveErrorMessage(e);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _requestError = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
+  }
+
+  String _resolveErrorMessage(AppException exception) {
+    final errors = exception.errors;
+    if (errors != null) {
+      for (final value in errors.values) {
+        if (value is List && value.isNotEmpty) {
+          return value.first.toString();
+        }
+        if (value is String && value.isNotEmpty) {
+          return value;
+        }
+      }
+    }
+
+    return exception.message;
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isLoading = authState.status == AuthStatus.loading;
-    final error = authState.error;
+    final isLoading =
+        _isSubmitting || authState.status == AuthStatus.loading;
+    final error = _requestError ?? authState.error;
 
     return Scaffold(
       backgroundColor: const Color(0xFF141414),
