@@ -19,6 +19,23 @@ const _kTextPrimary = Colors.white;
 const _kTextSecondary = Color(0xFFB3B3B3);
 const _kTextMuted = Color(0xFF737373);
 const _kGreenCheck = Color(0xFF46D369);
+const _kLockedModuleMessage =
+    'This page is not available yet. Please complete the previous module first.';
+
+void _showLockedModuleSnackBar(BuildContext context) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      const SnackBar(
+        content: Text(_kLockedModuleMessage),
+      ),
+    );
+}
+
+bool _canOpenModule(String status) {
+  final normalizedStatus = status.toLowerCase();
+  return normalizedStatus == 'active' || normalizedStatus == 'completed';
+}
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -31,22 +48,30 @@ class ModuleListScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: _kBg,
-      body: CustomScrollView(
-        slivers: [
-          _NetflixAppBar(),
-          modulesAsync.when(
-            loading: () => const SliverFillRemaining(
-              child: _ModuleListSkeleton(),
-            ),
-            error: (e, _) => SliverFillRemaining(
-              child: _ModuleListError(
-                message: e.toString(),
-                onRetry: () => ref.invalidate(moduleListProvider),
+      body: RefreshIndicator(
+        color: _kNetflixRed,
+        onRefresh: () async {
+          ref.invalidate(moduleListProvider);
+          await ref.read(moduleListProvider.future);
+        },
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            _NetflixAppBar(),
+            modulesAsync.when(
+              loading: () => const SliverFillRemaining(
+                child: _ModuleListSkeleton(),
               ),
+              error: (e, _) => SliverFillRemaining(
+                child: _ModuleListError(
+                  message: e.toString(),
+                  onRetry: () => ref.invalidate(moduleListProvider),
+                ),
+              ),
+              data: (data) => _ModuleListContent(data: data),
             ),
-            data: (data) => _ModuleListContent(data: data),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -298,12 +323,19 @@ class _ModuleCardState extends State<_ModuleCard>
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
+    final canOpen = _canOpenModule(module.status);
 
     return GestureDetector(
-      onTap: () => context.push('/modules/${module.id}'),
-      onTapDown: (_) => _pressCtrl.forward(),
-      onTapUp: (_) => _pressCtrl.reverse(),
-      onTapCancel: () => _pressCtrl.reverse(),
+      onTap: () {
+        if (!canOpen) {
+          _showLockedModuleSnackBar(context);
+          return;
+        }
+        context.push('/modules/${module.id}');
+      },
+      onTapDown: canOpen ? (_) => _pressCtrl.forward() : null,
+      onTapUp: canOpen ? (_) => _pressCtrl.reverse() : null,
+      onTapCancel: canOpen ? () => _pressCtrl.reverse() : null,
       child: ScaleTransition(
         scale: _scaleAnim,
         child: Container(

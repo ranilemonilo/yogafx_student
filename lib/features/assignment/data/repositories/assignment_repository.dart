@@ -37,6 +37,10 @@ class AssignmentRepository {
       final response = await _dio.post(
         '/assignments/$assignmentId/submit',
         data: formData,
+        options: Options(
+          sendTimeout: const Duration(minutes: 10),
+          receiveTimeout: const Duration(minutes: 10),
+        ),
       );
       return AssignmentSubmitResponse.fromJson(
         response.data['data'] as Map<String, dynamic>,

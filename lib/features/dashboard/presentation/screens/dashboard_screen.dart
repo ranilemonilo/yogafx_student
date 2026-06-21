@@ -24,6 +24,23 @@ const _kTextPrimary = Colors.white;
 const _kTextSecondary = Color(0xFFB3B3B3);
 const _kTextMuted = Color(0xFF6B6B6B);
 const _kGreen = Color(0xFF46D369);
+const _kLockedModuleMessage =
+    'This page is not available yet. Please complete the previous module first.';
+
+void _showLockedModuleSnackBar(BuildContext context) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      const SnackBar(
+        content: Text(_kLockedModuleMessage),
+      ),
+    );
+}
+
+bool _canOpenModule(String status) {
+  final normalizedStatus = status.toLowerCase();
+  return normalizedStatus == 'active' || normalizedStatus == 'completed';
+}
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -247,15 +264,15 @@ Future<bool?> _confirmLogout(BuildContext context) {
 
 // ─── Content ──────────────────────────────────────────────────────────────────
 
-class _DashboardContent extends StatefulWidget {
+class _DashboardContent extends ConsumerStatefulWidget {
   final DashboardData data;
   const _DashboardContent({required this.data});
 
   @override
-  State<_DashboardContent> createState() => _DashboardContentState();
+  ConsumerState<_DashboardContent> createState() => _DashboardContentState();
 }
 
-class _DashboardContentState extends State<_DashboardContent>
+class _DashboardContentState extends ConsumerState<_DashboardContent>
     with TickerProviderStateMixin {
   late final List<AnimationController> _controllers;
   late final List<Animation<double>> _fades;
@@ -305,9 +322,17 @@ class _DashboardContentState extends State<_DashboardContent>
   Widget build(BuildContext context) {
     final data = widget.data;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
+    return RefreshIndicator(
+      color: _kRed,
+      onRefresh: () async {
+        ref.invalidate(dashboardProvider);
+        await ref.read(dashboardProvider.future);
+      },
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
         _YogaFXAppBar(student: data.student),
         SliverToBoxAdapter(
           child: Column(
@@ -342,7 +367,8 @@ class _DashboardContentState extends State<_DashboardContent>
             ],
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1618,12 +1644,19 @@ class _ModuleCardState extends State<_ModuleCard>
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
+    final canOpen = _canOpenModule(module.status);
 
     return GestureDetector(
-      onTap: () => context.push('/modules/${module.id}'),
-      onTapDown: (_) => _hoverCtrl.forward(),
-      onTapUp: (_) => _hoverCtrl.reverse(),
-      onTapCancel: () => _hoverCtrl.reverse(),
+      onTap: () {
+        if (!canOpen) {
+          _showLockedModuleSnackBar(context);
+          return;
+        }
+        context.push('/modules/${module.id}');
+      },
+      onTapDown: canOpen ? (_) => _hoverCtrl.forward() : null,
+      onTapUp: canOpen ? (_) => _hoverCtrl.reverse() : null,
+      onTapCancel: canOpen ? () => _hoverCtrl.reverse() : null,
       child: AnimatedBuilder(
         animation: _hoverCtrl,
         builder: (_, child) => Transform.scale(

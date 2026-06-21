@@ -38,7 +38,7 @@ class ModuleDetailScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(moduleDetailProvider(moduleId)),
           onBack: () => context.pop(),
         ),
-        data: (module) => _ModuleDetailContent(module: module),
+        data: (module) => _ModuleDetailContent(moduleId: moduleId, module: module),
       ),
     );
   }
@@ -47,9 +47,10 @@ class ModuleDetailScreen extends ConsumerWidget {
 // ─── Content ──────────────────────────────────────────────────────────────────
 
 class _ModuleDetailContent extends StatefulWidget {
+  final int moduleId;
   final ModuleDetail module;
 
-  const _ModuleDetailContent({required this.module});
+  const _ModuleDetailContent({required this.moduleId, required this.module});
 
   @override
   State<_ModuleDetailContent> createState() => _ModuleDetailContentState();
@@ -122,8 +123,16 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
     final module = widget.module;
     final assignments = _parseAssignments(module.assignments);
 
-    return CustomScrollView(
-      slivers: [
+    return RefreshIndicator(
+      color: _kNetflixRed,
+      onRefresh: () async {
+        final container = ProviderScope.containerOf(context, listen: false);
+        container.invalidate(moduleDetailProvider(widget.moduleId));
+        await container.read(moduleDetailProvider(widget.moduleId).future);
+      },
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
         // ── Hero with play button ──
         SliverAppBar(
           expandedHeight: 240,
@@ -232,7 +241,8 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
             ),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }

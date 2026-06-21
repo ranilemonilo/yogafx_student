@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/storage/secure_storage.dart';
 import 'dashboard_provider.dart';
 
 final runningLoginTimeProvider = StateNotifierProvider<
@@ -14,6 +15,8 @@ class RunningLoginTimeController extends StateNotifier<AsyncValue<Duration>> {
   Timer? _timer;
   Duration _baseDuration = Duration.zero;
   DateTime? _startedAt;
+  String? _storageKey;
+  int _tickCount = 0;
 
   RunningLoginTimeController(this.ref) : super(const AsyncLoading()) {
     _bootstrap();
@@ -23,12 +26,21 @@ class RunningLoginTimeController extends StateNotifier<AsyncValue<Duration>> {
     try {
       final dashboard = await ref.read(dashboardProvider.future);
       final summary = dashboard.accessTimeSummary;
+      final backendDuration = _parseDuration(summary.formattedTotal);
+      _storageKey = 'total_access_duration_user_${dashboard.student.id}';
+      final persistedDuration = await _readPersistedDuration();
 
-      _baseDuration = _parseDuration(summary.formattedTotal);
-      _startedAt = DateTime.now();
+      _baseDuration = backendDuration >= persistedDuration
+          ? backendDuration
+          : persistedDuration;
+      _startedAt = summary.currentlyActive ? DateTime.now() : null;
 
       state = AsyncData(_currentDuration());
-      _startTicker();
+      await _persistCurrentDuration();
+
+      if (summary.currentlyActive) {
+        _startTicker();
+      }
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -37,8 +49,13 @@ class RunningLoginTimeController extends StateNotifier<AsyncValue<Duration>> {
   void _startTicker() {
     _timer?.cancel();
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) async {
       state = AsyncData(_currentDuration());
+
+      _tickCount++;
+      if (_tickCount % 10 == 0) {
+        await _persistCurrentDuration();
+      }
     });
   }
 
@@ -47,9 +64,33 @@ class RunningLoginTimeController extends StateNotifier<AsyncValue<Duration>> {
     return _baseDuration + DateTime.now().difference(_startedAt!);
   }
 
+  Future<Duration> _readPersistedDuration() async {
+    final key = _storageKey;
+    if (key == null) return Duration.zero;
+
+    final storedValue = await SecureStorageService.readValue(key);
+    final storedSeconds = int.tryParse(storedValue ?? '');
+    if (storedSeconds == null || storedSeconds < 0) {
+      return Duration.zero;
+    }
+
+    return Duration(seconds: storedSeconds);
+  }
+
+  Future<void> _persistCurrentDuration() async {
+    final key = _storageKey;
+    if (key == null) return;
+
+    await SecureStorageService.writeValue(
+      key,
+      _currentDuration().inSeconds.toString(),
+    );
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    unawaited(_persistCurrentDuration());
     super.dispose();
   }
 }

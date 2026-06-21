@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/error/app_exception.dart';
 import '../../data/models/assessment_model.dart';
 import '../../data/repositories/assessment_repository.dart';
 
@@ -43,7 +44,7 @@ class AssessmentAttemptNotifier
     String? answerText,
     num? answerNumber,
   }) async {
-    state = const AsyncValue.loading();
+    final currentData = state.valueOrNull;
     try {
       final data = await _repository.storeAnswer(
         lessonId: lessonId,
@@ -55,17 +56,33 @@ class AssessmentAttemptNotifier
       );
       state = AsyncValue.data(data);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (currentData != null) {
+        state = AsyncValue.data(currentData);
+      } else {
+        state = AsyncValue.error(e, st);
+      }
+      if (e is AppException) {
+        rethrow;
+      }
+      throw AppException(message: e.toString());
     }
   }
 
   Future<void> goBack() async {
-    state = const AsyncValue.loading();
+    final currentData = state.valueOrNull;
     try {
       final data = await _repository.goBack(lessonId, attemptId);
       state = AsyncValue.data(data);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (currentData != null) {
+        state = AsyncValue.data(currentData);
+      } else {
+        state = AsyncValue.error(e, st);
+      }
+      if (e is AppException) {
+        rethrow;
+      }
+      throw AppException(message: e.toString());
     }
   }
 }

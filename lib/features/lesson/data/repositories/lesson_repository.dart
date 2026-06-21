@@ -28,8 +28,19 @@ class LessonRepository {
     final videoRaw = data['video'];
     if (videoRaw is Map) {
       final video = Map<String, dynamic>.from(videoRaw);
-      video['hls_url'] = ApiClient.resolveUrl(video['hls_url'] as String?);
-      data['video'] = video;
+      final videoId = video['video_id'] as String?;
+      final hlsUrl = video['hls_url'] as String?;
+      final resolvedHlsUrl = ApiClient.resolveUrl(hlsUrl);
+
+      // Treat partially configured video payloads as no video so the lesson
+      // screen can safely fall back to thumbnail/content rendering.
+      if ((videoId == null || videoId.isEmpty) &&
+          (resolvedHlsUrl == null || resolvedHlsUrl.isEmpty)) {
+        data['video'] = null;
+      } else {
+        video['hls_url'] = resolvedHlsUrl;
+        data['video'] = video;
+      }
     }
 
     final audioRaw = data['audio'];

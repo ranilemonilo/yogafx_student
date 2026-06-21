@@ -464,7 +464,7 @@ mixin _$AssessmentEligibility {
   @JsonKey(name: 'is_unlocked')
   bool get isUnlocked => throw _privateConstructorUsedError;
   @JsonKey(name: 'watch_progress')
-  String get watchProgress => throw _privateConstructorUsedError;
+  String? get watchProgress => throw _privateConstructorUsedError;
   @JsonKey(name: 'requires_watch_progress')
   bool get requiresWatchProgress => throw _privateConstructorUsedError;
 
@@ -482,7 +482,7 @@ abstract class $AssessmentEligibilityCopyWith<$Res> {
   @useResult
   $Res call(
       {@JsonKey(name: 'is_unlocked') bool isUnlocked,
-      @JsonKey(name: 'watch_progress') String watchProgress,
+      @JsonKey(name: 'watch_progress') String? watchProgress,
       @JsonKey(name: 'requires_watch_progress') bool requiresWatchProgress});
 }
 
@@ -509,10 +509,10 @@ class _$AssessmentEligibilityCopyWithImpl<$Res,
           ? _value.isUnlocked
           : isUnlocked // ignore: cast_nullable_to_non_nullable
               as bool,
-      watchProgress: null == watchProgress
+      watchProgress: freezed == watchProgress
           ? _value.watchProgress
           : watchProgress // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       requiresWatchProgress: null == requiresWatchProgress
           ? _value.requiresWatchProgress
           : requiresWatchProgress // ignore: cast_nullable_to_non_nullable
@@ -532,7 +532,7 @@ abstract class _$$AssessmentEligibilityImplCopyWith<$Res>
   @useResult
   $Res call(
       {@JsonKey(name: 'is_unlocked') bool isUnlocked,
-      @JsonKey(name: 'watch_progress') String watchProgress,
+      @JsonKey(name: 'watch_progress') String? watchProgress,
       @JsonKey(name: 'requires_watch_progress') bool requiresWatchProgress});
 }
 
@@ -549,7 +549,7 @@ class __$$AssessmentEligibilityImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? isUnlocked = null,
-    Object? watchProgress = null,
+    Object? watchProgress = freezed,
     Object? requiresWatchProgress = null,
   }) {
     return _then(_$AssessmentEligibilityImpl(
@@ -557,10 +557,10 @@ class __$$AssessmentEligibilityImplCopyWithImpl<$Res>
           ? _value.isUnlocked
           : isUnlocked // ignore: cast_nullable_to_non_nullable
               as bool,
-      watchProgress: null == watchProgress
+      watchProgress: freezed == watchProgress
           ? _value.watchProgress
           : watchProgress // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       requiresWatchProgress: null == requiresWatchProgress
           ? _value.requiresWatchProgress
           : requiresWatchProgress // ignore: cast_nullable_to_non_nullable
@@ -574,7 +574,7 @@ class __$$AssessmentEligibilityImplCopyWithImpl<$Res>
 class _$AssessmentEligibilityImpl implements _AssessmentEligibility {
   const _$AssessmentEligibilityImpl(
       {@JsonKey(name: 'is_unlocked') required this.isUnlocked,
-      @JsonKey(name: 'watch_progress') required this.watchProgress,
+      @JsonKey(name: 'watch_progress') this.watchProgress,
       @JsonKey(name: 'requires_watch_progress')
       required this.requiresWatchProgress});
 
@@ -586,7 +586,7 @@ class _$AssessmentEligibilityImpl implements _AssessmentEligibility {
   final bool isUnlocked;
   @override
   @JsonKey(name: 'watch_progress')
-  final String watchProgress;
+  final String? watchProgress;
   @override
   @JsonKey(name: 'requires_watch_progress')
   final bool requiresWatchProgress;
@@ -632,7 +632,7 @@ class _$AssessmentEligibilityImpl implements _AssessmentEligibility {
 abstract class _AssessmentEligibility implements AssessmentEligibility {
   const factory _AssessmentEligibility(
       {@JsonKey(name: 'is_unlocked') required final bool isUnlocked,
-      @JsonKey(name: 'watch_progress') required final String watchProgress,
+      @JsonKey(name: 'watch_progress') final String? watchProgress,
       @JsonKey(name: 'requires_watch_progress')
       required final bool requiresWatchProgress}) = _$AssessmentEligibilityImpl;
 
@@ -644,7 +644,7 @@ abstract class _AssessmentEligibility implements AssessmentEligibility {
   bool get isUnlocked;
   @override
   @JsonKey(name: 'watch_progress')
-  String get watchProgress;
+  String? get watchProgress;
   @override
   @JsonKey(name: 'requires_watch_progress')
   bool get requiresWatchProgress;

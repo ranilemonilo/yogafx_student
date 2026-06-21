@@ -47,7 +47,7 @@ _$AssessmentEligibilityImpl _$$AssessmentEligibilityImplFromJson(
         Map<String, dynamic> json) =>
     _$AssessmentEligibilityImpl(
       isUnlocked: json['is_unlocked'] as bool,
-      watchProgress: json['watch_progress'] as String,
+      watchProgress: json['watch_progress'] as String?,
       requiresWatchProgress: json['requires_watch_progress'] as bool,
     );
 

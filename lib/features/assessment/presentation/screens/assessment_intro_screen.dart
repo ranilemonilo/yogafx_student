@@ -41,15 +41,17 @@ class AssessmentIntroScreen extends ConsumerWidget {
           final eligibility = data.eligibility;
           final isUnlocked = eligibility.isUnlocked;
           final watchProgress = eligibility.watchProgress;
+          final requiresWatchProgress = eligibility.requiresWatchProgress;
           final hasActiveAttempt = _extractAttemptId(data.attempt) != null;
           final hasCompletedAttempt =
               _extractAttemptId(data.completedAttempt) != null;
           final double progressFraction =
-          ((double.tryParse(watchProgress.toString()) ?? 0.0) / 100)
+          ((double.tryParse(watchProgress ?? '') ?? 0.0) / 100)
               .clamp(0.0, 1.0)
               .toDouble();
 
           return _AssessmentDetailView(
+            lessonId: lessonId,
             thumbnailUrl: assessment.thumbnailUrl,
             lessonTitle: data.lesson.title,
             title: assessment.title,
@@ -57,7 +59,8 @@ class AssessmentIntroScreen extends ConsumerWidget {
             durationMinutes: assessment.durationMinutes,
             allowBackNavigation: assessment.allowBackNavigation,
             isUnlocked: isUnlocked,
-            watchProgressLabel: watchProgress.toString(),
+            requiresWatchProgress: requiresWatchProgress,
+            watchProgressLabel: watchProgress,
             progressFraction: progressFraction,
             onBack: () => context.pop(),
             startLabel: hasActiveAttempt
@@ -126,7 +129,8 @@ class AssessmentIntroScreen extends ConsumerWidget {
   }
 }
 
-class _AssessmentDetailView extends StatefulWidget {
+class _AssessmentDetailView extends ConsumerStatefulWidget {
+  final int lessonId;
   final String? thumbnailUrl;
   final String lessonTitle;
   final String title;
@@ -134,13 +138,15 @@ class _AssessmentDetailView extends StatefulWidget {
   final int? durationMinutes;
   final bool allowBackNavigation;
   final bool isUnlocked;
-  final String watchProgressLabel;
+  final bool requiresWatchProgress;
+  final String? watchProgressLabel;
   final double progressFraction;
   final String startLabel;
   final VoidCallback onBack;
   final VoidCallback onStart;
 
   const _AssessmentDetailView({
+    required this.lessonId,
     required this.thumbnailUrl,
     required this.lessonTitle,
     required this.title,
@@ -148,6 +154,7 @@ class _AssessmentDetailView extends StatefulWidget {
     required this.durationMinutes,
     required this.allowBackNavigation,
     required this.isUnlocked,
+    required this.requiresWatchProgress,
     required this.watchProgressLabel,
     required this.progressFraction,
     required this.startLabel,
@@ -156,10 +163,11 @@ class _AssessmentDetailView extends StatefulWidget {
   });
 
   @override
-  State<_AssessmentDetailView> createState() => _AssessmentDetailViewState();
+  ConsumerState<_AssessmentDetailView> createState() =>
+      _AssessmentDetailViewState();
 }
 
-class _AssessmentDetailViewState extends State<_AssessmentDetailView>
+class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
     with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   late final AnimationController _entranceController;
@@ -207,72 +215,81 @@ class _AssessmentDetailViewState extends State<_AssessmentDetailView>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        ListView(
-          controller: _scrollController,
-          padding: EdgeInsets.zero,
-          children: [
-            _Hero(thumbnailUrl: widget.thumbnailUrl),
-            FadeTransition(
-              opacity: _fade,
-              child: SlideTransition(
-                position: _slide,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _LessonTag(label: widget.lessonTitle),
-                      const SizedBox(height: 10),
-                      Text(
-                        widget.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'Montserrat',
-                          height: 1.15,
-                        ),
-                      ),
-                      if (widget.description != null) ...[
+    return RefreshIndicator(
+      color: _NetflixPalette.red,
+      onRefresh: () async {
+        ref.invalidate(assessmentIntroProvider(widget.lessonId));
+        await ref.read(assessmentIntroProvider(widget.lessonId).future);
+      },
+      child: Stack(
+        children: [
+          ListView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              _Hero(thumbnailUrl: widget.thumbnailUrl),
+              FadeTransition(
+                opacity: _fade,
+                child: SlideTransition(
+                  position: _slide,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _LessonTag(label: widget.lessonTitle),
                         const SizedBox(height: 10),
                         Text(
-                          widget.description!,
+                          widget.title,
                           style: const TextStyle(
-                            color: _NetflixPalette.grey,
-                            fontSize: 14,
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
                             fontFamily: 'Montserrat',
-                            height: 1.6,
+                            height: 1.15,
                           ),
                         ),
+                        if (widget.description != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            widget.description!,
+                            style: const TextStyle(
+                              color: _NetflixPalette.grey,
+                              fontSize: 14,
+                              fontFamily: 'Montserrat',
+                              height: 1.6,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 18),
+                        _MetaRow(
+                          durationMinutes: widget.durationMinutes,
+                          allowBackNavigation: widget.allowBackNavigation,
+                        ),
+                        const SizedBox(height: 28),
+                        _EligibilitySection(
+                          isUnlocked: widget.isUnlocked,
+                          requiresWatchProgress: widget.requiresWatchProgress,
+                          progressLabel: widget.watchProgressLabel,
+                          progressFraction: widget.progressFraction,
+                        ),
+                        const SizedBox(height: 28),
+                        _StartButton(
+                          isUnlocked: widget.isUnlocked,
+                          label: widget.startLabel,
+                          onTap: widget.onStart,
+                        ),
                       ],
-                      const SizedBox(height: 18),
-                      _MetaRow(
-                        durationMinutes: widget.durationMinutes,
-                        allowBackNavigation: widget.allowBackNavigation,
-                      ),
-                      const SizedBox(height: 28),
-                      _EligibilitySection(
-                        isUnlocked: widget.isUnlocked,
-                        progressLabel: widget.watchProgressLabel,
-                        progressFraction: widget.progressFraction,
-                      ),
-                      const SizedBox(height: 28),
-                      _StartButton(
-                        isUnlocked: widget.isUnlocked,
-                        label: widget.startLabel,
-                        onTap: widget.onStart,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-        _TopBar(opacity: _appBarOpacity, onBack: widget.onBack),
-      ],
+            ],
+          ),
+          _TopBar(opacity: _appBarOpacity, onBack: widget.onBack),
+        ],
+      ),
     );
   }
 }
@@ -449,17 +466,59 @@ class _MetaRow extends StatelessWidget {
 
 class _EligibilitySection extends StatelessWidget {
   final bool isUnlocked;
-  final String progressLabel;
+  final bool requiresWatchProgress;
+  final String? progressLabel;
   final double progressFraction;
 
   const _EligibilitySection({
     required this.isUnlocked,
+    required this.requiresWatchProgress,
     required this.progressLabel,
     required this.progressFraction,
   });
 
   @override
   Widget build(BuildContext context) {
+    final label = (progressLabel == null || progressLabel!.isEmpty)
+        ? '0'
+        : progressLabel!;
+    if (!requiresWatchProgress) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isUnlocked ? Icons.check_circle : Icons.lock_outline,
+                color:
+                    isUnlocked ? _NetflixPalette.red : _NetflixPalette.greyMuted,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isUnlocked ? 'Assessment unlocked' : 'Assessment locked',
+                style: TextStyle(
+                  color: isUnlocked ? Colors.white : _NetflixPalette.grey,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'This assessment is unlocked without video progress.',
+            style: TextStyle(
+              color: _NetflixPalette.greyMuted,
+              fontSize: 11,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -746,74 +805,87 @@ class _IntroError extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: _NetflixPalette.surface,
-                shape: BoxShape.circle,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: _NetflixPalette.surface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline,
+                  color: _NetflixPalette.grey,
+                  size: 40,
+                ),
               ),
-              child: const Icon(
-                Icons.error_outline,
-                color: _NetflixPalette.grey,
-                size: 40,
+              const SizedBox(height: 20),
+              Text(
+                message,
+                style: const TextStyle(
+                  color: _NetflixPalette.grey,
+                  fontSize: 14,
+                  fontFamily: 'Montserrat',
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              message,
-              style: const TextStyle(
-                color: _NetflixPalette.grey,
-                fontSize: 14,
-                fontFamily: 'Montserrat',
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                OutlinedButton(
-                  onPressed: onBack,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: _NetflixPalette.divider),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+              const SizedBox(height: 28),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton(
+                    onPressed: onBack,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: _NetflixPalette.divider),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text(
+                      'Back',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    'Back',
-                    style: TextStyle(
-                        fontFamily: 'Montserrat', fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: onRetry,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _NetflixPalette.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+                  ElevatedButton(
+                    onPressed: onRetry,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _NetflixPalette.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text(
+                      'Retry',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    'Retry',
-                    style: TextStyle(
-                        fontFamily: 'Montserrat', fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

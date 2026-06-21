@@ -23,4 +23,16 @@ class SecureStorageService {
     final token = await _storage.read(key: _tokenKey);
     return token != null && token.isNotEmpty;
   }
+
+  static Future<void> writeValue(String key, String value) async {
+    await _storage.write(key: key, value: value);
+  }
+
+  static Future<String?> readValue(String key) async {
+    return await _storage.read(key: key);
+  }
+
+  static Future<void> deleteValue(String key) async {
+    await _storage.delete(key: key);
+  }
 }

@@ -86,11 +86,14 @@ void _showLockedSnackBar(
   required String fallbackMessage,
   String? reason,
 }) {
+  const lockedMessage =
+      'This page is not available yet. Please complete the previous module first.';
+
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: Text(reason ?? fallbackMessage),
+        content: Text(lockedMessage),
       ),
     );
 }
@@ -124,6 +127,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   late AnimationController _progressCtrl;
   late Animation<double> _progressAnim;
 
+  bool get _hasPlayableVideo {
+    final video = widget.lesson.video;
+    return video != null && video.isReady;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -151,7 +159,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       }
     });
 
-    if (widget.lesson.video != null && widget.lesson.video!.isReady) {
+    if (_hasPlayableVideo) {
       _initVideo();
     }
     if (widget.lesson.audio.isAvailable && widget.lesson.audio.url != null) {
@@ -364,6 +372,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     context.go('/lessons/$lessonId');
   }
 
+  Future<void> _refreshLesson() async {
+    ref.invalidate(lessonDetailProvider(widget.lesson.id));
+    await ref.read(lessonDetailProvider(widget.lesson.id).future);
+  }
+
   @override
   void dispose() {
     _videoController?.removeListener(_onVideoProgress);
@@ -434,9 +447,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Widget build(BuildContext context) {
     final lesson = widget.lesson;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
+    return RefreshIndicator(
+      color: _kRed,
+      onRefresh: _refreshLesson,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
         // Video
         SliverToBoxAdapter(
           child: _VideoSection(
@@ -513,8 +531,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                   // Assessment
                   if (lesson.assessment != null) ...[
                     _AssessmentBanner(
-                      lessonId: lesson.id,
-                      progress: lesson.progress,
+                      lesson: lesson,
                     ),
                     const SizedBox(height: 28),
                   ],
@@ -545,7 +562,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             ),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1720,9 +1738,8 @@ class _SheetButton extends StatelessWidget {
 // ─── Assessment Banner ────────────────────────────────────────────────────────
 
 class _AssessmentBanner extends StatefulWidget {
-  final int lessonId;
-  final LessonProgress progress;
-  const _AssessmentBanner({required this.lessonId, required this.progress});
+  final LessonDetail lesson;
+  const _AssessmentBanner({required this.lesson});
 
   @override
   State<_AssessmentBanner> createState() => _AssessmentBannerState();
@@ -1752,14 +1769,20 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
 
   @override
   Widget build(BuildContext context) {
-    final isUnlocked = widget.progress.watchProgress >= 95;
+    final hasPlayableVideo =
+        widget.lesson.video != null && widget.lesson.video!.isReady;
+    final isUnlocked =
+        !hasPlayableVideo || widget.lesson.progress.watchProgress >= 95;
+    final lockMessage = hasPlayableVideo
+        ? 'Watch at least 95% of the video to unlock it.'
+        : 'Complete the lesson materials to unlock it.';
 
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (_, __) => GestureDetector(
         onTap: () {
           if (isUnlocked) {
-            context.push('/lessons/${widget.lessonId}/assessment');
+            context.push('/lessons/${widget.lesson.id}/assessment');
             return;
           }
           _showLockedSnackBar(
@@ -1825,7 +1848,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                     Text(
                       isUnlocked
                           ? 'Start the assessment now'
-                          : 'Watch at least 95% of the video to unlock it.',
+                          : lockMessage,
                       style: const TextStyle(
                         color: _kTextMuted,
                         fontSize: 11,

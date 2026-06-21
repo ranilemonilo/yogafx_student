@@ -36,7 +36,7 @@ class AssessmentInfo with _$AssessmentInfo {
 class AssessmentEligibility with _$AssessmentEligibility {
   const factory AssessmentEligibility({
     @JsonKey(name: 'is_unlocked') required bool isUnlocked,
-    @JsonKey(name: 'watch_progress') required String watchProgress,
+    @JsonKey(name: 'watch_progress') String? watchProgress,
     @JsonKey(name: 'requires_watch_progress') required bool requiresWatchProgress,
   }) = _AssessmentEligibility;
 

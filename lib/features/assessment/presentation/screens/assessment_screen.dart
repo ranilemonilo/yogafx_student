@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/error/app_exception.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
@@ -26,7 +27,10 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
     with TickerProviderStateMixin {
   List<int> _selectedOptionIds = [];
   String? _answerText;
+  String? _optionFeedbackMessage;
+  bool _isOptionAnswerCorrect = false;
   bool _submitting = false;
+  int? _lastQuestionId;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -99,6 +103,20 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
             return const _NetflixLoader();
           }
 
+          if (_lastQuestionId != data.question.id) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              setState(() {
+                _lastQuestionId = data.question.id;
+                _selectedOptionIds = List.from(data.question.saved.optionIds);
+                _answerText = data.question.saved.answerText;
+                _optionFeedbackMessage = null;
+                _isOptionAnswerCorrect = false;
+                _submitting = false;
+              });
+            });
+          }
+
           if (_selectedOptionIds.isEmpty &&
               data.question.saved.optionIds.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -137,21 +155,15 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                           question: data.question,
                           selectedOptionIds: _selectedOptionIds,
                           answerText: _answerText,
-                          onOptionSelected: (optionId) {
-                            setState(() {
-                              if (data.question.allowMultiSelect) {
-                                if (_selectedOptionIds.contains(optionId)) {
-                                  _selectedOptionIds.remove(optionId);
-                                } else {
-                                  _selectedOptionIds.add(optionId);
-                                }
-                              } else {
-                                _selectedOptionIds = [optionId];
-                              }
-                            });
-                          },
+                          optionFeedbackMessage: _optionFeedbackMessage,
+                          onOptionSelected: (optionId) =>
+                              _handleOptionSelected(context, data, optionId),
                           onTextChanged: (text) {
-                            setState(() => _answerText = text);
+                            setState(() {
+                              _answerText = text;
+                              _optionFeedbackMessage = null;
+                              _isOptionAnswerCorrect = false;
+                            });
                           },
                         ),
                       ),
@@ -161,9 +173,14 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
 
                 // Bottom CTA
                 _BottomAction(
+                  questionType: data.question.questionType,
                   isLastQuestion: data.isLastQuestion,
                   submitting: _submitting,
                   hasAnswer: _hasAnswer(data.question),
+                  canManuallyProceed: data.question.questionType == 'text'
+                      ? _hasAnswer(data.question)
+                      : (!data.question.hasCorrectnessGate ||
+                          _isOptionAnswerCorrect),
                   isRequired: data.question.required,
                   onSubmit: () => _handleSubmit(context, data),
                 ),
@@ -186,53 +203,159 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
     return true;
   }
 
+  Future<void> _handleOptionSelected(
+    BuildContext context,
+    AssessmentAttemptData data,
+    int optionId,
+  ) async {
+    if (_submitting) return;
+
+    List<int> nextSelection;
+    if (data.question.allowMultiSelect) {
+      nextSelection = List<int>.from(_selectedOptionIds);
+      if (nextSelection.contains(optionId)) {
+        nextSelection.remove(optionId);
+      } else {
+        nextSelection.add(optionId);
+      }
+      setState(() {
+        _selectedOptionIds = nextSelection;
+        _optionFeedbackMessage = null;
+        _isOptionAnswerCorrect = false;
+      });
+      return;
+    } else {
+      nextSelection = [optionId];
+    }
+
+    final selectedOption = data.question.options
+        .cast<AssessmentOption?>()
+        .firstWhere((option) => option?.id == optionId, orElse: () => null);
+
+    setState(() {
+      _selectedOptionIds = nextSelection;
+      _isOptionAnswerCorrect = selectedOption?.isCorrect == true;
+      _optionFeedbackMessage = selectedOption?.isCorrect == true
+          ? 'Answer correct.'
+          : 'Oops!!! Wrong Answer! Please refer to your workbook and try again.';
+    });
+  }
+
   Future<void> _handleSubmit(
       BuildContext context, AssessmentAttemptData data) async {
     final question = data.question;
     final isRequired = question.required;
+    final isOptionQuestion = question.questionType == 'radio_buttons' ||
+        question.questionType == 'checkboxes';
 
     if (isRequired && !_hasAnswer(question)) {
       _showNetflixSnack(context, 'Please answer this question before continuing.');
       return;
     }
 
+    if (isOptionQuestion &&
+        question.hasCorrectnessGate &&
+        !_isOptionAnswerCorrect) {
+      return;
+    }
+
     setState(() => _submitting = true);
 
-    await ref
-        .read(assessmentAttemptProvider(
-      (lessonId: widget.lessonId, attemptId: widget.attemptId),
-    ).notifier)
-        .submitAnswer(
-      questionId: question.id,
-      optionIds: _selectedOptionIds.isNotEmpty ? _selectedOptionIds : null,
-      answerText: _answerText,
-    );
+    try {
+      await ref
+          .read(assessmentAttemptProvider(
+        (lessonId: widget.lessonId, attemptId: widget.attemptId),
+      ).notifier)
+          .submitAnswer(
+        questionId: question.id,
+        optionIds: _selectedOptionIds.isNotEmpty ? _selectedOptionIds : null,
+        answerText: _answerText,
+      );
 
-    if (mounted) {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _selectedOptionIds = [];
+          _answerText = null;
+          _optionFeedbackMessage = null;
+          _isOptionAnswerCorrect = false;
+        });
+        _replayEntrance();
+      }
+    } on AppException catch (e) {
+      if (!mounted) return;
       setState(() {
         _submitting = false;
-        _selectedOptionIds = [];
-        _answerText = null;
+        _isOptionAnswerCorrect = false;
       });
-      _replayEntrance();
+      _showNetflixSnack(context, _resolveAssessmentErrorMessage(e));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _isOptionAnswerCorrect = false;
+      });
+      _showNetflixSnack(
+        context,
+        'Something went wrong. Please try again later.',
+      );
     }
   }
 
   Future<void> _handleBack(BuildContext context) async {
     setState(() => _submitting = true);
-    await ref
-        .read(assessmentAttemptProvider(
-      (lessonId: widget.lessonId, attemptId: widget.attemptId),
-    ).notifier)
-        .goBack();
-    if (mounted) {
+    try {
+      await ref
+          .read(assessmentAttemptProvider(
+        (lessonId: widget.lessonId, attemptId: widget.attemptId),
+      ).notifier)
+          .goBack();
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _selectedOptionIds = [];
+          _answerText = null;
+          _optionFeedbackMessage = null;
+          _isOptionAnswerCorrect = false;
+        });
+        _replayEntrance();
+      }
+    } on AppException catch (e) {
+      if (!mounted) return;
       setState(() {
         _submitting = false;
-        _selectedOptionIds = [];
-        _answerText = null;
+        _optionFeedbackMessage = null;
+        _isOptionAnswerCorrect = false;
       });
-      _replayEntrance();
+      _showNetflixSnack(context, _resolveAssessmentErrorMessage(e));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _optionFeedbackMessage = null;
+        _isOptionAnswerCorrect = false;
+      });
+      _showNetflixSnack(
+        context,
+        'Something went wrong. Please try again later.',
+      );
     }
+  }
+
+  String _resolveAssessmentErrorMessage(AppException exception) {
+    final errors = exception.errors;
+    if (errors != null) {
+      for (final value in errors.values) {
+        if (value is List && value.isNotEmpty) {
+          return value.first.toString();
+        }
+        if (value is String && value.isNotEmpty) {
+          return value;
+        }
+      }
+    }
+
+    return exception.message;
   }
 
   void _handleClose(BuildContext context) {
@@ -557,6 +680,7 @@ class _QuestionBody extends StatelessWidget {
   final AssessmentQuestion question;
   final List<int> selectedOptionIds;
   final String? answerText;
+  final String? optionFeedbackMessage;
   final void Function(int) onOptionSelected;
   final void Function(String) onTextChanged;
 
@@ -564,12 +688,15 @@ class _QuestionBody extends StatelessWidget {
     required this.question,
     required this.selectedOptionIds,
     required this.answerText,
+    required this.optionFeedbackMessage,
     required this.onOptionSelected,
     required this.onTextChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isCorrectFeedback = optionFeedbackMessage == 'Answer correct.';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -642,6 +769,37 @@ class _QuestionBody extends StatelessWidget {
               isSelected: selectedOptionIds.contains(entry.value.id),
               isMulti: question.allowMultiSelect,
               onTap: () => onOptionSelected(entry.value.id),
+            ),
+          ),
+        if (optionFeedbackMessage != null &&
+            optionFeedbackMessage!.trim().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: isCorrectFeedback
+                    ? Colors.green.withOpacity(0.12)
+                    : AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isCorrectFeedback
+                      ? Colors.green.withOpacity(0.24)
+                      : AppColors.primary.withOpacity(0.24),
+                  width: 0.8,
+                ),
+              ),
+              child: Text(
+                optionFeedbackMessage!,
+                style: TextStyle(
+                  color: isCorrectFeedback ? Colors.green : AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Montserrat',
+                  height: 1.5,
+                ),
+              ),
             ),
           )
         else if (question.questionType == 'text')
@@ -900,16 +1058,20 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
 // ─── Bottom Action ────────────────────────────────────────────────────────────
 
 class _BottomAction extends StatelessWidget {
+  final String questionType;
   final bool isLastQuestion;
   final bool submitting;
   final bool hasAnswer;
+  final bool canManuallyProceed;
   final bool isRequired;
   final VoidCallback onSubmit;
 
   const _BottomAction({
+    required this.questionType,
     required this.isLastQuestion,
     required this.submitting,
     required this.hasAnswer,
+    required this.canManuallyProceed,
     required this.isRequired,
     required this.onSubmit,
   });
@@ -917,6 +1079,8 @@ class _BottomAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canProceed = !isRequired || hasAnswer;
+    final showManualSubmit = questionType == 'text' || canManuallyProceed;
+    final isEnabled = !submitting && canProceed && showManualSubmit;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 14, 24, 34),
@@ -935,10 +1099,11 @@ class _BottomAction extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           child: ElevatedButton(
-            onPressed: submitting || !canProceed ? null : onSubmit,
+            onPressed: isEnabled ? onSubmit : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-              canProceed ? AppColors.primary : const Color(0xFF2A2A2A),
+              backgroundColor: canProceed && showManualSubmit
+                  ? AppColors.primary
+                  : const Color(0xFF2A2A2A),
               disabledBackgroundColor: const Color(0xFF2A2A2A),
               elevation: canProceed ? 4 : 0,
               shadowColor: AppColors.primary.withOpacity(0.4),
@@ -1013,84 +1178,95 @@ class _AttemptError extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(32),
-              ),
-              child: const Icon(
-                Icons.wifi_off_rounded,
-                color: AppColors.primary,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Something went wrong',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                fontFamily: 'Montserrat',
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                OutlinedButton(
-                  onPressed: onBack,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: Color(0xFF2A2A2A)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4)),
-                  ),
-                  child: const Text(
-                    'Go Back',
-                    style: TextStyle(fontFamily: 'Montserrat'),
-                  ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(32),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: onRetry,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4)),
-                  ),
-                  child: const Text(
-                    'Try Again',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Montserrat',
-                      fontWeight: FontWeight.w700,
+                child: const Icon(
+                  Icons.wifi_off_rounded,
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Something went wrong',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontFamily: 'Montserrat',
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton(
+                    onPressed: onBack,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: Color(0xFF2A2A2A)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text(
+                      'Go Back',
+                      style: TextStyle(fontFamily: 'Montserrat'),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  ElevatedButton(
+                    onPressed: onRetry,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text(
+                      'Try Again',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
