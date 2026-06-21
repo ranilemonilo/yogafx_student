@@ -12,6 +12,14 @@ FutureProvider.family<AssessmentIntroData, int>((ref, lessonId) async {
   return ref.read(assessmentRepositoryProvider).getIntro(lessonId);
 });
 
+final assessmentResultProvider = FutureProvider.family<
+    AssessmentResultData,
+    ({int lessonId, int attemptId})>((ref, params) async {
+  return ref
+      .read(assessmentRepositoryProvider)
+      .getResult(params.lessonId, params.attemptId);
+});
+
 // State untuk attempt yang sedang berjalan
 class AssessmentAttemptNotifier
     extends StateNotifier<AsyncValue<AssessmentAttemptData?>> {

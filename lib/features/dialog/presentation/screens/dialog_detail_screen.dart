@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -79,17 +80,10 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
     super.dispose();
   }
 
-  String _plainText(String html) {
-    return html
-        .replaceAll(RegExp(r'<[^>]*>'), ' ')
-        .replaceAll('&nbsp;', ' ')
-        .trim();
-  }
-
   @override
   Widget build(BuildContext context) {
     final dialog = widget.dialog;
-    final content = _plainText(dialog.content);
+    final content = (dialog.content as String?)?.trim() ?? '';
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -200,14 +194,119 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           ),
                         ],
                       )
-                          : Text(
-                        content,
-                        style: const TextStyle(
-                          color: _kTextSecondary,
-                          fontSize: 13,
-                          fontFamily: 'Montserrat',
-                          height: 1.75,
-                        ),
+                          : Html(
+                        data: content,
+                        style: {
+                          'html': Style(
+                            margin: Margins.zero,
+                            padding: HtmlPaddings.zero,
+                            color: _kTextSecondary,
+                            fontFamily: 'Montserrat',
+                            fontSize: FontSize(13),
+                            lineHeight: const LineHeight(1.75),
+                          ),
+                          'body': Style(
+                            margin: Margins.zero,
+                            padding: HtmlPaddings.zero,
+                            color: _kTextSecondary,
+                            backgroundColor: Colors.transparent,
+                          ),
+                          'p': Style(
+                            margin: Margins.only(bottom: 14),
+                          ),
+                          'span': Style(
+                            color: _kTextSecondary,
+                            fontFamily: 'Montserrat',
+                          ),
+                          'div': Style(
+                            margin: Margins.only(bottom: 14),
+                          ),
+                          'br': Style(
+                            lineHeight: const LineHeight(1.75),
+                          ),
+                          'strong': Style(
+                            fontWeight: FontWeight.w700,
+                            color: _kTextPrimary,
+                          ),
+                          'b': Style(
+                            fontWeight: FontWeight.w700,
+                            color: _kTextPrimary,
+                          ),
+                          'em': Style(
+                            fontStyle: FontStyle.italic,
+                          ),
+                          'i': Style(
+                            fontStyle: FontStyle.italic,
+                          ),
+                          'u': Style(
+                            textDecoration: TextDecoration.underline,
+                          ),
+                          'h1': Style(
+                            color: _kTextPrimary,
+                            fontFamily: 'Montserrat',
+                            fontSize: FontSize(28),
+                            fontWeight: FontWeight.w800,
+                            margin: Margins.only(bottom: 16),
+                          ),
+                          'h2': Style(
+                            color: _kTextPrimary,
+                            fontFamily: 'Montserrat',
+                            fontSize: FontSize(24),
+                            fontWeight: FontWeight.w800,
+                            margin: Margins.only(bottom: 14),
+                          ),
+                          'h3': Style(
+                            color: _kTextPrimary,
+                            fontFamily: 'Montserrat',
+                            fontSize: FontSize(20),
+                            fontWeight: FontWeight.w700,
+                            margin: Margins.only(bottom: 12),
+                          ),
+                          'h4': Style(
+                            color: _kTextPrimary,
+                            fontFamily: 'Montserrat',
+                            fontSize: FontSize(17),
+                            fontWeight: FontWeight.w700,
+                            margin: Margins.only(bottom: 10),
+                          ),
+                          'h5': Style(
+                            color: _kTextPrimary,
+                            fontFamily: 'Montserrat',
+                            fontSize: FontSize(15),
+                            fontWeight: FontWeight.w700,
+                            margin: Margins.only(bottom: 10),
+                          ),
+                          'h6': Style(
+                            color: _kTextPrimary,
+                            fontFamily: 'Montserrat',
+                            fontSize: FontSize(13),
+                            fontWeight: FontWeight.w700,
+                            margin: Margins.only(bottom: 8),
+                          ),
+                          'ul': Style(
+                            margin: Margins.only(bottom: 14, left: 14),
+                            padding: HtmlPaddings.zero,
+                          ),
+                          'ol': Style(
+                            margin: Margins.only(bottom: 14, left: 14),
+                            padding: HtmlPaddings.zero,
+                          ),
+                          'li': Style(
+                            margin: Margins.only(bottom: 8),
+                          ),
+                          'blockquote': Style(
+                            color: _kTextPrimary,
+                            backgroundColor: _kSurface,
+                            border: Border(
+                              left: BorderSide(
+                                color: _kRed.withOpacity(0.8),
+                                width: 3,
+                              ),
+                            ),
+                            padding: HtmlPaddings.only(left: 14, top: 8, bottom: 8),
+                            margin: Margins.only(bottom: 14),
+                          ),
+                        },
                       ),
                     ),
                   ],

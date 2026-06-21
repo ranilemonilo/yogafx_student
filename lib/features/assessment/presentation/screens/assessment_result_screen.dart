@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/assessment_provider.dart';
 
 /// Netflix-inspired palette, scoped to this screen only so the rest of the
 /// app's shared theme (AppColors) stays untouched. Kept in sync with the
@@ -14,7 +16,7 @@ abstract class _NetflixPalette {
   static const Color divider = Color(0xFF3A3A3A);
 }
 
-class AssessmentResultScreen extends StatelessWidget {
+class AssessmentResultScreen extends ConsumerWidget {
   final int lessonId;
   final int attemptId;
 
@@ -25,14 +27,28 @@ class AssessmentResultScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resultAsync = ref.watch(
+      assessmentResultProvider((lessonId: lessonId, attemptId: attemptId)),
+    );
+
     return Scaffold(
       backgroundColor: _NetflixPalette.background,
       body: SafeArea(
-        child: _ResultContent(
-          lessonId: lessonId,
-          attemptId: attemptId,
-          status: 'completed',
+        child: resultAsync.when(
+          loading: () => const _ResultLoadingState(),
+          error: (error, _) => _ResultErrorState(
+            lessonId: lessonId,
+            message: error.toString(),
+          ),
+          data: (result) => _ResultContent(
+            lessonId: lessonId,
+            attemptId: attemptId,
+            status: result.status ?? result.mode,
+            scorePercentage: result.scorePercentage,
+            correctAnswers: result.correctAnswers,
+            totalQuestions: result.totalQuestions,
+          ),
         ),
       ),
     );
@@ -43,11 +59,17 @@ class _ResultContent extends StatefulWidget {
   final int lessonId;
   final int attemptId;
   final String status;
+  final double? scorePercentage;
+  final int? correctAnswers;
+  final int? totalQuestions;
 
   const _ResultContent({
     required this.lessonId,
     required this.attemptId,
     required this.status,
+    required this.scorePercentage,
+    required this.correctAnswers,
+    required this.totalQuestions,
   });
 
   @override
@@ -120,7 +142,12 @@ class _ResultContentState extends State<_ResultContent>
 
   @override
   Widget build(BuildContext context) {
-    final isCompleted = widget.status == 'completed';
+    final isCompleted = widget.status == 'completed' || widget.status == 'result';
+    final score = widget.scorePercentage;
+    final scoreLabel = score == null ? '--' : '${score.toStringAsFixed(0)}%';
+    final summary = widget.correctAnswers != null && widget.totalQuestions != null
+        ? '${widget.correctAnswers} of ${widget.totalQuestions} answers correct'
+        : 'Your answers have been processed successfully.';
 
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -154,10 +181,44 @@ class _ResultContentState extends State<_ResultContent>
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _NetflixPalette.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _NetflixPalette.divider),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Total Score',
+                          style: TextStyle(
+                            color: _NetflixPalette.greyMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Montserrat',
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          scoreLabel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Text(
-                    isCompleted
-                        ? 'You have completed this assessment. Well done!'
-                        : 'Your answers have been saved. Keep going!',
+                    summary,
                     style: const TextStyle(
                       color: _NetflixPalette.grey,
                       fontSize: 14,
@@ -195,6 +256,59 @@ class _ResultContentState extends State<_ResultContent>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ResultLoadingState extends StatelessWidget {
+  const _ResultLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: CircularProgressIndicator(color: _NetflixPalette.red),
+    );
+  }
+}
+
+class _ResultErrorState extends StatelessWidget {
+  final int lessonId;
+  final String message;
+
+  const _ResultErrorState({
+    required this.lessonId,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: _NetflixPalette.red, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontFamily: 'Montserrat',
+              ),
+            ),
+            const SizedBox(height: 20),
+            _ResultButton(
+              label: 'Back to Lesson',
+              icon: Icons.arrow_back_rounded,
+              filled: true,
+              onTap: () => context.go('/lessons/$lessonId'),
+            ),
+          ],
+        ),
       ),
     );
   }

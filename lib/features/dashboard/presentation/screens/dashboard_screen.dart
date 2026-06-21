@@ -1476,89 +1476,103 @@ class _ModulesSectionState extends State<_ModulesSection>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (!_searchOpen) _SectionLabel(text: widget.section.eyebrow),
-              const Spacer(),
-              // Animated search
-              AnimatedBuilder(
-                animation: _searchWidthAnim,
-                builder: (context, child) => SizedBox(
-                  width: _searchWidthAnim.value * 190,
-                  child: FadeTransition(
-                    opacity: _searchFadeAnim,
-                    child: _searchOpen
-                        ? TextField(
-                      controller: _searchCtrl,
-                      autofocus: true,
-                      onChanged: (v) => setState(() => _query = v),
-                      style: const TextStyle(
-                        color: _kTextPrimary,
-                        fontSize: 13,
-                        fontFamily: 'Montserrat',
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Search modules...',
-                        hintStyle: const TextStyle(
-                          color: _kTextMuted,
-                          fontSize: 13,
-                          fontFamily: 'Montserrat',
-                        ),
-                        filled: true,
-                        fillColor: _kSurfaceElevated,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          borderSide: const BorderSide(
-                              color: _kRed, width: 1),
-                        ),
-                      ),
-                    )
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-              ),
-              if (_searchOpen) const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _toggleSearch,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    _searchOpen ? Icons.close_rounded : Icons.search_rounded,
-                    key: ValueKey(_searchOpen),
-                    color: _searchOpen ? _kRed : _kTextSecondary,
-                    size: 20,
-                  ),
-                ),
-              ),
-              if (!_searchOpen) ...[
-                const SizedBox(width: 18),
-                GestureDetector(
-                  onTap: () => context.go(AppRoutes.modules),
-                  child: const Row(
-                    children: [
-                      Text(
-                        'Lihat semua',
-                        style: TextStyle(
-                          color: _kRed,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Montserrat',
+              if (!_searchOpen)
+                Expanded(
+                  child: _SectionLabel(text: widget.section.eyebrow),
+                )
+              else
+                const Spacer(),
+              Flexible(
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _searchWidthAnim,
+                      builder: (context, child) => SizedBox(
+                        width: _searchWidthAnim.value * 190,
+                        child: FadeTransition(
+                          opacity: _searchFadeAnim,
+                          child: _searchOpen
+                              ? TextField(
+                                  controller: _searchCtrl,
+                                  autofocus: true,
+                                  onChanged: (v) => setState(() => _query = v),
+                                  style: const TextStyle(
+                                    color: _kTextPrimary,
+                                    fontSize: 13,
+                                    fontFamily: 'Montserrat',
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search modules...',
+                                    hintStyle: const TextStyle(
+                                      color: _kTextMuted,
+                                      fontSize: 13,
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                    filled: true,
+                                    fillColor: _kSurfaceElevated,
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                      borderSide: const BorderSide(
+                                        color: _kRed,
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ),
-                      SizedBox(width: 2),
-                      Icon(Icons.chevron_right_rounded,
-                          color: _kRed, size: 16),
+                    ),
+                    GestureDetector(
+                      onTap: _toggleSearch,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+                          key: ValueKey(_searchOpen),
+                          color: _searchOpen ? _kRed : _kTextSecondary,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    if (!_searchOpen) ...[
+                      GestureDetector(
+                        onTap: () => context.go(AppRoutes.modules),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Lihat semua',
+                              style: TextStyle(
+                                color: _kRed,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                            SizedBox(width: 2),
+                            Icon(Icons.chevron_right_rounded,
+                                color: _kRed, size: 16),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
         ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,7 +31,10 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
   String? _optionFeedbackMessage;
   bool _isOptionAnswerCorrect = false;
   bool _submitting = false;
+  bool _processingResult = false;
+  int _processingCountdown = 5;
   int? _lastQuestionId;
+  Timer? _processingTimer;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -67,6 +71,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
 
   @override
   void dispose() {
+    _processingTimer?.cancel();
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
@@ -80,7 +85,9 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: attemptAsync.when(
+      body: Stack(
+        children: [
+          attemptAsync.when(
         loading: () => const _NetflixLoader(),
         error: (e, _) => _AttemptError(
           message: e.toString(),
@@ -95,11 +102,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
           if (data == null) return const SizedBox.shrink();
 
           if (data.mode != 'question') {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              context.pushReplacement(
-                '/lessons/${widget.lessonId}/assessment/attempts/${widget.attemptId}/result',
-              );
-            });
+            _startResultProcessing(context);
             return const _NetflixLoader();
           }
 
@@ -189,7 +192,43 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
           );
         },
       ),
+          if (_processingResult)
+            Positioned.fill(
+              child: _AssessmentProcessingOverlay(
+                countdown: _processingCountdown,
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  void _startResultProcessing(BuildContext context) {
+    if (_processingResult) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _processingResult) return;
+      setState(() {
+        _processingResult = true;
+        _processingCountdown = 5;
+      });
+      _processingTimer?.cancel();
+      _processingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (_processingCountdown <= 1) {
+          timer.cancel();
+          context.pushReplacement(
+            '/lessons/${widget.lessonId}/assessment/attempts/${widget.attemptId}/result',
+          );
+          return;
+        }
+        setState(() {
+          _processingCountdown -= 1;
+        });
+      });
+    });
   }
 
   bool _hasAnswer(AssessmentQuestion question) {
@@ -501,22 +540,23 @@ class _NetflixLoaderState extends State<_NetflixLoader>
       child: FadeTransition(
         opacity: _pulse,
         child: Container(
-          width: 48,
-          height: 48,
+          width: 96,
+          height: 96,
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: const Center(
-            child: Text(
-              'N',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'Montserrat',
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.18),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
-            ),
+            ],
+          ),
+          child: Image.asset(
+            'assets/images/yogafx_logo.png',
+            fit: BoxFit.contain,
           ),
         ),
       ),
@@ -525,6 +565,69 @@ class _NetflixLoaderState extends State<_NetflixLoader>
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
+
+class _AssessmentProcessingOverlay extends StatelessWidget {
+  final int countdown;
+
+  const _AssessmentProcessingOverlay({
+    required this.countdown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black.withOpacity(0.82),
+      child: Center(
+        child: Container(
+          width: 280,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          decoration: BoxDecoration(
+            color: const Color(0xFF171717),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.primary.withOpacity(0.28),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 72,
+                height: 72,
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 4,
+                ),
+              ),
+              const SizedBox(height: 22),
+              const Text(
+                'Processing Your Answers',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Showing your score in ${countdown}s',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                  fontFamily: 'Montserrat',
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _AssessmentHeader extends StatelessWidget {
   final AssessmentPlayInfo assessment;

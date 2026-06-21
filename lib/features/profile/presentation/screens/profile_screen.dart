@@ -144,10 +144,10 @@ Future<bool?> _confirmLogout(BuildContext context) {
 }
 
 Future<void> _sendPasswordResetEmail(
-  BuildContext context,
-  WidgetRef ref,
-  ProfileData profile,
-) async {
+    BuildContext context,
+    WidgetRef ref,
+    ProfileData profile,
+    ) async {
   showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -160,8 +160,8 @@ Future<void> _sendPasswordResetEmail(
 
   try {
     await ref.read(authRepositoryProvider).forgotPassword(
-          email: profile.email,
-        );
+      email: profile.email,
+    );
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop();
       ScaffoldMessenger.of(context)
@@ -189,6 +189,8 @@ Future<void> _sendPasswordResetEmail(
   }
 }
 
+// ─── Content ────────────────────────────────────────────────────────────────
+
 class _ProfileContent extends ConsumerWidget {
   final ProfileData profile;
 
@@ -205,90 +207,112 @@ class _ProfileContent extends ConsumerWidget {
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          // ── AppBar ──────────────────────────────────────────────────────
           SliverAppBar(
             backgroundColor: AppColors.background,
             floating: true,
             snap: true,
             elevation: 0,
-            titleSpacing: 20,
+            titleSpacing: 4,
             leading: IconButton(
               onPressed: () => _handleProfileBack(context),
-              icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                size: 18,
+                color: AppColors.textPrimary,
+              ),
             ),
-            title: const Text('Profile'),
+            title: const Text(
+              'My Profile',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Montserrat',
+                letterSpacing: 0.3,
+              ),
+            ),
             actions: [
               IconButton(
                 onPressed: () => _showProfileActions(context, ref),
-                icon: const Icon(Icons.more_vert_rounded),
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),
+
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Align(
+                  // ── Running time chip ──────────────────────────────────
+                  Align(
                     alignment: Alignment.centerRight,
-                    child: RunningLoginTimeCard(),
+                    child: const RunningLoginTimeCard(),
                   ),
-                  const SizedBox(height: 16),
-                  _ProfileHeader(profile: profile),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+
+                  // ── Hero header card ───────────────────────────────────
+                  _ProfileHeroCard(profile: profile),
+                  const SizedBox(height: 12),
+
+                  // ── Primary CTA row ────────────────────────────────────
                   Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => context.push('/profile/edit'),
-                          child: const Text('Edit Profile'),
+                        child: _NetflixButton(
+                          label: 'Edit Profile',
+                          icon: Icons.edit_outlined,
+                          onTap: () => context.push('/profile/edit'),
+                          filled: true,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: () =>
+                        child: _NetflixButton(
+                          label: 'Reset Password',
+                          icon: Icons.lock_reset_outlined,
+                          onTap: () =>
                               _sendPasswordResetEmail(context, ref, profile),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                            side: const BorderSide(color: AppColors.divider),
-                          ),
-                          child: const Text('Reset Password'),
+                          filled: false,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
+
+                  // ── Secondary CTA row ──────────────────────────────────
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => context.push('/certificates'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                            side: const BorderSide(color: AppColors.divider),
-                          ),
-                          child: const Text('Certificates'),
+                        child: _NetflixButton(
+                          label: 'Certificates',
+                          icon: Icons.workspace_premium_outlined,
+                          onTap: () => context.push('/certificates'),
+                          filled: false,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _NetflixButton(
+                          label: 'More Actions',
+                          icon: Icons.more_horiz_rounded,
+                          onTap: () => _showProfileActions(context, ref),
+                          filled: false,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showProfileActions(context, ref),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.divider),
-                      ),
-                      icon: const Icon(Icons.more_horiz_rounded),
-                      label: const Text('More Actions'),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 28),
+
+                  // ── Info sections ──────────────────────────────────────
                   _SectionCard(
                     title: 'Account',
+                    icon: Icons.person_outline_rounded,
                     children: [
                       _InfoRow(label: 'Full name', value: profile.name),
                       _InfoRow(label: 'Email', value: profile.email),
@@ -296,25 +320,27 @@ class _ProfileContent extends ConsumerWidget {
                       _InfoRow(label: 'Instagram', value: profile.instagram),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _SectionCard(
                     title: 'Personal',
+                    icon: Icons.badge_outlined,
                     children: [
                       _InfoRow(label: 'Country', value: profile.country),
                       _InfoRow(label: 'Birth date', value: profile.birthDate),
                       _InfoRow(label: 'Gender', value: profile.gender),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _SectionCard(
                     title: 'Practice',
+                    icon: Icons.self_improvement_rounded,
                     children: [
                       _InfoRow(
                         label: 'Practicing yoga for',
                         value: profile.practicingYogaFor,
                       ),
                       _InfoRow(
-                        label: 'Yoga sequence experience',
+                        label: 'Sequence experience',
                         value: profile.yogaSequenceExperience,
                       ),
                       _InfoRow(
@@ -322,23 +348,24 @@ class _ProfileContent extends ConsumerWidget {
                         value: profile.hoursPerWeek?.toString(),
                       ),
                       _InfoRow(
-                        label: 'Current fitness level',
+                        label: 'Fitness level',
                         value: profile.currentFitnessLevel,
                       ),
                       _InfoRow(
-                        label: 'Flexibility rating',
+                        label: 'Flexibility',
                         value: profile.flexibilityRating,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _SectionCard(
                     title: 'Motivation',
+                    icon: Icons.emoji_objects_outlined,
                     children: [
                       _InfoRow(label: 'Motivation', value: profile.motivation),
                       _InfoRow(label: 'Why YogaFX', value: profile.whyYogafx),
                       _InfoRow(
-                        label: 'How did you find us',
+                        label: 'How you found us',
                         value: profile.howDidYouFindUs,
                       ),
                     ],
@@ -352,6 +379,219 @@ class _ProfileContent extends ConsumerWidget {
     );
   }
 }
+
+// ─── Hero Card ───────────────────────────────────────────────────────────────
+
+class _ProfileHeroCard extends StatelessWidget {
+  final ProfileData profile;
+
+  const _ProfileHeroCard({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider, width: 0.5),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Avatar with red ring accent
+          Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primary, width: 2),
+                ),
+                child: CircleAvatar(
+                  radius: 32,
+                  backgroundColor: AppColors.surfaceElevated,
+                  backgroundImage: profile.profilePhoto != null
+                      ? NetworkImage(profile.profilePhoto!)
+                      : null,
+                  child: profile.profilePhoto == null
+                      ? Text(
+                    _initials(profile.name),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
+                    ),
+                  )
+                      : null,
+                ),
+              ),
+              // Online dot
+              Positioned(
+                bottom: 2,
+                right: 2,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.surface, width: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  profile.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Montserrat',
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  profile.accessTier.name.toUpperCase(),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Montserrat',
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Profile status badge
+                _StatusBadge(completed: profile.profileCompleted),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+        .toUpperCase();
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final bool completed;
+
+  const _StatusBadge({required this.completed});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = completed ? AppColors.success : AppColors.primary;
+    final label = completed ? 'PROFILE COMPLETE' : 'PROFILE INCOMPLETE';
+    final icon = completed ? Icons.verified_rounded : Icons.info_outline_rounded;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.28), width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 11),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Netflix-style Button ────────────────────────────────────────────────────
+
+class _NetflixButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool filled;
+
+  const _NetflixButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.filled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: filled ? AppColors.primary : AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(6),
+            border: filled
+                ? null
+                : Border.all(color: AppColors.divider, width: 0.8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: filled ? Colors.white : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: filled ? Colors.white : AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Action Tile ─────────────────────────────────────────────────────────────
 
 class _ProfileActionTile extends StatelessWidget {
   final IconData icon;
@@ -405,149 +645,75 @@ class _ProfileActionTile extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
-  final ProfileData profile;
-
-  const _ProfileHeader({required this.profile});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider, width: 0.5),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: AppColors.surfaceElevated,
-            backgroundImage: profile.profilePhoto != null
-                ? NetworkImage(profile.profilePhoto!)
-                : null,
-            child: profile.profilePhoto == null
-                ? Text(
-                    _initials(profile.name),
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.name,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  profile.accessTier.name,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: profile.profileCompleted
-                        ? AppColors.success.withOpacity(0.12)
-                        : AppColors.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: profile.profileCompleted
-                          ? AppColors.success.withOpacity(0.3)
-                          : AppColors.primary.withOpacity(0.3),
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Text(
-                    profile.profileCompleted
-                        ? 'PROFILE COMPLETED'
-                        : 'PROFILE INCOMPLETE',
-                    style: TextStyle(
-                      color: profile.profileCompleted
-                          ? AppColors.success
-                          : AppColors.primary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
-        .toUpperCase();
-  }
-}
+// ─── Section Card ─────────────────────────────────────────────────────────────
 
 class _SectionCard extends StatelessWidget {
   final String title;
+  final IconData icon;
   final List<Widget> children;
 
-  const _SectionCard({required this.title, required this.children});
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.divider, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Montserrat',
-              letterSpacing: 1.4,
+          // Section header with subtle left accent bar
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppColors.divider, width: 0.5),
+                left: BorderSide(color: AppColors.primary, width: 3),
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(10),
+                topRight: Radius.circular(10),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.primary, size: 14),
+                const SizedBox(width: 8),
+                Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Montserrat',
+                    letterSpacing: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 14),
-          ...children,
+          // Info rows
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Column(
+              children: children,
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
+// ─── Info Row ─────────────────────────────────────────────────────────────────
 
 class _InfoRow extends StatelessWidget {
   final String label;
@@ -557,6 +723,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEmpty = value == null || value!.trim().isEmpty;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -577,12 +744,16 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             flex: 6,
             child: Text(
-              (value == null || value!.trim().isEmpty) ? '-' : value!,
+              isEmpty ? '—' : value!,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
+              style: TextStyle(
+                color: isEmpty
+                    ? AppColors.textMuted
+                    : AppColors.textPrimary,
                 fontSize: 12,
                 fontFamily: 'Montserrat',
+                fontWeight:
+                isEmpty ? FontWeight.w400 : FontWeight.w500,
               ),
             ),
           ),
@@ -591,6 +762,8 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 class _ProfileSkeleton extends StatelessWidget {
   const _ProfileSkeleton();
@@ -603,32 +776,44 @@ class _ProfileSkeleton extends StatelessWidget {
           backgroundColor: AppColors.background,
           floating: true,
           snap: true,
-          title: Text('Profile'),
+          title: Text(
+            'My Profile',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+            ),
+          ),
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Container(
-                  height: 110,
-                  decoration: BoxDecoration(
-                    color: AppColors.shimmer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                _shimmer(height: 100, radius: 10),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(child: _shimmer(height: 44, radius: 6)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _shimmer(height: 44, radius: 6)),
+                  ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: _shimmer(height: 44, radius: 6)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _shimmer(height: 44, radius: 6)),
+                  ],
+                ),
+                const SizedBox(height: 24),
                 ...List.generate(
-                  3,
-                  (_) => Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Container(
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: AppColors.shimmer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                  4,
+                      (_) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _shimmer(height: 140, radius: 10),
                   ),
                 ),
               ],
@@ -638,7 +823,19 @@ class _ProfileSkeleton extends StatelessWidget {
       ],
     );
   }
+
+  Widget _shimmer({required double height, required double radius}) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.shimmer,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
 }
+
+// ─── Error ────────────────────────────────────────────────────────────────────
 
 class _ProfileError extends StatelessWidget {
   final String message;

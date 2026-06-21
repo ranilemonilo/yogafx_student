@@ -180,6 +180,10 @@ class AssessmentResultData with _$AssessmentResultData {
   const factory AssessmentResultData({
     required String mode,
     @JsonKey(name: 'attempt_id') required int attemptId,
+    @JsonKey(name: 'score_percentage') double? scorePercentage,
+    @JsonKey(name: 'correct_answers') int? correctAnswers,
+    @JsonKey(name: 'total_questions') int? totalQuestions,
+    String? status,
   }) = _AssessmentResultData;
 
   factory AssessmentResultData.fromJson(Map<String, dynamic> json) =>

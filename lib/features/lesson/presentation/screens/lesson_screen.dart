@@ -36,7 +36,13 @@ final _lessonContentKey = GlobalKey<_LessonContentState>();
 
 class LessonScreen extends ConsumerWidget {
   final int lessonId;
-  const LessonScreen({super.key, required this.lessonId});
+  final bool autoPlayVideo;
+
+  const LessonScreen({
+    super.key,
+    required this.lessonId,
+    this.autoPlayVideo = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,6 +72,7 @@ class LessonScreen extends ConsumerWidget {
           data: (lesson) => _LessonContent(
             key: _lessonContentKey,
             lesson: lesson,
+            autoPlayVideo: autoPlayVideo,
           ),
         ),
       ),
@@ -102,7 +109,13 @@ void _showLockedSnackBar(
 
 class _LessonContent extends ConsumerStatefulWidget {
   final LessonDetail lesson;
-  const _LessonContent({super.key, required this.lesson});
+  final bool autoPlayVideo;
+
+  const _LessonContent({
+    super.key,
+    required this.lesson,
+    required this.autoPlayVideo,
+  });
 
   @override
   ConsumerState<_LessonContent> createState() => _LessonContentState();
@@ -200,6 +213,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           _videoErrorMessage = null;
         });
       }
+
+      if (widget.autoPlayVideo && mounted) {
+        await _videoController!.play();
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -259,11 +276,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       setState(() => _autoNextRemainingSeconds = remainingSeconds);
     }
 
-    if (remainingSeconds == 1 && !_isAutoNavigating) {
+    if (remainingSeconds <= 1 && !_isAutoNavigating) {
       _isAutoNavigating = true;
       Future.microtask(() async {
         if (!mounted) return;
-        await _navigateToLesson(context, nextLesson.id);
+        await _navigateToLesson(context, nextLesson.id, autoPlayVideo: true);
       });
     }
   }
@@ -366,10 +383,15 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     _handleLessonBack(context);
   }
 
-  Future<void> _navigateToLesson(BuildContext context, int lessonId) async {
+  Future<void> _navigateToLesson(
+    BuildContext context,
+    int lessonId, {
+    bool autoPlayVideo = false,
+  }) async {
     await prepareForNavigation(context);
     if (!mounted) return;
-    context.go('/lessons/$lessonId');
+    final suffix = autoPlayVideo ? '?autoplay=1' : '';
+    context.go('/lessons/$lessonId$suffix');
   }
 
   Future<void> _refreshLesson() async {

@@ -2881,6 +2881,13 @@ mixin _$AssessmentResultData {
   String get mode => throw _privateConstructorUsedError;
   @JsonKey(name: 'attempt_id')
   int get attemptId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'score_percentage')
+  double? get scorePercentage => throw _privateConstructorUsedError;
+  @JsonKey(name: 'correct_answers')
+  int? get correctAnswers => throw _privateConstructorUsedError;
+  @JsonKey(name: 'total_questions')
+  int? get totalQuestions => throw _privateConstructorUsedError;
+  String? get status => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -2894,7 +2901,14 @@ abstract class $AssessmentResultDataCopyWith<$Res> {
           $Res Function(AssessmentResultData) then) =
       _$AssessmentResultDataCopyWithImpl<$Res, AssessmentResultData>;
   @useResult
-  $Res call({String mode, @JsonKey(name: 'attempt_id') int attemptId});
+  $Res call({
+    String mode,
+    @JsonKey(name: 'attempt_id') int attemptId,
+    @JsonKey(name: 'score_percentage') double? scorePercentage,
+    @JsonKey(name: 'correct_answers') int? correctAnswers,
+    @JsonKey(name: 'total_questions') int? totalQuestions,
+    String? status
+  });
 }
 
 /// @nodoc
@@ -2913,6 +2927,10 @@ class _$AssessmentResultDataCopyWithImpl<$Res,
   $Res call({
     Object? mode = null,
     Object? attemptId = null,
+    Object? scorePercentage = freezed,
+    Object? correctAnswers = freezed,
+    Object? totalQuestions = freezed,
+    Object? status = freezed,
   }) {
     return _then(_value.copyWith(
       mode: null == mode
@@ -2923,6 +2941,22 @@ class _$AssessmentResultDataCopyWithImpl<$Res,
           ? _value.attemptId
           : attemptId // ignore: cast_nullable_to_non_nullable
               as int,
+      scorePercentage: freezed == scorePercentage
+          ? _value.scorePercentage
+          : scorePercentage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      correctAnswers: freezed == correctAnswers
+          ? _value.correctAnswers
+          : correctAnswers // ignore: cast_nullable_to_non_nullable
+              as int?,
+      totalQuestions: freezed == totalQuestions
+          ? _value.totalQuestions
+          : totalQuestions // ignore: cast_nullable_to_non_nullable
+              as int?,
+      status: freezed == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -2935,7 +2969,14 @@ abstract class _$$AssessmentResultDataImplCopyWith<$Res>
       __$$AssessmentResultDataImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String mode, @JsonKey(name: 'attempt_id') int attemptId});
+  $Res call({
+    String mode,
+    @JsonKey(name: 'attempt_id') int attemptId,
+    @JsonKey(name: 'score_percentage') double? scorePercentage,
+    @JsonKey(name: 'correct_answers') int? correctAnswers,
+    @JsonKey(name: 'total_questions') int? totalQuestions,
+    String? status
+  });
 }
 
 /// @nodoc
@@ -2951,6 +2992,10 @@ class __$$AssessmentResultDataImplCopyWithImpl<$Res>
   $Res call({
     Object? mode = null,
     Object? attemptId = null,
+    Object? scorePercentage = freezed,
+    Object? correctAnswers = freezed,
+    Object? totalQuestions = freezed,
+    Object? status = freezed,
   }) {
     return _then(_$AssessmentResultDataImpl(
       mode: null == mode
@@ -2961,6 +3006,22 @@ class __$$AssessmentResultDataImplCopyWithImpl<$Res>
           ? _value.attemptId
           : attemptId // ignore: cast_nullable_to_non_nullable
               as int,
+      scorePercentage: freezed == scorePercentage
+          ? _value.scorePercentage
+          : scorePercentage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      correctAnswers: freezed == correctAnswers
+          ? _value.correctAnswers
+          : correctAnswers // ignore: cast_nullable_to_non_nullable
+              as int?,
+      totalQuestions: freezed == totalQuestions
+          ? _value.totalQuestions
+          : totalQuestions // ignore: cast_nullable_to_non_nullable
+              as int?,
+      status: freezed == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -2970,7 +3031,11 @@ class __$$AssessmentResultDataImplCopyWithImpl<$Res>
 class _$AssessmentResultDataImpl implements _AssessmentResultData {
   const _$AssessmentResultDataImpl(
       {required this.mode,
-      @JsonKey(name: 'attempt_id') required this.attemptId});
+      @JsonKey(name: 'attempt_id') required this.attemptId,
+      @JsonKey(name: 'score_percentage') this.scorePercentage,
+      @JsonKey(name: 'correct_answers') this.correctAnswers,
+      @JsonKey(name: 'total_questions') this.totalQuestions,
+      this.status});
 
   factory _$AssessmentResultDataImpl.fromJson(Map<String, dynamic> json) =>
       _$$AssessmentResultDataImplFromJson(json);
@@ -2980,10 +3045,21 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
   @override
   @JsonKey(name: 'attempt_id')
   final int attemptId;
+  @override
+  @JsonKey(name: 'score_percentage')
+  final double? scorePercentage;
+  @override
+  @JsonKey(name: 'correct_answers')
+  final int? correctAnswers;
+  @override
+  @JsonKey(name: 'total_questions')
+  final int? totalQuestions;
+  @override
+  final String? status;
 
   @override
   String toString() {
-    return 'AssessmentResultData(mode: $mode, attemptId: $attemptId)';
+    return 'AssessmentResultData(mode: $mode, attemptId: $attemptId, scorePercentage: $scorePercentage, correctAnswers: $correctAnswers, totalQuestions: $totalQuestions, status: $status)';
   }
 
   @override
@@ -2993,12 +3069,20 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
             other is _$AssessmentResultDataImpl &&
             (identical(other.mode, mode) || other.mode == mode) &&
             (identical(other.attemptId, attemptId) ||
-                other.attemptId == attemptId));
+                other.attemptId == attemptId) &&
+            (identical(other.scorePercentage, scorePercentage) ||
+                other.scorePercentage == scorePercentage) &&
+            (identical(other.correctAnswers, correctAnswers) ||
+                other.correctAnswers == correctAnswers) &&
+            (identical(other.totalQuestions, totalQuestions) ||
+                other.totalQuestions == totalQuestions) &&
+            (identical(other.status, status) || other.status == status));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, mode, attemptId);
+  int get hashCode => Object.hash(runtimeType, mode, attemptId,
+      scorePercentage, correctAnswers, totalQuestions, status);
 
   @JsonKey(ignore: true)
   @override
@@ -3019,7 +3103,11 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
 abstract class _AssessmentResultData implements AssessmentResultData {
   const factory _AssessmentResultData(
           {required final String mode,
-          @JsonKey(name: 'attempt_id') required final int attemptId}) =
+          @JsonKey(name: 'attempt_id') required final int attemptId,
+          @JsonKey(name: 'score_percentage') final double? scorePercentage,
+          @JsonKey(name: 'correct_answers') final int? correctAnswers,
+          @JsonKey(name: 'total_questions') final int? totalQuestions,
+          final String? status}) =
       _$AssessmentResultDataImpl;
 
   factory _AssessmentResultData.fromJson(Map<String, dynamic> json) =
@@ -3030,6 +3118,17 @@ abstract class _AssessmentResultData implements AssessmentResultData {
   @override
   @JsonKey(name: 'attempt_id')
   int get attemptId;
+  @override
+  @JsonKey(name: 'score_percentage')
+  double? get scorePercentage;
+  @override
+  @JsonKey(name: 'correct_answers')
+  int? get correctAnswers;
+  @override
+  @JsonKey(name: 'total_questions')
+  int? get totalQuestions;
+  @override
+  String? get status;
   @override
   @JsonKey(ignore: true)
   _$$AssessmentResultDataImplCopyWith<_$AssessmentResultDataImpl>

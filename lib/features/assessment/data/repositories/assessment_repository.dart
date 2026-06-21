@@ -18,6 +18,30 @@ class AssessmentRepository {
     return null;
   }
 
+  double? _readPercentage(Map<String, dynamic> map) {
+    const keys = [
+      'score_percentage',
+      'percentage',
+      'scorePercent',
+      'score_percentage_value',
+    ];
+    for (final key in keys) {
+      final value = map[key];
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+    }
+    return null;
+  }
+
+  int? _readInt(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      final value = map[key];
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value);
+    }
+    return null;
+  }
+
   AssessmentAttemptData _buildRedirectAttemptData({
     required String mode,
     required int attemptId,
@@ -184,8 +208,20 @@ class AssessmentRepository {
       final response = await _dio.get(
         '/lessons/$lessonId/assessment/attempts/$attemptId/result',
       );
-      return AssessmentResultData.fromJson(
-        response.data['data'] as Map<String, dynamic>,
+      final body = _extractMap(response.data);
+      final dataMap = _extractMap(body?['data']) ?? body;
+      if (dataMap == null) {
+        throw const ServerException();
+      }
+
+      return AssessmentResultData(
+        mode: (dataMap['mode'] ?? 'completed').toString(),
+        attemptId: (dataMap['attempt_id'] as num?)?.toInt() ?? attemptId,
+        scorePercentage: _readPercentage(dataMap),
+        correctAnswers: _readInt(dataMap, const ['correct_answers', 'correct']),
+        totalQuestions:
+            _readInt(dataMap, const ['total_questions', 'total', 'questions']),
+        status: dataMap['status']?.toString(),
       );
     } on DioException catch (e) {
       throw e.error as AppException? ?? const ServerException();
