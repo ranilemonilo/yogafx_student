@@ -32,6 +32,23 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final authStatus = authState.status;
+
+    if (authStatus == AuthStatus.initial || authStatus == AuthStatus.loading) {
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: _DashboardSkeleton(),
+      );
+    }
+
+    if (authStatus != AuthStatus.authenticated) {
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: SizedBox.shrink(),
+      );
+    }
+
     final dashboardAsync = ref.watch(dashboardProvider);
 
     return Scaffold(

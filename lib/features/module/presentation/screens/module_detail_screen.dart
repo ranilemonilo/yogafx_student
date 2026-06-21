@@ -951,73 +951,6 @@ class _LessonRowState extends State<_LessonRow>
     );
   }
 
-  void _showLockedDialog(BuildContext context, String? reason) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: _kSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.lock_outline, color: _kTextMuted, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Lesson locked',
-                    style: TextStyle(
-                      color: _kTextPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                reason ?? 'You need to complete the previous lesson first.',
-                style: const TextStyle(
-                  color: _kTextSecondary,
-                  fontSize: 13,
-                  fontFamily: 'Montserrat',
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _kNetflixRed,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'Got it',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _AssignmentRow extends StatefulWidget {
@@ -1183,6 +1116,74 @@ class _AssignmentRowState extends State<_AssignmentRow>
       ),
     );
   }
+}
+
+void _showLockedDialog(BuildContext context, String? reason) {
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: _kSurface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.lock_outline, color: _kTextMuted, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Lesson locked',
+                  style: TextStyle(
+                    color: _kTextPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              reason ?? 'You need to complete the previous lesson first.',
+              style: const TextStyle(
+                color: _kTextSecondary,
+                fontSize: 13,
+                fontFamily: 'Montserrat',
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _kNetflixRed,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Got it',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _LessonThumbnailFallback extends StatelessWidget {
