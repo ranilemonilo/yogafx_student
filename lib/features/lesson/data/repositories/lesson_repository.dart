@@ -25,6 +25,13 @@ class LessonRepository {
     data['thumbnail_url'] =
         ApiClient.resolveUrl(data['thumbnail_url'] as String?);
 
+    final videoRaw = data['video'];
+    if (videoRaw is Map) {
+      final video = Map<String, dynamic>.from(videoRaw);
+      video['hls_url'] = ApiClient.resolveUrl(video['hls_url'] as String?);
+      data['video'] = video;
+    }
+
     final audioRaw = data['audio'];
     if (audioRaw is Map) {
       final audio = Map<String, dynamic>.from(audioRaw);

@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../../data/models/dashboard_model.dart';
 
@@ -337,6 +338,9 @@ class _YogaFXAppBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(profileProvider);
+    final authState = ref.watch(authProvider);
+
     return SliverAppBar(
       backgroundColor: Colors.transparent,
       expandedHeight: 0,
@@ -370,20 +374,88 @@ class _YogaFXAppBar extends ConsumerWidget {
           padding: const EdgeInsets.only(right: 16, left: 4),
           child: GestureDetector(
             onTap: () => _showProfileMenu(context, ref),
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: _kRed,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Icon(Icons.person_rounded, color: _kWhite, size: 18),
+            child: _DashboardProfileAvatar(
+              imageUrl: profileAsync.value?.profilePhoto ?? authState.user?.avatar,
+              displayName: profileAsync.value?.name ?? authState.user?.name ?? 'Student',
             ),
           ),
         ),
       ],
     );
   }
+}
+
+class _DashboardProfileAvatar extends StatelessWidget {
+  final String? imageUrl;
+  final String displayName;
+
+  const _DashboardProfileAvatar({
+    required this.imageUrl,
+    required this.displayName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
+
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: _kRed,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasImage
+          ? AuthNetworkImage(
+              imageUrl: imageUrl!,
+              fit: BoxFit.cover,
+              placeholderBuilder: (_) => _DashboardProfileFallback(
+                displayName: displayName,
+              ),
+              errorBuilderWidget: (_, __) => _DashboardProfileFallback(
+                displayName: displayName,
+              ),
+            )
+          : _DashboardProfileFallback(displayName: displayName),
+    );
+  }
+}
+
+class _DashboardProfileFallback extends StatelessWidget {
+  final String displayName;
+
+  const _DashboardProfileFallback({required this.displayName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        _initials(displayName),
+        style: const TextStyle(
+          color: _kWhite,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'Montserrat',
+        ),
+      ),
+    );
+  }
+}
+
+String _initials(String value) {
+  final parts = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return 'Y';
+  if (parts.length == 1) {
+    return parts.first.substring(0, 1).toUpperCase();
+  }
+  return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+      .toUpperCase();
 }
 
 class _InstantDialogButton extends StatelessWidget {

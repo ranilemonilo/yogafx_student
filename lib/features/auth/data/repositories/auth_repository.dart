@@ -22,9 +22,11 @@ class AuthRepository {
         'device_name': deviceName,
       });
 
-      final loginResponse = LoginResponse.fromJson(
+      final data = Map<String, dynamic>.from(
         response.data['data'] as Map<String, dynamic>,
       );
+      _normalizeUserUrls(data['user']);
+      final loginResponse = LoginResponse.fromJson(data);
 
       await SecureStorageService.saveToken(loginResponse.token);
       return loginResponse;
@@ -72,9 +74,11 @@ class AuthRepository {
   Future<AuthUser?> getCurrentUser() async {
     try {
       final response = await _dio.get('/me');
-      return AuthUser.fromJson(
+      final data = Map<String, dynamic>.from(
         response.data['data'] as Map<String, dynamic>,
       );
+      _normalizeUserUrls(data);
+      return AuthUser.fromJson(data);
     } on DioException catch (e) {
       final error = e.error;
       if (error is UnauthorizedException) {
@@ -83,5 +87,14 @@ class AuthRepository {
       }
       throw error as AppException? ?? const ServerException();
     }
+  }
+
+  void _normalizeUserUrls(Object? rawUser) {
+    if (rawUser is! Map) return;
+    final user = Map<String, dynamic>.from(rawUser);
+    user['avatar'] = ApiClient.resolveUrl(user['avatar'] as String?);
+    rawUser
+      ..clear()
+      ..addAll(user);
   }
 }

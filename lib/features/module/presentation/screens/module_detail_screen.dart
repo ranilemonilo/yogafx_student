@@ -74,7 +74,8 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
     _heroFade = CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOut);
     _heroCtrl.forward();
 
-    final itemCount = widget.module.lessons.length + 3; // header + progress + desc
+    final itemCount =
+        widget.module.lessons.length + widget.module.assignments.length + 5;
     _itemCtrlList = List.generate(
       itemCount,
           (i) => AnimationController(
@@ -119,6 +120,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
+    final assignments = _parseAssignments(module.assignments);
 
     return CustomScrollView(
       slivers: [
@@ -197,6 +199,29 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _LessonRow(
                           lesson: entry.value,
+                          index: entry.key,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (assignments.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  _animated(
+                    module.lessons.length + 3,
+                    _SectionHeader(
+                      title: 'Assignments',
+                      count: assignments.length,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...assignments.asMap().entries.map(
+                        (entry) => _animated(
+                      module.lessons.length + entry.key + 4,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _AssignmentRow(
+                          assignment: entry.value,
                           index: entry.key,
                         ),
                       ),
@@ -704,6 +729,43 @@ class _SectionHeader extends StatelessWidget {
 
 // ─── Lesson Row ───────────────────────────────────────────────────────────────
 
+List<_ModuleAssignmentItem> _parseAssignments(List<dynamic> assignments) {
+  return assignments
+      .whereType<Map>()
+      .map((raw) {
+        final data = Map<String, dynamic>.from(raw);
+        return _ModuleAssignmentItem(
+          id: data['id'] as int? ?? 0,
+          title: (data['title'] ?? data['name'] ?? 'Assignment').toString(),
+          description: data['description']?.toString(),
+          isLocked: data['is_locked'] as bool? ?? false,
+          lockReason: data['lock_reason']?.toString(),
+          status: (data['status'] ?? data['submission_status'] ?? 'available')
+              .toString(),
+        );
+      })
+      .where((item) => item.id > 0)
+      .toList();
+}
+
+class _ModuleAssignmentItem {
+  final int id;
+  final String title;
+  final String? description;
+  final bool isLocked;
+  final String? lockReason;
+  final String status;
+
+  const _ModuleAssignmentItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.isLocked,
+    required this.lockReason,
+    required this.status,
+  });
+}
+
 class _LessonRow extends StatefulWidget {
   final ModuleLesson lesson;
   final int index;
@@ -949,6 +1011,171 @@ class _LessonRowState extends State<_LessonRow>
                     ),
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AssignmentRow extends StatefulWidget {
+  final _ModuleAssignmentItem assignment;
+  final int index;
+
+  const _AssignmentRow({
+    required this.assignment,
+    required this.index,
+  });
+
+  @override
+  State<_AssignmentRow> createState() => _AssignmentRowState();
+}
+
+class _AssignmentRowState extends State<_AssignmentRow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressCtrl;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 130),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final assignment = widget.assignment;
+    final isLocked = assignment.isLocked;
+    final statusLabel = assignment.status.replaceAll('_', ' ');
+
+    return GestureDetector(
+      onTap: isLocked
+          ? () => _showLockedDialog(context, assignment.lockReason)
+          : () => context.pushNamed(
+                'assignment',
+                pathParameters: {
+                  'assignmentId': assignment.id.toString(),
+                },
+              ),
+      onTapDown: (_) => _pressCtrl.forward(),
+      onTapUp: (_) => _pressCtrl.reverse(),
+      onTapCancel: () => _pressCtrl.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _kSurface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _kDivider, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: isLocked
+                      ? Colors.black.withOpacity(0.25)
+                      : _kNetflixRed.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  isLocked
+                      ? Icons.lock_outline_rounded
+                      : Icons.assignment_outlined,
+                  color: isLocked ? _kTextMuted : _kNetflixRed,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${widget.index + 1}. ',
+                          style: const TextStyle(
+                            color: _kTextMuted,
+                            fontSize: 12,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            assignment.title,
+                            style: TextStyle(
+                              color: isLocked ? _kTextMuted : _kTextPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Montserrat',
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (assignment.description != null &&
+                        assignment.description!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        assignment.description!,
+                        style: const TextStyle(
+                          color: _kTextMuted,
+                          fontSize: 11,
+                          height: 1.45,
+                          fontFamily: 'Montserrat',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isLocked
+                            ? _kSurfaceElevated
+                            : _kNetflixRed.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        isLocked ? 'Locked' : statusLabel,
+                        style: TextStyle(
+                          color: isLocked ? _kTextMuted : _kNetflixRed,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                isLocked ? Icons.lock_rounded : Icons.chevron_right_rounded,
+                color: _kTextMuted,
               ),
             ],
           ),

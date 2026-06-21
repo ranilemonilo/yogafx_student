@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +18,8 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
+  static const int _maxProfilePhotoBytes = 5 * 1024 * 1024;
+
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -36,6 +41,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   String? _error;
   CountryOption? _selectedCountry;
   CountryOption? _selectedDialCountry;
+  File? _selectedProfilePhoto;
+  String? _selectedProfilePhotoName;
 
   @override
   void dispose() {
@@ -82,6 +89,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               key: _formKey,
               child: Column(
                 children: [
+                  _buildProfilePhotoSection(profile),
+                  const SizedBox(height: 20),
                   _buildField(_firstNameController, 'First name'),
                   const SizedBox(height: 14),
                   _buildField(_lastNameController, 'Last name'),
@@ -183,6 +192,51 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _findUsController.text = profile.howDidYouFindUs ?? '';
   }
 
+  Widget _buildProfilePhotoSection(ProfileData profile) {
+    ImageProvider? imageProvider;
+    if (_selectedProfilePhoto != null) {
+      imageProvider = FileImage(_selectedProfilePhoto!);
+    } else if (profile.profilePhoto != null &&
+        profile.profilePhoto!.isNotEmpty) {
+      imageProvider = NetworkImage(profile.profilePhoto!);
+    }
+
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 42,
+          backgroundColor: AppColors.surfaceElevated,
+          backgroundImage: imageProvider,
+          child: imageProvider == null
+              ? Text(
+                  _initials(profile.name),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Montserrat',
+                    fontSize: 24,
+                  ),
+                )
+              : null,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: _saving ? null : _pickProfilePhoto,
+          child: const Text('Change Profile Photo'),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'JPG atau JPEG, maksimal 5 MB.',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontFamily: 'Montserrat',
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildField(TextEditingController controller, String label,
       {int maxLines = 1}) {
     return TextFormField(
@@ -230,14 +284,42 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  String _buildWhatsAppValue() {
-    final number = _whatsAppNumberController.text.trim();
-    final dialCode = _selectedDialCountry?.dialCode ?? '';
-    if (number.isEmpty) {
-      return '';
+  Future<void> _pickProfilePhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg'],
+      allowMultiple: false,
+      withData: false,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+    final path = file.path;
+    final name = file.name;
+    final size = file.size;
+    final lowerName = name.toLowerCase();
+
+    if (path == null) {
+      setState(() => _error = 'Failed to read the selected image.');
+      return;
     }
-    final normalized = number.startsWith('0') ? number.substring(1) : number;
-    return '$dialCode$normalized';
+
+    if (!(lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'))) {
+      setState(() => _error = 'Profile photo must be a JPG or JPEG image.');
+      return;
+    }
+
+    if (size > _maxProfilePhotoBytes) {
+      setState(() => _error = 'Profile photo must be 5 MB or smaller.');
+      return;
+    }
+
+    setState(() {
+      _selectedProfilePhoto = File(path);
+      _selectedProfilePhotoName = name;
+      _error = null;
+    });
   }
 
   Future<void> _save() async {
@@ -247,24 +329,29 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _error = null;
     });
     try {
-      await ref.read(profileRepositoryProvider).updateProfile({
-        'first_name': _firstNameController.text.trim(),
-        'last_name': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'whatsapp': _buildWhatsAppValue(),
-        'instagram': _instagramController.text.trim(),
-        'country': _selectedCountry?.name ?? '',
-        'birth_date': _birthDateController.text.trim(),
-        'gender': _genderController.text.trim(),
-        'practicing_yoga_for': _practicingController.text.trim(),
-        'yoga_sequence_experience': _sequenceController.text.trim(),
-        'hours_per_week': int.tryParse(_hoursPerWeekController.text.trim()),
-        'current_fitness_level': _fitnessLevelController.text.trim(),
-        'flexibility_rating': _flexibilityController.text.trim(),
-        'motivation': _motivationController.text.trim(),
-        'why_yogafx': _whyYogaFxController.text.trim(),
-        'how_did_you_find_us': _findUsController.text.trim(),
-      });
+      await ref.read(profileRepositoryProvider).updateProfile(
+        {
+          'first_name': _firstNameController.text.trim(),
+          'last_name': _lastNameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'whatsapp_country_code': _selectedDialCountry?.dialCode ?? '',
+          'whatsapp_number': _whatsAppNumberController.text.trim(),
+          'instagram': _instagramController.text.trim(),
+          'country': _selectedCountry?.name ?? '',
+          'birth_date': _birthDateController.text.trim(),
+          'gender': _genderController.text.trim(),
+          'practicing_yoga_for': _practicingController.text.trim(),
+          'yoga_sequence_experience': _sequenceController.text.trim(),
+          'hours_per_week': int.tryParse(_hoursPerWeekController.text.trim()) ?? '',
+          'current_fitness_level': _fitnessLevelController.text.trim(),
+          'flexibility_rating': _flexibilityController.text.trim(),
+          'motivation': _motivationController.text.trim(),
+          'why_yogafx': _whyYogaFxController.text.trim(),
+          'how_did_you_find_us': _findUsController.text.trim(),
+        },
+        profilePhotoPath: _selectedProfilePhoto?.path,
+        profilePhotoFileName: _selectedProfilePhotoName,
+      );
       ref.invalidate(profileProvider);
       if (mounted) context.pop();
     } catch (e) {
@@ -273,4 +360,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (mounted) setState(() => _saving = false);
     }
   }
+}
+
+String _initials(String value) {
+  final parts = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return 'Y';
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+  return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+      .toUpperCase();
 }

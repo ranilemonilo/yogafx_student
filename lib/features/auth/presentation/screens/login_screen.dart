@@ -268,11 +268,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             Row(
               children: [
                 _LinkButton(
-                  label: 'Forgot password?',
-                  onTap: () => context.push(AppRoutes.forgotPassword),
-                ),
-                const Spacer(),
-                _LinkButton(
                   label: 'Reset password',
                   onTap: () => context.push(AppRoutes.resetPassword),
                 ),

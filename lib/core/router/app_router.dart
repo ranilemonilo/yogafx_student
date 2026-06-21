@@ -6,7 +6,6 @@ import '../../features/assessment/presentation/screens/assessment_result_screen.
 import '../../features/assessment/presentation/screens/assessment_screen.dart';
 import '../../features/assignment/presentation/screens/assignment_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
-import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/certificate/presentation/screens/certificate_detail_screen.dart';
@@ -27,7 +26,6 @@ import '../shell/main_shell.dart';
 
 class AppRoutes {
   static const login = '/login';
-  static const forgotPassword = '/forgot-password';
   static const resetPassword = '/reset-password';
   static const dashboard = '/dashboard';
   static const modules = '/modules';
@@ -62,7 +60,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthenticated = authState.isAuthenticated;
       final publicRoutes = {
         AppRoutes.login,
-        AppRoutes.forgotPassword,
         AppRoutes.resetPassword,
       };
       final isPublicRoute = publicRoutes.contains(state.matchedLocation);
@@ -80,11 +77,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         name: 'login',
         builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.forgotPassword,
-        name: 'forgotPassword',
-        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: AppRoutes.resetPassword,

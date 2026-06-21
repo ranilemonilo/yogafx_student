@@ -111,6 +111,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   AudioPlayer? _audioPlayer;
   bool _videoInitialized = false;
   bool _videoError = false;
+  String? _videoErrorMessage;
   bool _audioLoading = false;
   bool _audioReady = false;
   String? _audioError;
@@ -161,6 +162,17 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Future<void> _initVideo() async {
     final video = widget.lesson.video!;
     try {
+      final canReachVideoHost = await _canResolveMediaHost(video.hlsUrl);
+      if (!canReachVideoHost) {
+        if (mounted) {
+          setState(() {
+            _videoError = true;
+            _videoErrorMessage = 'No internet connection. Video could not be loaded.';
+          });
+        }
+        return;
+      }
+
       _videoController = VideoPlayerController.networkUrl(
         Uri.parse(video.hlsUrl),
       );
@@ -173,9 +185,20 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       }
 
       _videoController!.addListener(_onVideoProgress);
-      if (mounted) setState(() => _videoInitialized = true);
+      if (mounted) {
+        setState(() {
+          _videoInitialized = true;
+          _videoError = false;
+          _videoErrorMessage = null;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => _videoError = true);
+      if (mounted) {
+        setState(() {
+          _videoError = true;
+          _videoErrorMessage = 'Failed to load video.';
+        });
+      }
     }
   }
 
@@ -254,6 +277,15 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     });
 
     try {
+      final canReachAudioHost = await _canResolveMediaHost(url);
+      if (!canReachAudioHost) {
+        if (mounted) {
+          setState(() => _audioError =
+              'No internet connection. Audio could not be loaded.');
+        }
+        return;
+      }
+
       _audioPlayer?.dispose();
       final player = AudioPlayer();
       final token = await SecureStorageService.getToken();
@@ -270,11 +302,25 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       setState(() {
         _audioPlayer = player;
         _audioReady = true;
+        _audioError = null;
       });
     } catch (e) {
       if (mounted) setState(() => _audioError = 'Audio failed to load');
     } finally {
       if (mounted) setState(() => _audioLoading = false);
+    }
+  }
+
+  Future<bool> _canResolveMediaHost(String url) async {
+    final uri = Uri.tryParse(url);
+    final host = uri?.host;
+    if (host == null || host.isEmpty) return false;
+
+    try {
+      final result = await InternetAddress.lookup(host);
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
     }
   }
 
@@ -397,6 +443,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             lesson: lesson,
             videoInitialized: _videoInitialized,
             videoError: _videoError,
+            videoErrorMessage: _videoErrorMessage,
             videoController: _videoController,
             onRetry: _initVideo,
             onBack: () => _handleBack(context),
@@ -509,6 +556,7 @@ class _VideoSection extends StatelessWidget {
   final LessonDetail lesson;
   final bool videoInitialized;
   final bool videoError;
+  final String? videoErrorMessage;
   final VideoPlayerController? videoController;
   final VoidCallback onRetry;
   final VoidCallback onBack;
@@ -521,6 +569,7 @@ class _VideoSection extends StatelessWidget {
     required this.lesson,
     required this.videoInitialized,
     required this.videoError,
+    required this.videoErrorMessage,
     required this.videoController,
     required this.onRetry,
     required this.onBack,
@@ -580,7 +629,7 @@ class _VideoSection extends StatelessWidget {
     if (videoError) {
       return _VideoPlaceholder(
         thumbnailUrl: lesson.thumbnailUrl,
-        message: 'Failed to load video.',
+        message: videoErrorMessage ?? 'Failed to load video.',
         showRetry: true,
         onRetry: onRetry,
       );
