@@ -29,6 +29,7 @@ class AppRoutes {
   static const login = '/login';
   static const loginOtp = '/login/otp';
   static const resetPassword = '/reset-password';
+  static const resetPasswordNative = '/reset-password/:token';
   static const dashboard = '/dashboard';
   static const modules = '/modules';
   static const moduleDetail = '/modules/:moduleId';
@@ -64,8 +65,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         AppRoutes.login,
         AppRoutes.loginOtp,
         AppRoutes.resetPassword,
+        AppRoutes.resetPasswordNative,
       };
-      final isPublicRoute = publicRoutes.contains(state.matchedLocation);
+      final isResetPasswordNativeRoute =
+          state.matchedLocation.startsWith('/reset-password/');
+      final isPublicRoute = publicRoutes.contains(state.matchedLocation) ||
+          isResetPasswordNativeRoute;
 
       if (isInitial || isLoading) return null;
       if (!isAuthenticated && !isPublicRoute) return AppRoutes.login;
@@ -93,6 +98,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.resetPassword,
         name: 'resetPassword',
         builder: (context, state) => const ResetPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPasswordNative,
+        name: 'resetPasswordNative',
+        builder: (context, state) => ResetPasswordScreen(
+          token: state.pathParameters['token'],
+          initialEmail: state.uri.queryParameters['email'],
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),

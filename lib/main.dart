@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'features/auth/presentation/widgets/reset_password_deep_link_handler.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
@@ -38,6 +39,9 @@ class YogaFXApp extends ConsumerWidget {
       theme: AppTheme.dark,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) => ResetPasswordDeepLinkHandler(
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

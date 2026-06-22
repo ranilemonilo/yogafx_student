@@ -8,6 +8,8 @@ import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/running_login_time_provider.dart';
+import '../utils/access_time_helper.dart';
 import '../../data/models/dashboard_model.dart';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
@@ -39,7 +41,9 @@ void _showLockedModuleSnackBar(BuildContext context) {
 
 bool _canOpenModule(String status) {
   final normalizedStatus = status.toLowerCase();
-  return normalizedStatus == 'active' || normalizedStatus == 'completed';
+  return normalizedStatus != 'locked' &&
+      normalizedStatus != 'unavailable' &&
+      normalizedStatus != 'hidden';
 }
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
@@ -1845,12 +1849,18 @@ class _ModuleThumbnailPlaceholder extends StatelessWidget {
 
 // ─── Access Time Section ──────────────────────────────────────────────────────
 
-class _AccessTimeSection extends StatelessWidget {
+class _AccessTimeSection extends ConsumerWidget {
   final AccessTimeSummary summary;
   const _AccessTimeSection({required this.summary});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final durationAsync = ref.watch(runningLoginTimeProvider);
+    final displayedAccessDuration = durationAsync.value ??
+        Duration(
+          seconds: calculateDisplayedAccessSeconds(summary, DateTime.now()),
+        );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -1888,7 +1898,7 @@ class _AccessTimeSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  summary.formattedTotal,
+                  formatAccessDuration(displayedAccessDuration),
                   style: const TextStyle(
                     color: _kTextPrimary,
                     fontSize: 16,

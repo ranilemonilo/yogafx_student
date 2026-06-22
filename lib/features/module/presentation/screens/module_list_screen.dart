@@ -34,7 +34,9 @@ void _showLockedModuleSnackBar(BuildContext context) {
 
 bool _canOpenModule(String status) {
   final normalizedStatus = status.toLowerCase();
-  return normalizedStatus == 'active' || normalizedStatus == 'completed';
+  return normalizedStatus != 'locked' &&
+      normalizedStatus != 'unavailable' &&
+      normalizedStatus != 'hidden';
 }
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────

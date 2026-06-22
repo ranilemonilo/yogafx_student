@@ -50,6 +50,7 @@ dependencies:
   equatable: ^2.0.5
   url_launcher: ^6.3.0
   flutter_html: ^3.0.0-beta.2
+  app_links: ^6.3.2
 
 dev_dependencies:
   flutter_test:

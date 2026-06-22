@@ -226,6 +226,11 @@ _$AccessTimeSummaryImpl _$$AccessTimeSummaryImplFromJson(
         Map<String, dynamic> json) =>
     _$AccessTimeSummaryImpl(
       formattedTotal: json['formatted_total_access_duration'] as String,
+      totalAccessDurationSeconds: (json['total_access_duration_seconds'] as num?)
+          ?.toInt(),
+      runningTotalAccessDurationSeconds:
+          (json['running_total_access_duration_seconds'] as num?)?.toInt(),
+      activeSessionLoginAt: json['active_session_login_at'] as String?,
       lastVisitAt: json['last_visit_at'] as String?,
       currentlyActive: json['currently_active'] as bool,
     );
@@ -234,6 +239,10 @@ Map<String, dynamic> _$$AccessTimeSummaryImplToJson(
         _$AccessTimeSummaryImpl instance) =>
     <String, dynamic>{
       'formatted_total_access_duration': instance.formattedTotal,
+      'total_access_duration_seconds': instance.totalAccessDurationSeconds,
+      'running_total_access_duration_seconds':
+          instance.runningTotalAccessDurationSeconds,
+      'active_session_login_at': instance.activeSessionLoginAt,
       'last_visit_at': instance.lastVisitAt,
       'currently_active': instance.currentlyActive,
     };

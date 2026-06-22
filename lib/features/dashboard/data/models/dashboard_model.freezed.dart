@@ -2554,6 +2554,13 @@ AccessTimeSummary _$AccessTimeSummaryFromJson(Map<String, dynamic> json) {
 mixin _$AccessTimeSummary {
   @JsonKey(name: 'formatted_total_access_duration')
   String get formattedTotal => throw _privateConstructorUsedError;
+  @JsonKey(name: 'total_access_duration_seconds')
+  int? get totalAccessDurationSeconds => throw _privateConstructorUsedError;
+  @JsonKey(name: 'running_total_access_duration_seconds')
+  int? get runningTotalAccessDurationSeconds =>
+      throw _privateConstructorUsedError;
+  @JsonKey(name: 'active_session_login_at')
+  String? get activeSessionLoginAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'last_visit_at')
   String? get lastVisitAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'currently_active')
@@ -2573,6 +2580,11 @@ abstract class $AccessTimeSummaryCopyWith<$Res> {
   @useResult
   $Res call(
       {@JsonKey(name: 'formatted_total_access_duration') String formattedTotal,
+      @JsonKey(name: 'total_access_duration_seconds')
+      int? totalAccessDurationSeconds,
+      @JsonKey(name: 'running_total_access_duration_seconds')
+      int? runningTotalAccessDurationSeconds,
+      @JsonKey(name: 'active_session_login_at') String? activeSessionLoginAt,
       @JsonKey(name: 'last_visit_at') String? lastVisitAt,
       @JsonKey(name: 'currently_active') bool currentlyActive});
 }
@@ -2591,6 +2603,9 @@ class _$AccessTimeSummaryCopyWithImpl<$Res, $Val extends AccessTimeSummary>
   @override
   $Res call({
     Object? formattedTotal = null,
+    Object? totalAccessDurationSeconds = freezed,
+    Object? runningTotalAccessDurationSeconds = freezed,
+    Object? activeSessionLoginAt = freezed,
     Object? lastVisitAt = freezed,
     Object? currentlyActive = null,
   }) {
@@ -2599,6 +2614,19 @@ class _$AccessTimeSummaryCopyWithImpl<$Res, $Val extends AccessTimeSummary>
           ? _value.formattedTotal
           : formattedTotal // ignore: cast_nullable_to_non_nullable
               as String,
+      totalAccessDurationSeconds: freezed == totalAccessDurationSeconds
+          ? _value.totalAccessDurationSeconds
+          : totalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
+              as int?,
+      runningTotalAccessDurationSeconds:
+          freezed == runningTotalAccessDurationSeconds
+              ? _value.runningTotalAccessDurationSeconds
+              : runningTotalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      activeSessionLoginAt: freezed == activeSessionLoginAt
+          ? _value.activeSessionLoginAt
+          : activeSessionLoginAt // ignore: cast_nullable_to_non_nullable
+              as String?,
       lastVisitAt: freezed == lastVisitAt
           ? _value.lastVisitAt
           : lastVisitAt // ignore: cast_nullable_to_non_nullable
@@ -2621,6 +2649,11 @@ abstract class _$$AccessTimeSummaryImplCopyWith<$Res>
   @useResult
   $Res call(
       {@JsonKey(name: 'formatted_total_access_duration') String formattedTotal,
+      @JsonKey(name: 'total_access_duration_seconds')
+      int? totalAccessDurationSeconds,
+      @JsonKey(name: 'running_total_access_duration_seconds')
+      int? runningTotalAccessDurationSeconds,
+      @JsonKey(name: 'active_session_login_at') String? activeSessionLoginAt,
       @JsonKey(name: 'last_visit_at') String? lastVisitAt,
       @JsonKey(name: 'currently_active') bool currentlyActive});
 }
@@ -2637,6 +2670,9 @@ class __$$AccessTimeSummaryImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? formattedTotal = null,
+    Object? totalAccessDurationSeconds = freezed,
+    Object? runningTotalAccessDurationSeconds = freezed,
+    Object? activeSessionLoginAt = freezed,
     Object? lastVisitAt = freezed,
     Object? currentlyActive = null,
   }) {
@@ -2645,6 +2681,19 @@ class __$$AccessTimeSummaryImplCopyWithImpl<$Res>
           ? _value.formattedTotal
           : formattedTotal // ignore: cast_nullable_to_non_nullable
               as String,
+      totalAccessDurationSeconds: freezed == totalAccessDurationSeconds
+          ? _value.totalAccessDurationSeconds
+          : totalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
+              as int?,
+      runningTotalAccessDurationSeconds:
+          freezed == runningTotalAccessDurationSeconds
+              ? _value.runningTotalAccessDurationSeconds
+              : runningTotalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      activeSessionLoginAt: freezed == activeSessionLoginAt
+          ? _value.activeSessionLoginAt
+          : activeSessionLoginAt // ignore: cast_nullable_to_non_nullable
+              as String?,
       lastVisitAt: freezed == lastVisitAt
           ? _value.lastVisitAt
           : lastVisitAt // ignore: cast_nullable_to_non_nullable
@@ -2663,6 +2712,11 @@ class _$AccessTimeSummaryImpl implements _AccessTimeSummary {
   const _$AccessTimeSummaryImpl(
       {@JsonKey(name: 'formatted_total_access_duration')
       required this.formattedTotal,
+      @JsonKey(name: 'total_access_duration_seconds')
+      this.totalAccessDurationSeconds,
+      @JsonKey(name: 'running_total_access_duration_seconds')
+      this.runningTotalAccessDurationSeconds,
+      @JsonKey(name: 'active_session_login_at') this.activeSessionLoginAt,
       @JsonKey(name: 'last_visit_at') this.lastVisitAt,
       @JsonKey(name: 'currently_active') required this.currentlyActive});
 
@@ -2673,6 +2727,15 @@ class _$AccessTimeSummaryImpl implements _AccessTimeSummary {
   @JsonKey(name: 'formatted_total_access_duration')
   final String formattedTotal;
   @override
+  @JsonKey(name: 'total_access_duration_seconds')
+  final int? totalAccessDurationSeconds;
+  @override
+  @JsonKey(name: 'running_total_access_duration_seconds')
+  final int? runningTotalAccessDurationSeconds;
+  @override
+  @JsonKey(name: 'active_session_login_at')
+  final String? activeSessionLoginAt;
+  @override
   @JsonKey(name: 'last_visit_at')
   final String? lastVisitAt;
   @override
@@ -2681,7 +2744,7 @@ class _$AccessTimeSummaryImpl implements _AccessTimeSummary {
 
   @override
   String toString() {
-    return 'AccessTimeSummary(formattedTotal: $formattedTotal, lastVisitAt: $lastVisitAt, currentlyActive: $currentlyActive)';
+    return 'AccessTimeSummary(formattedTotal: $formattedTotal, totalAccessDurationSeconds: $totalAccessDurationSeconds, runningTotalAccessDurationSeconds: $runningTotalAccessDurationSeconds, activeSessionLoginAt: $activeSessionLoginAt, lastVisitAt: $lastVisitAt, currentlyActive: $currentlyActive)';
   }
 
   @override
@@ -2691,6 +2754,16 @@ class _$AccessTimeSummaryImpl implements _AccessTimeSummary {
             other is _$AccessTimeSummaryImpl &&
             (identical(other.formattedTotal, formattedTotal) ||
                 other.formattedTotal == formattedTotal) &&
+            (identical(
+                    other.totalAccessDurationSeconds, totalAccessDurationSeconds) ||
+                other.totalAccessDurationSeconds ==
+                    totalAccessDurationSeconds) &&
+            (identical(other.runningTotalAccessDurationSeconds,
+                    runningTotalAccessDurationSeconds) ||
+                other.runningTotalAccessDurationSeconds ==
+                    runningTotalAccessDurationSeconds) &&
+            (identical(other.activeSessionLoginAt, activeSessionLoginAt) ||
+                other.activeSessionLoginAt == activeSessionLoginAt) &&
             (identical(other.lastVisitAt, lastVisitAt) ||
                 other.lastVisitAt == lastVisitAt) &&
             (identical(other.currentlyActive, currentlyActive) ||
@@ -2700,7 +2773,14 @@ class _$AccessTimeSummaryImpl implements _AccessTimeSummary {
   @JsonKey(ignore: true)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, formattedTotal, lastVisitAt, currentlyActive);
+      Object.hash(
+          runtimeType,
+          formattedTotal,
+          totalAccessDurationSeconds,
+          runningTotalAccessDurationSeconds,
+          activeSessionLoginAt,
+          lastVisitAt,
+          currentlyActive);
 
   @JsonKey(ignore: true)
   @override
@@ -2721,6 +2801,12 @@ abstract class _AccessTimeSummary implements AccessTimeSummary {
   const factory _AccessTimeSummary(
       {@JsonKey(name: 'formatted_total_access_duration')
       required final String formattedTotal,
+      @JsonKey(name: 'total_access_duration_seconds')
+      final int? totalAccessDurationSeconds,
+      @JsonKey(name: 'running_total_access_duration_seconds')
+      final int? runningTotalAccessDurationSeconds,
+      @JsonKey(name: 'active_session_login_at')
+      final String? activeSessionLoginAt,
       @JsonKey(name: 'last_visit_at') final String? lastVisitAt,
       @JsonKey(name: 'currently_active')
       required final bool currentlyActive}) = _$AccessTimeSummaryImpl;
@@ -2731,6 +2817,15 @@ abstract class _AccessTimeSummary implements AccessTimeSummary {
   @override
   @JsonKey(name: 'formatted_total_access_duration')
   String get formattedTotal;
+  @override
+  @JsonKey(name: 'total_access_duration_seconds')
+  int? get totalAccessDurationSeconds;
+  @override
+  @JsonKey(name: 'running_total_access_duration_seconds')
+  int? get runningTotalAccessDurationSeconds;
+  @override
+  @JsonKey(name: 'active_session_login_at')
+  String? get activeSessionLoginAt;
   @override
   @JsonKey(name: 'last_visit_at')
   String? get lastVisitAt;

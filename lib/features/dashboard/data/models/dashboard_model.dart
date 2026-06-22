@@ -161,6 +161,10 @@ class MilestoneItem with _$MilestoneItem {
 class AccessTimeSummary with _$AccessTimeSummary {
   const factory AccessTimeSummary({
     @JsonKey(name: 'formatted_total_access_duration') required String formattedTotal,
+    @JsonKey(name: 'total_access_duration_seconds') int? totalAccessDurationSeconds,
+    @JsonKey(name: 'running_total_access_duration_seconds')
+    int? runningTotalAccessDurationSeconds,
+    @JsonKey(name: 'active_session_login_at') String? activeSessionLoginAt,
     @JsonKey(name: 'last_visit_at') String? lastVisitAt,
     @JsonKey(name: 'currently_active') required bool currentlyActive,
   }) = _AccessTimeSummary;

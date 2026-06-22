@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/dashboard/presentation/providers/running_login_time_provider.dart';
+import '../../features/dashboard/presentation/utils/access_time_helper.dart';
 import '../theme/app_theme.dart';
 
 class RunningLoginTimeCard extends ConsumerWidget {
@@ -42,7 +43,7 @@ class RunningLoginTimeCard extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              _formatDuration(duration),
+              formatAccessDuration(duration),
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 14,
@@ -106,15 +107,5 @@ class RunningLoginTimeCard extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    final totalHours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    return '${totalHours.toString().padLeft(2, '0')}:'
-        '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
   }
 }
