@@ -60,16 +60,55 @@ class ModuleRepository {
 
   Map<String, dynamic> _normalizeModuleDetailData(Map<String, dynamic> data) {
     final normalized = _normalizeModuleItem(data);
+    final rawEbooks = _asList(
+      data['ebooks'] ??
+          data['ebook_items'] ??
+          data['ebook_list'] ??
+          data['module_ebooks'],
+    );
+    final rawCertificates = _asList(
+      data['certificates'] ??
+          data['certificate_items'] ??
+          data['certificate_list'] ??
+          data['module_certificates'],
+    );
+    final rawLessons = _asList(
+      data['lessons'] ??
+          data['video_lectures'] ??
+          data['video_lecturer'] ??
+          data['video_lecture_lessons'] ??
+          data['module_lessons'],
+    );
+
+    normalized['ebooks'] =
+        rawEbooks
+            .map((ebook) {
+              if (ebook is Map) {
+                return _normalizeModuleEbook(Map<String, dynamic>.from(ebook));
+              }
+              return ebook;
+            })
+            .toList();
+    normalized['certificates'] =
+        rawCertificates
+            .map((certificate) {
+              if (certificate is Map) {
+                return _normalizeModuleCertificate(
+                  Map<String, dynamic>.from(certificate),
+                );
+              }
+              return certificate;
+            })
+            .toList();
     normalized['lessons'] =
-        (data['lessons'] as List<dynamic>?)
-            ?.map((lesson) {
+        rawLessons
+            .map((lesson) {
               if (lesson is Map) {
                 return _normalizeModuleLesson(Map<String, dynamic>.from(lesson));
               }
               return lesson;
             })
-            .toList() ??
-        const <dynamic>[];
+            .toList();
     normalized['assignments'] =
         (data['assignments'] as List<dynamic>?) ?? const <dynamic>[];
     return normalized;
@@ -90,10 +129,38 @@ class ModuleRepository {
     normalized['status'] = _asString(item['status']);
     normalized['is_visible'] = _asBool(item['is_visible']);
     normalized['is_complete'] = _asBool(item['is_complete']);
+    normalized['module_type'] = _resolveModuleType(item);
     normalized['certificate_enabled'] = _asBool(item['certificate_enabled']);
     normalized['ebook_enabled'] = _asBool(item['ebook_enabled']);
     normalized['thumbnail_url'] =
         ApiClient.resolveUrl(_asNullableString(item['thumbnail_url']));
+    return normalized;
+  }
+
+  Map<String, dynamic> _normalizeModuleEbook(Map<String, dynamic> ebook) {
+    final normalized = Map<String, dynamic>.from(ebook);
+    normalized['id'] = _asInt(ebook['id']);
+    normalized['title'] = _asString(ebook['title']);
+    normalized['sort_order'] = _asInt(ebook['sort_order']);
+    normalized['file_name'] = _asNullableString(ebook['file_name']);
+    normalized['preview_supported'] = _asBool(ebook['preview_supported']);
+    normalized['preview_message'] = _asNullableString(ebook['preview_message']);
+    normalized['mime_type'] = _asNullableString(ebook['mime_type']);
+    return normalized;
+  }
+
+  Map<String, dynamic> _normalizeModuleCertificate(
+    Map<String, dynamic> certificate,
+  ) {
+    final normalized = Map<String, dynamic>.from(certificate);
+    normalized['id'] = _asInt(certificate['id']);
+    normalized['type'] = _asString(certificate['type']);
+    normalized['type_label'] = _asString(
+      certificate['type_label'] ?? certificate['title'],
+    );
+    normalized['file_name'] = _asNullableString(certificate['file_name']);
+    normalized['generated_at'] = _asNullableString(certificate['generated_at']);
+    normalized['generated_by'] = _asNullableString(certificate['generated_by']);
     return normalized;
   }
 
@@ -163,5 +230,78 @@ class ModuleRepository {
       return null;
     }
     return stringValue;
+  }
+
+  List<dynamic> _asList(dynamic value) {
+    if (value is List<dynamic>) {
+      return value;
+    }
+    if (value is List) {
+      return List<dynamic>.from(value);
+    }
+    if (value is Map) {
+      final items = value['items'];
+      if (items is List<dynamic>) {
+        return items;
+      }
+      if (items is List) {
+        return List<dynamic>.from(items);
+      }
+      if (value.containsKey('id') ||
+          value.containsKey('title') ||
+          value.containsKey('type_label')) {
+        return <dynamic>[value];
+      }
+    }
+    return const <dynamic>[];
+  }
+
+  String _resolveModuleType(Map<String, dynamic> item) {
+    final directType = _canonicalizeModuleType(
+      item['module_type'] ??
+          item['type'] ??
+          item['category'] ??
+          item['module_category'],
+    );
+    if (directType != null) {
+      return directType;
+    }
+
+    if (_asBool(item['ebook_enabled'])) {
+      return 'ebook';
+    }
+    if (_asBool(item['certificate_enabled'])) {
+      return 'certificate';
+    }
+    return 'lesson';
+  }
+
+  String? _canonicalizeModuleType(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    final normalized = raw.replaceAll('-', '_').replaceAll(' ', '_');
+    switch (normalized) {
+      case 'ebook':
+        return 'ebook';
+      case 'certificate':
+      case 'certification':
+      case 'certificates':
+        return 'certificate';
+      case 'lesson':
+      case 'lessons':
+        return 'lesson';
+      case 'video_lecture':
+      case 'video_lecturer':
+      case 'video_lectures':
+      case 'video_lecturer_module':
+      case 'video_lecture_module':
+      case 'video':
+        return 'video_lecture';
+      default:
+        return null;
+    }
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../data/models/module_model.dart';
 import '../providers/module_provider.dart';
@@ -17,6 +16,54 @@ const _kTextPrimary = Colors.white;
 const _kTextSecondary = Color(0xFFB3B3B3);
 const _kTextMuted = Color(0xFF737373);
 const _kGreenCheck = Color(0xFF46D369);
+
+bool _isLessonModule(ModuleContentType type) {
+  return type == ModuleContentType.lesson ||
+      type == ModuleContentType.videoLecture;
+}
+
+bool _showHeroPrimaryAction(ModuleContentType type) {
+  return type != ModuleContentType.ebook;
+}
+
+String _moduleTypeLabel(ModuleContentType type) {
+  switch (type) {
+    case ModuleContentType.ebook:
+      return 'Ebook';
+    case ModuleContentType.certificate:
+      return 'Certificate';
+    case ModuleContentType.videoLecture:
+      return 'Video Lecture';
+    case ModuleContentType.lesson:
+      return 'Lesson';
+  }
+}
+
+void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
+  switch (module.moduleType) {
+    case ModuleContentType.ebook:
+      final firstEbook = module.ebooks.firstOrNull;
+      if (firstEbook != null) {
+        context.push('/ebooks/${firstEbook.id}');
+      }
+      return;
+    case ModuleContentType.certificate:
+      final firstCertificate = module.certificates.firstOrNull;
+      if (firstCertificate != null) {
+        context.push('/certificates/${firstCertificate.id}');
+      } else {
+        context.push('/certificates');
+      }
+      return;
+    case ModuleContentType.lesson:
+    case ModuleContentType.videoLecture:
+      final firstLesson = module.lessons.where((l) => !l.isLocked).firstOrNull;
+      if (firstLesson != null) {
+        context.push('/lessons/${firstLesson.id}');
+      }
+      return;
+  }
+}
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -75,8 +122,11 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
     _heroFade = CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOut);
     _heroCtrl.forward();
 
-    final itemCount =
-        widget.module.lessons.length + widget.module.assignments.length + 5;
+    final itemCount = widget.module.lessons.length +
+        widget.module.assignments.length +
+        widget.module.ebooks.length +
+        widget.module.certificates.length +
+        5;
     _itemCtrlList = List.generate(
       itemCount,
           (i) => AnimationController(
@@ -122,6 +172,18 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   Widget build(BuildContext context) {
     final module = widget.module;
     final assignments = _parseAssignments(module.assignments);
+    final isLessonModule = _isLessonModule(module.moduleType);
+    final sectionItemCount = switch (module.moduleType) {
+      ModuleContentType.ebook => module.ebooks.length,
+      ModuleContentType.certificate => module.certificates.length,
+      ModuleContentType.lesson || ModuleContentType.videoLecture =>
+        module.lessons.length,
+    };
+    final sectionTitle = switch (module.moduleType) {
+      ModuleContentType.ebook => 'Ebooks',
+      ModuleContentType.certificate => 'Certificates',
+      ModuleContentType.lesson || ModuleContentType.videoLecture => 'Lessons',
+    };
 
     return RefreshIndicator(
       color: _kNetflixRed,
@@ -191,16 +253,56 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
                   const SizedBox(height: 28),
                 ],
 
-                // Lessons
-                if (module.lessons.isNotEmpty) ...[
-                  _animated(
-                    2,
-                    _SectionHeader(
-                      title: 'Lessons',
-                      count: module.lessons.length,
+                _animated(
+                  2,
+                  _SectionHeader(
+                    title: sectionTitle,
+                    count: sectionItemCount,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (module.moduleType == ModuleContentType.ebook &&
+                    module.ebooks.isEmpty)
+                  const _ModuleTypeEmptyState(
+                    message: 'No ebooks are available for this module yet.',
+                  ),
+                if (module.moduleType == ModuleContentType.certificate &&
+                    module.certificates.isEmpty)
+                  const _ModuleTypeEmptyState(
+                    message:
+                        'No certificates are available for this module yet.',
+                  ),
+                if (isLessonModule && module.lessons.isEmpty)
+                  const _ModuleTypeEmptyState(
+                    message: 'No lessons are available for this module yet.',
+                  ),
+                if (module.moduleType == ModuleContentType.ebook) ...[
+                  ...module.ebooks.asMap().entries.map(
+                        (entry) => _animated(
+                      entry.key + 3,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _EbookRow(
+                          ebook: entry.value,
+                          index: entry.key,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                ] else if (module.moduleType == ModuleContentType.certificate) ...[
+                  ...module.certificates.asMap().entries.map(
+                        (entry) => _animated(
+                      entry.key + 3,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _CertificateRow(
+                          certificate: entry.value,
+                          index: entry.key,
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
                   ...module.lessons.asMap().entries.map(
                         (entry) => _animated(
                       entry.key + 3,
@@ -214,7 +316,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
                     ),
                   ),
                 ],
-                if (assignments.isNotEmpty) ...[
+                if (isLessonModule && assignments.isNotEmpty) ...[
                   const SizedBox(height: 28),
                   _animated(
                     module.lessons.length + 3,
@@ -316,17 +418,10 @@ class _HeroBanner extends StatelessWidget {
         ),
 
         // Big play button — center
-        Center(
+        if (_showHeroPrimaryAction(module.moduleType))
+          Center(
           child: GestureDetector(
-            onTap: () {
-              // Navigate to first available lesson
-              final firstLesson = module.lessons
-                  .where((l) => !l.isLocked)
-                  .firstOrNull;
-              if (firstLesson != null) {
-                context.push('/lessons/${firstLesson.id}');
-              }
-            },
+            onTap: () => _openPrimaryModuleContent(context, module),
             child: Container(
               width: 64,
               height: 64,
@@ -338,8 +433,10 @@ class _HeroBanner extends StatelessWidget {
                   width: 2,
                 ),
               ),
-              child: const Icon(
-                Icons.play_arrow,
+              child: Icon(
+                module.moduleType == ModuleContentType.certificate
+                    ? Icons.workspace_premium_outlined
+                    : Icons.play_arrow,
                 color: Colors.white,
                 size: 36,
               ),
@@ -367,9 +464,12 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstLesson = module.lessons
-        .where((l) => !l.isLocked)
-        .firstOrNull;
+    final isLessonModule = _isLessonModule(module.moduleType);
+    final primaryLabel = switch (module.moduleType) {
+      ModuleContentType.ebook => 'Open ebook',
+      ModuleContentType.certificate => 'Open certificate',
+      ModuleContentType.lesson || ModuleContentType.videoLecture => 'Play',
+    };
 
     return Row(
       children: [
@@ -377,25 +477,29 @@ class _ActionRow extends StatelessWidget {
         Expanded(
           flex: 3,
           child: GestureDetector(
-            onTap: () {
-              if (firstLesson != null) {
-                context.push('/lessons/${firstLesson.id}');
-              }
-            },
+            onTap: () => _openPrimaryModuleContent(context, module),
             child: Container(
               height: 44,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.play_arrow, color: Colors.black, size: 22),
-                  SizedBox(width: 6),
+                  Icon(
+                    module.moduleType == ModuleContentType.certificate
+                        ? Icons.workspace_premium_outlined
+                        : module.moduleType == ModuleContentType.ebook
+                            ? Icons.menu_book_outlined
+                            : Icons.play_arrow,
+                    color: Colors.black,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
-                    'Play',
-                    style: TextStyle(
+                    primaryLabel,
+                    style: const TextStyle(
                       color: Colors.black,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -410,15 +514,14 @@ class _ActionRow extends StatelessWidget {
         const SizedBox(width: 10),
 
         // Resume / Continue — if in progress
-        if (module.showProgress && !module.isComplete && module.progressPercentage > 0)
+        if (isLessonModule &&
+            module.showProgress &&
+            !module.isComplete &&
+            module.progressPercentage > 0)
           Expanded(
             flex: 3,
             child: GestureDetector(
-              onTap: () {
-                if (firstLesson != null) {
-                  context.push('/lessons/${firstLesson.id}');
-                }
-              },
+              onTap: () => _openPrimaryModuleContent(context, module),
               child: Container(
                 height: 44,
                 decoration: BoxDecoration(
@@ -504,24 +607,24 @@ class _ModuleHeader extends StatelessWidget {
           runSpacing: 6,
           children: [
             _MetaItem(
-              icon: Icons.play_circle_outline,
-              label: '${module.lessonCount} lessons',
+              icon: module.moduleType == ModuleContentType.certificate
+                  ? Icons.workspace_premium_outlined
+                  : module.moduleType == ModuleContentType.ebook
+                      ? Icons.menu_book_outlined
+                      : Icons.play_circle_outline,
+              label: _moduleTypeLabel(module.moduleType),
+              accent: module.moduleType == ModuleContentType.certificate,
             ),
-            if (module.assignmentsCount > 0)
+            if (_isLessonModule(module.moduleType))
+              _MetaItem(
+                icon: Icons.play_circle_outline,
+                label: '${module.lessonCount} lessons',
+              ),
+            if (_isLessonModule(module.moduleType) &&
+                module.assignmentsCount > 0)
               _MetaItem(
                 icon: Icons.assignment_outlined,
                 label: '${module.assignmentsCount} assignments',
-              ),
-            if (module.certificateEnabled)
-              const _MetaItem(
-                icon: Icons.workspace_premium_outlined,
-                label: 'Certificate',
-                accent: true,
-              ),
-            if (module.ebookEnabled)
-              const _MetaItem(
-                icon: Icons.menu_book_outlined,
-                label: 'Ebook',
               ),
           ],
         ),
@@ -737,6 +840,34 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+class _ModuleTypeEmptyState extends StatelessWidget {
+  final String message;
+
+  const _ModuleTypeEmptyState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _kSurface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _kDivider, width: 0.5),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: _kTextSecondary,
+          fontSize: 13,
+          fontFamily: 'Montserrat',
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Lesson Row ───────────────────────────────────────────────────────────────
 
 List<_ModuleAssignmentItem> _parseAssignments(List<dynamic> assignments) {
@@ -774,6 +905,221 @@ class _ModuleAssignmentItem {
     required this.lockReason,
     required this.status,
   });
+}
+
+class _EbookRow extends StatefulWidget {
+  final ModuleEbookItem ebook;
+  final int index;
+
+  const _EbookRow({required this.ebook, required this.index});
+
+  @override
+  State<_EbookRow> createState() => _EbookRowState();
+}
+
+class _EbookRowState extends State<_EbookRow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressCtrl;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 130),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ebook = widget.ebook;
+
+    return GestureDetector(
+      onTap: () => context.push('/ebooks/${ebook.id}'),
+      onTapDown: (_) => _pressCtrl.forward(),
+      onTapUp: (_) => _pressCtrl.reverse(),
+      onTapCancel: () => _pressCtrl.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _kSurface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _kDivider, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _kNetflixRed.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.menu_book_outlined,
+                  color: _kNetflixRed,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widget.index + 1}. ${ebook.title}',
+                      style: const TextStyle(
+                        color: _kTextPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    if ((ebook.fileName ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        ebook.fileName!,
+                        style: const TextStyle(
+                          color: _kTextMuted,
+                          fontSize: 11,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _kTextMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CertificateRow extends StatefulWidget {
+  final ModuleCertificateItem certificate;
+  final int index;
+
+  const _CertificateRow({
+    required this.certificate,
+    required this.index,
+  });
+
+  @override
+  State<_CertificateRow> createState() => _CertificateRowState();
+}
+
+class _CertificateRowState extends State<_CertificateRow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressCtrl;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 130),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final certificate = widget.certificate;
+
+    return GestureDetector(
+      onTap: () => context.push('/certificates/${certificate.id}'),
+      onTapDown: (_) => _pressCtrl.forward(),
+      onTapUp: (_) => _pressCtrl.reverse(),
+      onTapCancel: () => _pressCtrl.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _kSurface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _kDivider, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _kNetflixRed.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.workspace_premium_outlined,
+                  color: _kNetflixRed,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widget.index + 1}. ${certificate.typeLabel}',
+                      style: const TextStyle(
+                        color: _kTextPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    if ((certificate.generatedAt ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        certificate.generatedAt!,
+                        style: const TextStyle(
+                          color: _kTextMuted,
+                          fontSize: 11,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _kTextMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LessonRow extends StatefulWidget {

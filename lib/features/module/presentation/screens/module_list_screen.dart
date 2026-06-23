@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
 import '../../data/models/module_model.dart';
@@ -37,6 +36,24 @@ bool _canOpenModule(String status) {
   return normalizedStatus != 'locked' &&
       normalizedStatus != 'unavailable' &&
       normalizedStatus != 'hidden';
+}
+
+bool _isLessonModule(ModuleContentType type) {
+  return type == ModuleContentType.lesson ||
+      type == ModuleContentType.videoLecture;
+}
+
+String _moduleTypeLabel(ModuleContentType type) {
+  switch (type) {
+    case ModuleContentType.ebook:
+      return 'Ebook';
+    case ModuleContentType.certificate:
+      return 'Certificate';
+    case ModuleContentType.videoLecture:
+      return 'Video Lecture';
+    case ModuleContentType.lesson:
+      return 'Lesson';
+  }
 }
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
@@ -483,22 +500,28 @@ class _ModuleCardState extends State<_ModuleCard>
                     Row(
                       children: [
                         _MetaChip(
-                          icon: Icons.play_circle_outline,
-                          label: '${module.lessonCount} lessons',
+                          icon: module.moduleType == ModuleContentType.certificate
+                              ? Icons.workspace_premium_outlined
+                              : module.moduleType == ModuleContentType.ebook
+                                  ? Icons.menu_book_outlined
+                                  : Icons.play_circle_outline,
+                          label: _moduleTypeLabel(module.moduleType),
+                          accent:
+                              module.moduleType == ModuleContentType.certificate,
                         ),
-                        if (module.assignmentsCount > 0) ...[
+                        if (_isLessonModule(module.moduleType)) ...[
+                          const SizedBox(width: 12),
+                          _MetaChip(
+                            icon: Icons.play_circle_outline,
+                            label: '${module.lessonCount} lessons',
+                          ),
+                        ],
+                        if (_isLessonModule(module.moduleType) &&
+                            module.assignmentsCount > 0) ...[
                           const SizedBox(width: 12),
                           _MetaChip(
                             icon: Icons.assignment_outlined,
                             label: '${module.assignmentsCount} assignments',
-                          ),
-                        ],
-                        if (module.certificateEnabled) ...[
-                          const SizedBox(width: 12),
-                          const _MetaChip(
-                            icon: Icons.workspace_premium_outlined,
-                            label: 'Certificate',
-                            accent: true,
                           ),
                         ],
                       ],

@@ -6,9 +6,9 @@ import '../storage/secure_storage.dart';
 class ApiClient {
   //static const _baseUrl =
      //'http://192.168.18.246:8000/api/mobile/v1'; //ini untuk laptop maharani aja
-  static const _baseUrl = 'http://192.168.0.16:8000/api/mobile/v1'; //ini untuk lokal(emulator
+  // static const _baseUrl = 'http://192.168.0.16:8000/api/mobile/v1'; //ini untuk lokal(emulator //kantor
   //static conts _baseUrl =    BUATLAH API KALIAN KALAU MAU 192.168.110.246
-  //static const _baseUrl = 'http://192.168.110.186:8000/api/mobile/v1';
+  static const _baseUrl = 'http://192.168.110.186:8000/api/mobile/v1'; //kos
   static Dio create() {
     final dio = Dio(
       BaseOptions(
