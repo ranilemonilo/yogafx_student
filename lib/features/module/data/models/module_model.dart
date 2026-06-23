@@ -44,6 +44,7 @@ class ModuleItem {
     required this.ebookEnabled,
     required this.viewTypes, // Field Baru
     required this.primaryCtaLabel, // Field Baru
+    required this.primaryCtaUrl, // Field Baru
     required this.primaryCtaKind, // Field Baru
     this.description,
     this.thumbnailUrl,
@@ -71,6 +72,7 @@ class ModuleItem {
       // Mapping field baru
       viewTypes: List<String>.from(json['view_types'] ?? []),
       primaryCtaLabel: json['primary_cta_label'] as String?,
+      primaryCtaUrl: json['primary_cta_url'] as String?,
       primaryCtaKind: json['primary_cta_kind'] as String?,
     );
   }
@@ -96,6 +98,7 @@ class ModuleItem {
   // Field baru
   final List<String> viewTypes;
   final String? primaryCtaLabel;
+  final String? primaryCtaUrl;
   final String? primaryCtaKind;
 }
 
@@ -281,6 +284,7 @@ class ModuleDetail {
     required this.assignments,
     required this.viewTypes, // Field Baru
     required this.primaryCtaLabel, // Field Baru
+    required this.primaryCtaUrl, // Field Baru
     required this.primaryCtaKind, // Field Baru
     this.description,
     this.thumbnailUrl,
@@ -314,6 +318,7 @@ class ModuleDetail {
       // Mapping field baru
       viewTypes: List<String>.from(json['view_types'] ?? []),
       primaryCtaLabel: json['primary_cta_label'] as String?,
+      primaryCtaUrl: json['primary_cta_url'] as String?,
       primaryCtaKind: json['primary_cta_kind'] as String?,
       
       ebooks: rawEbooks.map((ebook) => ModuleEbookItem.fromJson(ebook as Map<String, dynamic>)).toList(),
@@ -348,5 +353,6 @@ class ModuleDetail {
   // Field baru
   final List<String> viewTypes;
   final String? primaryCtaLabel;
+  final String? primaryCtaUrl;
   final String? primaryCtaKind;
 }

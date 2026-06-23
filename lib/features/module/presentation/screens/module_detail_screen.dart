@@ -17,26 +17,33 @@ const _kTextSecondary = Color(0xFFB3B3B3);
 const _kTextMuted = Color(0xFF737373);
 const _kGreenCheck = Color(0xFF46D369);
 
-// ─── Logic CTA Berdasarkan Source of Truth ────────────────────────────────────
+// ─── Logic CTA Berdasarkan Source of Truth Backend ────────────────────────────
 
 void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
-  // Gunakan instruksi view_types dari backend untuk navigasi
-  if (module.viewTypes.contains('certificate')) {
+  // Logika navigasi murni dikendalikan oleh 'primary_cta_kind' dari Backend
+  final kind = module.primaryCtaKind;
+
+  if (kind == 'play') {
+    if (module.viewTypes.contains('lesson')) {
+      final firstLesson = module.lessons.where((l) => !l.isLocked).firstOrNull;
+      if (firstLesson != null) {
+        context.push('/lessons/${firstLesson.id}');
+      }
+    } else if (module.viewTypes.contains('video_lecturer')) {
+      // TODO: Navigasi ke video lecturer player jika rutenya sudah tersedia
+      // context.push('/courses/video-lecturer-id');
+    }
+  } else if (kind == 'download') {
     final firstCertificate = module.certificates.firstOrNull;
     if (firstCertificate != null) {
       context.push('/certificates/${firstCertificate.id}');
     } else {
       context.push('/certificates');
     }
-  } else if (module.viewTypes.contains('ebook') && !module.viewTypes.contains('video_lecturer')) {
+  } else if (kind == 'document') {
     final firstEbook = module.ebooks.firstOrNull;
     if (firstEbook != null) {
       context.push('/ebooks/${firstEbook.id}');
-    }
-  } else if (module.viewTypes.contains('lesson')) {
-    final firstLesson = module.lessons.where((l) => !l.isLocked).firstOrNull;
-    if (firstLesson != null) {
-      context.push('/lessons/${firstLesson.id}');
     }
   }
 }
@@ -87,6 +94,9 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   late List<Animation<double>> _itemFades;
   late List<Animation<Offset>> _itemSlides;
 
+  // Counter animasi yang terpusat
+  int _animIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -102,7 +112,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         widget.module.assignments.length +
         widget.module.ebooks.length +
         widget.module.certificates.length +
-        10; // Extra buffer untuk header/sections
+        15; // Buffer cukup besar untuk header/sections/video_lecturer
 
     _itemCtrlList = List.generate(
       itemCount,
@@ -139,7 +149,8 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
     super.dispose();
   }
 
-  Widget _animated(int index, Widget child) {
+  Widget _buildAnimated(Widget child) {
+    final index = _animIndex++;
     if (index >= _itemFades.length) return child;
     return FadeTransition(
       opacity: _itemFades[index],
@@ -152,8 +163,8 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
     final module = widget.module;
     final assignments = _parseAssignments(module.assignments);
     
-    // Dynamic Animation Indexer
-    int animIndex = 0;
+    // Reset counter saat build ulang
+    _animIndex = 0;
 
     return RefreshIndicator(
       color: _kNetflixRed,
@@ -165,7 +176,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // ── Hero with play button ──
+          // ── Hero Banner ──
           SliverAppBar(
             expandedHeight: 240,
             pinned: true,
@@ -196,89 +207,51 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
             ),
           ),
 
-          // ── Body ──
+          // ── Body Content ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 48),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Netflix-style action row (Menggunakan Source of Truth)
-                  _animated(animIndex++, _ActionRow(module: module)),
+                  // 1. Action Row (Primary CTA)
+                  if (module.primaryCtaLabel != null) ...[
+                    _buildAnimated(_ActionRow(module: module)),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // 2. Title & Meta (Header)
+                  _buildAnimated(_ModuleHeader(module: module)),
                   const SizedBox(height: 20),
 
-                  // Title + meta
-                  _animated(animIndex++, _ModuleHeader(module: module)),
-                  const SizedBox(height: 20),
-
-                  // Progress
+                  // 3. Progress Bar
                   if (module.showProgress) ...[
-                    _animated(animIndex++, _ModuleProgress(module: module)),
+                    _buildAnimated(_ModuleProgress(module: module)),
                     const SizedBox(height: 24),
                   ],
 
-                  // Description
+                  // 4. Description
                   if (module.description != null) ...[
-                    _animated(animIndex++, _Description(text: module.description!)),
+                    _buildAnimated(_Description(text: module.description!)),
                     const SizedBox(height: 28),
                   ],
 
-                  // ── DYNAMIC LIST RENDERING BERDASARKAN SOURCE OF TRUTH (VIEW TYPES) ──
+                  // 5. DYNAMIC LIST RENDERING (BERDASARKAN VIEW TYPES)
 
-                  // Ebooks
-                  if (module.viewTypes.contains('ebook') && module.ebooks.isNotEmpty) ...[
-                    _animated(animIndex++, _SectionHeader(title: 'Ebooks', count: module.ebooks.length)),
-                    const SizedBox(height: 12),
-                    ...module.ebooks.asMap().entries.map((entry) => _animated(
-                          animIndex++,
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _EbookRow(ebook: entry.value, index: entry.key),
-                          ),
-                        )),
-                    const SizedBox(height: 16),
-                  ],
+                  if (module.viewTypes.contains('video_lecturer'))
+                    ..._buildVideoLecturerList(module),
 
-                  // Certificates
-                  if (module.viewTypes.contains('certificate') && module.certificates.isNotEmpty) ...[
-                    _animated(animIndex++, _SectionHeader(title: 'Certificates', count: module.certificates.length)),
-                    const SizedBox(height: 12),
-                    ...module.certificates.asMap().entries.map((entry) => _animated(
-                          animIndex++,
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _CertificateRow(certificate: entry.value, index: entry.key),
-                          ),
-                        )),
-                    const SizedBox(height: 16),
-                  ],
+                  if (module.viewTypes.contains('ebook'))
+                    ..._buildEbookList(module),
 
-                  // Lessons
-                  if (module.viewTypes.contains('lesson') && module.lessons.isNotEmpty) ...[
-                    _animated(animIndex++, _SectionHeader(title: 'Lessons', count: module.lessons.length)),
-                    const SizedBox(height: 12),
-                    ...module.lessons.asMap().entries.map((entry) => _animated(
-                          animIndex++,
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _LessonRow(lesson: entry.value, index: entry.key),
-                          ),
-                        )),
-                    const SizedBox(height: 16),
-                  ],
+                  if (module.viewTypes.contains('certificate'))
+                    ..._buildCertificateInfo(module),
 
-                  // Assignments
-                  if (module.viewTypes.contains('assignment') && assignments.isNotEmpty) ...[
-                    _animated(animIndex++, _SectionHeader(title: 'Assignments', count: assignments.length)),
-                    const SizedBox(height: 12),
-                    ...assignments.asMap().entries.map((entry) => _animated(
-                          animIndex++,
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _AssignmentRow(assignment: entry.value, index: entry.key),
-                          ),
-                        )),
-                  ],
+                  if (module.viewTypes.contains('lesson'))
+                    ..._buildLessonList(module),
+
+                  if (module.viewTypes.contains('assignment'))
+                    ..._buildAssignmentList(assignments),
                 ],
               ),
             ),
@@ -286,6 +259,114 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         ],
       ),
     );
+  }
+
+  // --- Helper Methods untuk Render Dynamic Lists ---
+
+  List<Widget> _buildLessonList(ModuleDetail module) {
+    if (module.lessons.isEmpty) return [];
+    return [
+      _buildAnimated(_SectionHeader(title: 'Lessons', count: module.lessons.length)),
+      const SizedBox(height: 12),
+      ...module.lessons.asMap().entries.map((entry) => _buildAnimated(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _LessonRow(lesson: entry.value, index: entry.key),
+            ),
+          )),
+      const SizedBox(height: 16),
+    ];
+  }
+
+  List<Widget> _buildEbookList(ModuleDetail module) {
+    if (module.ebooks.isEmpty) return [];
+    return [
+      _buildAnimated(_SectionHeader(title: 'Ebooks', count: module.ebooks.length)),
+      const SizedBox(height: 12),
+      ...module.ebooks.asMap().entries.map((entry) => _buildAnimated(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _EbookRow(ebook: entry.value, index: entry.key),
+            ),
+          )),
+      const SizedBox(height: 16),
+    ];
+  }
+
+  List<Widget> _buildCertificateInfo(ModuleDetail module) {
+    if (module.certificates.isEmpty) return [];
+    return [
+      _buildAnimated(_SectionHeader(title: 'Certificates', count: module.certificates.length)),
+      const SizedBox(height: 12),
+      ...module.certificates.asMap().entries.map((entry) => _buildAnimated(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _CertificateRow(certificate: entry.value, index: entry.key),
+            ),
+          )),
+      const SizedBox(height: 16),
+    ];
+  }
+
+  List<Widget> _buildAssignmentList(List<_ModuleAssignmentItem> assignments) {
+    if (assignments.isEmpty) return [];
+    return [
+      _buildAnimated(_SectionHeader(title: 'Assignments', count: assignments.length)),
+      const SizedBox(height: 12),
+      ...assignments.asMap().entries.map((entry) => _buildAnimated(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _AssignmentRow(assignment: entry.value, index: entry.key),
+            ),
+          )),
+      const SizedBox(height: 16),
+    ];
+  }
+
+  List<Widget> _buildVideoLecturerList(ModuleDetail module) {
+    // Karena list video_lecturers mungkin belum masuk ke JSON mapping module_model.dart, 
+    // kita tampilkan placeholder atau item jika tersedia.
+    return [
+      _buildAnimated(const _SectionHeader(title: 'Video Lecturer', count: 1)),
+      const SizedBox(height: 12),
+      _buildAnimated(
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _kSurface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _kDivider, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _kNetflixRed.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.play_circle_fill, color: _kNetflixRed),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Video Lecturer Ready',
+                  style: TextStyle(
+                    color: _kTextPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: _kTextMuted),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 16),
+    ];
   }
 }
 
@@ -298,7 +379,7 @@ class _HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Tentukan icon center play dari primaryCtaKind
+    // Ikon Tengah Berdasarkan Kind dari Backend
     IconData centerIcon = Icons.play_arrow;
     if (module.primaryCtaKind == 'document') centerIcon = Icons.menu_book_outlined;
     if (module.primaryCtaKind == 'download') centerIcon = Icons.workspace_premium_outlined;
@@ -362,7 +443,7 @@ class _HeroBanner extends StatelessWidget {
           ),
         ),
 
-        // Big center button (Jika memiliki action label dari backend)
+        // Big center button 
         if (module.primaryCtaLabel != null)
           Center(
             child: GestureDetector(
@@ -398,7 +479,7 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-// ─── Action Row (Netflix Play + Info buttons) ─────────────────────────────────
+// ─── Action Row (Primary CTA) ─────────────────────────────────────────────────
 
 class _ActionRow extends StatelessWidget {
   final ModuleDetail module;
@@ -418,44 +499,42 @@ class _ActionRow extends StatelessWidget {
     return Row(
       children: [
         // Primary CTA Button
-        if (module.primaryCtaLabel != null)
-          Expanded(
-            flex: 3,
-            child: GestureDetector(
-              onTap: () => _openPrimaryModuleContent(context, module),
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      ctaIcon,
+        Expanded(
+          flex: 3,
+          child: GestureDetector(
+            onTap: () => _openPrimaryModuleContent(context, module),
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    ctaIcon,
+                    color: Colors.black,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    primaryLabel,
+                    style: const TextStyle(
                       color: Colors.black,
-                      size: 22,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      primaryLabel,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-        if (module.primaryCtaLabel != null && hasLessons && module.showProgress) const SizedBox(width: 10),
-
-        // Resume / Continue (Ditampilkan khusus module yang memiliki progress lesson)
-        if (hasLessons && module.showProgress && !module.isComplete && module.progressPercentage > 0)
+        ),
+        
+        if (hasLessons && module.showProgress && !module.isComplete && module.progressPercentage > 0) ...[
+          const SizedBox(width: 10),
           Expanded(
             flex: 3,
             child: GestureDetector(
@@ -485,6 +564,7 @@ class _ActionRow extends StatelessWidget {
               ),
             ),
           ),
+        ],
       ],
     );
   }
@@ -538,7 +618,7 @@ class _ModuleHeader extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        // Meta
+        // Meta Tags yang menggunakan View Types
         Wrap(
           spacing: 14,
           runSpacing: 6,
@@ -547,6 +627,8 @@ class _ModuleHeader extends StatelessWidget {
               const _MetaItem(icon: Icons.workspace_premium_outlined, label: 'Certificate', accent: true),
             if (module.viewTypes.contains('ebook'))
               const _MetaItem(icon: Icons.menu_book_outlined, label: 'Ebook'),
+            if (module.viewTypes.contains('video_lecturer'))
+              const _MetaItem(icon: Icons.play_circle_fill, label: 'Video Lecturer'),
             if (module.viewTypes.contains('lesson'))
               _MetaItem(icon: Icons.play_circle_outline, label: '${module.lessonCount} lessons'),
             if (module.viewTypes.contains('assignment'))
