@@ -42,6 +42,9 @@ class ModuleItem {
     required this.moduleType,
     required this.certificateEnabled,
     required this.ebookEnabled,
+    required this.viewTypes, // Field Baru
+    required this.primaryCtaLabel, // Field Baru
+    required this.primaryCtaKind, // Field Baru
     this.description,
     this.thumbnailUrl,
   });
@@ -65,6 +68,10 @@ class ModuleItem {
       certificateEnabled: json['certificate_enabled'] as bool? ?? false,
       ebookEnabled: json['ebook_enabled'] as bool? ?? false,
       thumbnailUrl: json['thumbnail_url'] as String?,
+      // Mapping field baru
+      viewTypes: List<String>.from(json['view_types'] ?? []),
+      primaryCtaLabel: json['primary_cta_label'] as String?,
+      primaryCtaKind: json['primary_cta_kind'] as String?,
     );
   }
 
@@ -85,6 +92,11 @@ class ModuleItem {
   final bool certificateEnabled;
   final bool ebookEnabled;
   final String? thumbnailUrl;
+  
+  // Field baru
+  final List<String> viewTypes;
+  final String? primaryCtaLabel;
+  final String? primaryCtaKind;
 }
 
 class ModuleListData {
@@ -188,6 +200,7 @@ class ModuleEbookItem {
     this.fileName,
     this.previewMessage,
     this.mimeType,
+    this.downloadUrl,
   });
 
   factory ModuleEbookItem.fromJson(Map<String, dynamic> json) {
@@ -199,6 +212,7 @@ class ModuleEbookItem {
       previewSupported: json['preview_supported'] as bool? ?? false,
       previewMessage: json['preview_message'] as String?,
       mimeType: json['mime_type'] as String?,
+      downloadUrl: json['download_url'] as String?,
     );
   }
 
@@ -209,6 +223,7 @@ class ModuleEbookItem {
   final bool previewSupported;
   final String? previewMessage;
   final String? mimeType;
+  final String? downloadUrl;
 }
 
 class ModuleCertificateItem {
@@ -219,6 +234,7 @@ class ModuleCertificateItem {
     this.fileName,
     this.generatedAt,
     this.generatedBy,
+    this.downloadUrl,
   });
 
   factory ModuleCertificateItem.fromJson(Map<String, dynamic> json) {
@@ -229,6 +245,7 @@ class ModuleCertificateItem {
       fileName: json['file_name'] as String?,
       generatedAt: json['generated_at'] as String?,
       generatedBy: json['generated_by'] as String?,
+      downloadUrl: json['download_url'] as String?,
     );
   }
 
@@ -238,6 +255,7 @@ class ModuleCertificateItem {
   final String? fileName;
   final String? generatedAt;
   final String? generatedBy;
+  final String? downloadUrl;
 }
 
 class ModuleDetail {
@@ -261,6 +279,9 @@ class ModuleDetail {
     required this.certificates,
     required this.lessons,
     required this.assignments,
+    required this.viewTypes, // Field Baru
+    required this.primaryCtaLabel, // Field Baru
+    required this.primaryCtaKind, // Field Baru
     this.description,
     this.thumbnailUrl,
   });
@@ -289,19 +310,15 @@ class ModuleDetail {
       certificateEnabled: json['certificate_enabled'] as bool? ?? false,
       ebookEnabled: json['ebook_enabled'] as bool? ?? false,
       thumbnailUrl: json['thumbnail_url'] as String?,
-      ebooks: rawEbooks
-          .map((ebook) => ModuleEbookItem.fromJson(ebook as Map<String, dynamic>))
-          .toList(),
-      certificates: rawCertificates
-          .map(
-            (certificate) => ModuleCertificateItem.fromJson(
-              certificate as Map<String, dynamic>,
-            ),
-          )
-          .toList(),
-      lessons: rawLessons
-          .map((lesson) => ModuleLesson.fromJson(lesson as Map<String, dynamic>))
-          .toList(),
+      
+      // Mapping field baru
+      viewTypes: List<String>.from(json['view_types'] ?? []),
+      primaryCtaLabel: json['primary_cta_label'] as String?,
+      primaryCtaKind: json['primary_cta_kind'] as String?,
+      
+      ebooks: rawEbooks.map((ebook) => ModuleEbookItem.fromJson(ebook as Map<String, dynamic>)).toList(),
+      certificates: rawCertificates.map((cert) => ModuleCertificateItem.fromJson(cert as Map<String, dynamic>)).toList(),
+      lessons: rawLessons.map((lesson) => ModuleLesson.fromJson(lesson as Map<String, dynamic>)).toList(),
       assignments: rawAssignments,
     );
   }
@@ -327,4 +344,9 @@ class ModuleDetail {
   final List<ModuleCertificateItem> certificates;
   final List<ModuleLesson> lessons;
   final List<dynamic> assignments;
+  
+  // Field baru
+  final List<String> viewTypes;
+  final String? primaryCtaLabel;
+  final String? primaryCtaKind;
 }

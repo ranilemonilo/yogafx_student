@@ -17,51 +17,27 @@ const _kTextSecondary = Color(0xFFB3B3B3);
 const _kTextMuted = Color(0xFF737373);
 const _kGreenCheck = Color(0xFF46D369);
 
-bool _isLessonModule(ModuleContentType type) {
-  return type == ModuleContentType.lesson ||
-      type == ModuleContentType.videoLecture;
-}
-
-bool _showHeroPrimaryAction(ModuleContentType type) {
-  return type != ModuleContentType.ebook;
-}
-
-String _moduleTypeLabel(ModuleContentType type) {
-  switch (type) {
-    case ModuleContentType.ebook:
-      return 'Ebook';
-    case ModuleContentType.certificate:
-      return 'Certificate';
-    case ModuleContentType.videoLecture:
-      return 'Video Lecture';
-    case ModuleContentType.lesson:
-      return 'Lesson';
-  }
-}
+// ─── Logic CTA Berdasarkan Source of Truth ────────────────────────────────────
 
 void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
-  switch (module.moduleType) {
-    case ModuleContentType.ebook:
-      final firstEbook = module.ebooks.firstOrNull;
-      if (firstEbook != null) {
-        context.push('/ebooks/${firstEbook.id}');
-      }
-      return;
-    case ModuleContentType.certificate:
-      final firstCertificate = module.certificates.firstOrNull;
-      if (firstCertificate != null) {
-        context.push('/certificates/${firstCertificate.id}');
-      } else {
-        context.push('/certificates');
-      }
-      return;
-    case ModuleContentType.lesson:
-    case ModuleContentType.videoLecture:
-      final firstLesson = module.lessons.where((l) => !l.isLocked).firstOrNull;
-      if (firstLesson != null) {
-        context.push('/lessons/${firstLesson.id}');
-      }
-      return;
+  // Gunakan instruksi view_types dari backend untuk navigasi
+  if (module.viewTypes.contains('certificate')) {
+    final firstCertificate = module.certificates.firstOrNull;
+    if (firstCertificate != null) {
+      context.push('/certificates/${firstCertificate.id}');
+    } else {
+      context.push('/certificates');
+    }
+  } else if (module.viewTypes.contains('ebook') && !module.viewTypes.contains('video_lecturer')) {
+    final firstEbook = module.ebooks.firstOrNull;
+    if (firstEbook != null) {
+      context.push('/ebooks/${firstEbook.id}');
+    }
+  } else if (module.viewTypes.contains('lesson')) {
+    final firstLesson = module.lessons.where((l) => !l.isLocked).firstOrNull;
+    if (firstLesson != null) {
+      context.push('/lessons/${firstLesson.id}');
+    }
   }
 }
 
@@ -126,22 +102,25 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         widget.module.assignments.length +
         widget.module.ebooks.length +
         widget.module.certificates.length +
-        5;
+        10; // Extra buffer untuk header/sections
+
     _itemCtrlList = List.generate(
       itemCount,
-          (i) => AnimationController(
+      (i) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 400),
       ),
     );
+
     _itemFades = _itemCtrlList
         .map((c) => CurvedAnimation(parent: c, curve: Curves.easeOut))
         .toList();
+
     _itemSlides = _itemCtrlList
         .map((c) => Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
+              begin: const Offset(0, 0.08),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
 
     for (int i = 0; i < itemCount; i++) {
@@ -172,18 +151,9 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   Widget build(BuildContext context) {
     final module = widget.module;
     final assignments = _parseAssignments(module.assignments);
-    final isLessonModule = _isLessonModule(module.moduleType);
-    final sectionItemCount = switch (module.moduleType) {
-      ModuleContentType.ebook => module.ebooks.length,
-      ModuleContentType.certificate => module.certificates.length,
-      ModuleContentType.lesson || ModuleContentType.videoLecture =>
-        module.lessons.length,
-    };
-    final sectionTitle = switch (module.moduleType) {
-      ModuleContentType.ebook => 'Ebooks',
-      ModuleContentType.certificate => 'Certificates',
-      ModuleContentType.lesson || ModuleContentType.videoLecture => 'Lessons',
-    };
+    
+    // Dynamic Animation Indexer
+    int animIndex = 0;
 
     return RefreshIndicator(
       color: _kNetflixRed,
@@ -195,154 +165,124 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-        // ── Hero with play button ──
-        SliverAppBar(
-          expandedHeight: 240,
-          pinned: true,
-          backgroundColor: _kBg,
-          elevation: 0,
-          leading: Padding(
-            padding: const EdgeInsets.all(8),
-            child: GestureDetector(
-              onTap: () => context.pop(),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.55),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: _kTextPrimary,
-                  size: 16,
+          // ── Hero with play button ──
+          SliverAppBar(
+            expandedHeight: 240,
+            pinned: true,
+            backgroundColor: _kBg,
+            elevation: 0,
+            leading: Padding(
+              padding: const EdgeInsets.all(8),
+              child: GestureDetector(
+                onTap: () => context.pop(),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new,
+                    color: _kTextPrimary,
+                    size: 16,
+                  ),
                 ),
               ),
             ),
-          ),
-          flexibleSpace: FlexibleSpaceBar(
-            background: FadeTransition(
-              opacity: _heroFade,
-              child: _HeroBanner(module: module),
+            flexibleSpace: FlexibleSpaceBar(
+              background: FadeTransition(
+                opacity: _heroFade,
+                child: _HeroBanner(module: module),
+              ),
             ),
           ),
-        ),
 
-        // ── Body ──
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 48),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Netflix-style action row (Play + My List)
-                _animated(0, _ActionRow(module: module)),
-                const SizedBox(height: 20),
+          // ── Body ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 48),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Netflix-style action row (Menggunakan Source of Truth)
+                  _animated(animIndex++, _ActionRow(module: module)),
+                  const SizedBox(height: 20),
 
-                // Title + meta
-                _animated(1, _ModuleHeader(module: module)),
-                const SizedBox(height: 20),
+                  // Title + meta
+                  _animated(animIndex++, _ModuleHeader(module: module)),
+                  const SizedBox(height: 20),
 
-                // Progress
-                if (module.showProgress) ...[
-                  _animated(2, _ModuleProgress(module: module)),
-                  const SizedBox(height: 24),
+                  // Progress
+                  if (module.showProgress) ...[
+                    _animated(animIndex++, _ModuleProgress(module: module)),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Description
+                  if (module.description != null) ...[
+                    _animated(animIndex++, _Description(text: module.description!)),
+                    const SizedBox(height: 28),
+                  ],
+
+                  // ── DYNAMIC LIST RENDERING BERDASARKAN SOURCE OF TRUTH (VIEW TYPES) ──
+
+                  // Ebooks
+                  if (module.viewTypes.contains('ebook') && module.ebooks.isNotEmpty) ...[
+                    _animated(animIndex++, _SectionHeader(title: 'Ebooks', count: module.ebooks.length)),
+                    const SizedBox(height: 12),
+                    ...module.ebooks.asMap().entries.map((entry) => _animated(
+                          animIndex++,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _EbookRow(ebook: entry.value, index: entry.key),
+                          ),
+                        )),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Certificates
+                  if (module.viewTypes.contains('certificate') && module.certificates.isNotEmpty) ...[
+                    _animated(animIndex++, _SectionHeader(title: 'Certificates', count: module.certificates.length)),
+                    const SizedBox(height: 12),
+                    ...module.certificates.asMap().entries.map((entry) => _animated(
+                          animIndex++,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _CertificateRow(certificate: entry.value, index: entry.key),
+                          ),
+                        )),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Lessons
+                  if (module.viewTypes.contains('lesson') && module.lessons.isNotEmpty) ...[
+                    _animated(animIndex++, _SectionHeader(title: 'Lessons', count: module.lessons.length)),
+                    const SizedBox(height: 12),
+                    ...module.lessons.asMap().entries.map((entry) => _animated(
+                          animIndex++,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _LessonRow(lesson: entry.value, index: entry.key),
+                          ),
+                        )),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Assignments
+                  if (module.viewTypes.contains('assignment') && assignments.isNotEmpty) ...[
+                    _animated(animIndex++, _SectionHeader(title: 'Assignments', count: assignments.length)),
+                    const SizedBox(height: 12),
+                    ...assignments.asMap().entries.map((entry) => _animated(
+                          animIndex++,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _AssignmentRow(assignment: entry.value, index: entry.key),
+                          ),
+                        )),
+                  ],
                 ],
-
-                // Description
-                if (module.description != null) ...[
-                  _animated(2, _Description(text: module.description!)),
-                  const SizedBox(height: 28),
-                ],
-
-                _animated(
-                  2,
-                  _SectionHeader(
-                    title: sectionTitle,
-                    count: sectionItemCount,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (module.moduleType == ModuleContentType.ebook &&
-                    module.ebooks.isEmpty)
-                  const _ModuleTypeEmptyState(
-                    message: 'No ebooks are available for this module yet.',
-                  ),
-                if (module.moduleType == ModuleContentType.certificate &&
-                    module.certificates.isEmpty)
-                  const _ModuleTypeEmptyState(
-                    message:
-                        'No certificates are available for this module yet.',
-                  ),
-                if (isLessonModule && module.lessons.isEmpty)
-                  const _ModuleTypeEmptyState(
-                    message: 'No lessons are available for this module yet.',
-                  ),
-                if (module.moduleType == ModuleContentType.ebook) ...[
-                  ...module.ebooks.asMap().entries.map(
-                        (entry) => _animated(
-                      entry.key + 3,
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _EbookRow(
-                          ebook: entry.value,
-                          index: entry.key,
-                        ),
-                      ),
-                    ),
-                  ),
-                ] else if (module.moduleType == ModuleContentType.certificate) ...[
-                  ...module.certificates.asMap().entries.map(
-                        (entry) => _animated(
-                      entry.key + 3,
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _CertificateRow(
-                          certificate: entry.value,
-                          index: entry.key,
-                        ),
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  ...module.lessons.asMap().entries.map(
-                        (entry) => _animated(
-                      entry.key + 3,
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _LessonRow(
-                          lesson: entry.value,
-                          index: entry.key,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                if (isLessonModule && assignments.isNotEmpty) ...[
-                  const SizedBox(height: 28),
-                  _animated(
-                    module.lessons.length + 3,
-                    _SectionHeader(
-                      title: 'Assignments',
-                      count: assignments.length,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...assignments.asMap().entries.map(
-                        (entry) => _animated(
-                      module.lessons.length + entry.key + 4,
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _AssignmentRow(
-                          assignment: entry.value,
-                          index: entry.key,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
-        ),
         ],
       ),
     );
@@ -358,6 +298,11 @@ class _HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Tentukan icon center play dari primaryCtaKind
+    IconData centerIcon = Icons.play_arrow;
+    if (module.primaryCtaKind == 'document') centerIcon = Icons.menu_book_outlined;
+    if (module.primaryCtaKind == 'download') centerIcon = Icons.workspace_premium_outlined;
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -391,15 +336,15 @@ class _HeroBanner extends StatelessWidget {
                 ),
               )
             : Container(
-          color: _kSurfaceElevated,
-          child: const Center(
-            child: Icon(
-              Icons.image_not_supported_outlined,
-              color: _kTextMuted,
-              size: 32,
-            ),
-          ),
-        ),
+                color: _kSurfaceElevated,
+                child: const Center(
+                  child: Icon(
+                    Icons.image_not_supported_outlined,
+                    color: _kTextMuted,
+                    size: 32,
+                  ),
+                ),
+              ),
 
         // Dark vignette
         Container(
@@ -417,32 +362,30 @@ class _HeroBanner extends StatelessWidget {
           ),
         ),
 
-        // Big play button — center
-        if (_showHeroPrimaryAction(module.moduleType))
+        // Big center button (Jika memiliki action label dari backend)
+        if (module.primaryCtaLabel != null)
           Center(
-          child: GestureDetector(
-            onTap: () => _openPrimaryModuleContent(context, module),
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.8),
-                  width: 2,
+            child: GestureDetector(
+              onTap: () => _openPrimaryModuleContent(context, module),
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.8),
+                    width: 2,
+                  ),
                 ),
-              ),
-              child: Icon(
-                module.moduleType == ModuleContentType.certificate
-                    ? Icons.workspace_premium_outlined
-                    : Icons.play_arrow,
-                color: Colors.white,
-                size: 36,
+                child: Icon(
+                  centerIcon,
+                  color: Colors.white,
+                  size: 36,
+                ),
               ),
             ),
           ),
-        ),
 
         // Status badge top right
         Positioned(
@@ -459,65 +402,60 @@ class _HeroBanner extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   final ModuleDetail module;
-
   const _ActionRow({required this.module});
 
   @override
   Widget build(BuildContext context) {
-    final isLessonModule = _isLessonModule(module.moduleType);
-    final primaryLabel = switch (module.moduleType) {
-      ModuleContentType.ebook => 'Open ebook',
-      ModuleContentType.certificate => 'Open certificate',
-      ModuleContentType.lesson || ModuleContentType.videoLecture => 'Play',
-    };
+    // Ambil CTA data dari backend (Source of truth)
+    final primaryLabel = module.primaryCtaLabel ?? 'Open Module';
+    
+    IconData ctaIcon = Icons.play_arrow;
+    if (module.primaryCtaKind == 'document') ctaIcon = Icons.menu_book_outlined;
+    if (module.primaryCtaKind == 'download') ctaIcon = Icons.workspace_premium_outlined;
+
+    final hasLessons = module.viewTypes.contains('lesson');
 
     return Row(
       children: [
-        // Play button — primary CTA
-        Expanded(
-          flex: 3,
-          child: GestureDetector(
-            onTap: () => _openPrimaryModuleContent(context, module),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    module.moduleType == ModuleContentType.certificate
-                        ? Icons.workspace_premium_outlined
-                        : module.moduleType == ModuleContentType.ebook
-                            ? Icons.menu_book_outlined
-                            : Icons.play_arrow,
-                    color: Colors.black,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    primaryLabel,
-                    style: const TextStyle(
+        // Primary CTA Button
+        if (module.primaryCtaLabel != null)
+          Expanded(
+            flex: 3,
+            child: GestureDetector(
+              onTap: () => _openPrimaryModuleContent(context, module),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      ctaIcon,
                       color: Colors.black,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
+                      size: 22,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      primaryLabel,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
+        if (module.primaryCtaLabel != null && hasLessons && module.showProgress) const SizedBox(width: 10),
 
-        // Resume / Continue — if in progress
-        if (isLessonModule &&
-            module.showProgress &&
-            !module.isComplete &&
-            module.progressPercentage > 0)
+        // Resume / Continue (Ditampilkan khusus module yang memiliki progress lesson)
+        if (hasLessons && module.showProgress && !module.isComplete && module.progressPercentage > 0)
           Expanded(
             flex: 3,
             child: GestureDetector(
@@ -531,14 +469,13 @@ class _ActionRow extends StatelessWidget {
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.play_circle_outline,
-                        color: Colors.white, size: 18),
+                    Icon(Icons.play_circle_outline, color: Colors.white, size: 18),
                     SizedBox(width: 6),
                     Text(
                       'Resume',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
                       ),
@@ -606,26 +543,14 @@ class _ModuleHeader extends StatelessWidget {
           spacing: 14,
           runSpacing: 6,
           children: [
-            _MetaItem(
-              icon: module.moduleType == ModuleContentType.certificate
-                  ? Icons.workspace_premium_outlined
-                  : module.moduleType == ModuleContentType.ebook
-                      ? Icons.menu_book_outlined
-                      : Icons.play_circle_outline,
-              label: _moduleTypeLabel(module.moduleType),
-              accent: module.moduleType == ModuleContentType.certificate,
-            ),
-            if (_isLessonModule(module.moduleType))
-              _MetaItem(
-                icon: Icons.play_circle_outline,
-                label: '${module.lessonCount} lessons',
-              ),
-            if (_isLessonModule(module.moduleType) &&
-                module.assignmentsCount > 0)
-              _MetaItem(
-                icon: Icons.assignment_outlined,
-                label: '${module.assignmentsCount} assignments',
-              ),
+            if (module.viewTypes.contains('certificate'))
+              const _MetaItem(icon: Icons.workspace_premium_outlined, label: 'Certificate', accent: true),
+            if (module.viewTypes.contains('ebook'))
+              const _MetaItem(icon: Icons.menu_book_outlined, label: 'Ebook'),
+            if (module.viewTypes.contains('lesson'))
+              _MetaItem(icon: Icons.play_circle_outline, label: '${module.lessonCount} lessons'),
+            if (module.viewTypes.contains('assignment'))
+              _MetaItem(icon: Icons.assignment_outlined, label: '${module.assignmentsCount} assignments'),
           ],
         ),
       ],
@@ -649,8 +574,7 @@ class _MetaItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon,
-            color: accent ? _kNetflixRed : _kTextMuted, size: 14),
+        Icon(icon, color: accent ? _kNetflixRed : _kTextMuted, size: 14),
         const SizedBox(width: 4),
         Text(
           label,
@@ -840,35 +764,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _ModuleTypeEmptyState extends StatelessWidget {
-  final String message;
-
-  const _ModuleTypeEmptyState({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _kDivider, width: 0.5),
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: _kTextSecondary,
-          fontSize: 13,
-          fontFamily: 'Montserrat',
-          height: 1.5,
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Lesson Row ───────────────────────────────────────────────────────────────
+// ─── List Items (Lesson, Ebook, Assignment, dsb) ──────────────────────────────
 
 List<_ModuleAssignmentItem> _parseAssignments(List<dynamic> assignments) {
   return assignments
@@ -943,7 +839,6 @@ class _EbookRowState extends State<_EbookRow>
   @override
   Widget build(BuildContext context) {
     final ebook = widget.ebook;
-
     return GestureDetector(
       onTap: () => context.push('/ebooks/${ebook.id}'),
       onTapDown: (_) => _pressCtrl.forward(),
@@ -1052,7 +947,6 @@ class _CertificateRowState extends State<_CertificateRow>
   @override
   Widget build(BuildContext context) {
     final certificate = widget.certificate;
-
     return GestureDetector(
       onTap: () => context.push('/certificates/${certificate.id}'),
       onTapDown: (_) => _pressCtrl.forward(),
@@ -1212,7 +1106,6 @@ class _LessonRowState extends State<_LessonRow>
                                 ),
                               )
                             else
-                              // Mini play overlay
                               Container(
                                 color: Colors.black.withOpacity(0.25),
                                 child: const Center(
@@ -1238,7 +1131,6 @@ class _LessonRowState extends State<_LessonRow>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Lesson number + title
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1267,7 +1159,6 @@ class _LessonRowState extends State<_LessonRow>
                     ),
                     const SizedBox(height: 6),
 
-                    // Media icons
                     Row(
                       children: [
                         if (lesson.hasVideo)
@@ -1279,7 +1170,6 @@ class _LessonRowState extends State<_LessonRow>
                       ],
                     ),
 
-                    // Progress bar
                     if (!isLocked && lesson.progressPercentage > 0) ...[
                       const SizedBox(height: 6),
                       ClipRRect(
@@ -1298,7 +1188,6 @@ class _LessonRowState extends State<_LessonRow>
               ),
               const SizedBox(width: 8),
 
-              // Right icon
               Icon(
                 isLocked ? Icons.lock_outline : Icons.chevron_right,
                 color: isLocked ? _kTextMuted : _kTextSecondary,
@@ -1310,7 +1199,6 @@ class _LessonRowState extends State<_LessonRow>
       ),
     );
   }
-
 }
 
 class _AssignmentRow extends StatefulWidget {
@@ -1563,14 +1451,14 @@ class _LessonThumbnailFallback extends StatelessWidget {
         child: isLocked
             ? const Icon(Icons.lock_outline, color: _kTextMuted, size: 18)
             : Text(
-          '${index + 1}',
-          style: const TextStyle(
-            color: _kTextSecondary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Montserrat',
-          ),
-        ),
+                '${index + 1}',
+                style: const TextStyle(
+                  color: _kTextSecondary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
       ),
     );
   }
@@ -1603,8 +1491,10 @@ class _StatusBadge extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'active':
         color = _kNetflixRed;
+        break;
       case 'completed':
         color = _kGreenCheck;
+        break;
       default:
         color = _kTextMuted;
     }
@@ -1687,7 +1577,7 @@ class _ModuleDetailSkeletonState extends State<_ModuleDetailSkeleton>
                   const SizedBox(height: 24),
                   ...List.generate(
                     4,
-                        (_) => Padding(
+                    (_) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _Bone(
                           width: double.infinity, height: 76, color: c),
