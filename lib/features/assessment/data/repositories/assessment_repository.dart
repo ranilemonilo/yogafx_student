@@ -214,15 +214,16 @@ class AssessmentRepository {
         throw const ServerException();
       }
 
-      return AssessmentResultData(
-        mode: (dataMap['mode'] ?? 'completed').toString(),
-        attemptId: (dataMap['attempt_id'] as num?)?.toInt() ?? attemptId,
-        scorePercentage: _readPercentage(dataMap),
-        correctAnswers: _readInt(dataMap, const ['correct_answers', 'correct']),
-        totalQuestions:
-            _readInt(dataMap, const ['total_questions', 'total', 'questions']),
-        status: dataMap['status']?.toString(),
-      );
+      final attemptMap = dataMap['attempt'] as Map<String, dynamic>? ?? {};
+
+return AssessmentResultData(
+  mode: dataMap['mode'] ?? 'result',
+  attemptId: attemptMap['id'] as int,
+  scorePercentage: (attemptMap['percentage_correct'] as num?)?.toDouble(),
+  correctAnswers: attemptMap['correct_answers'] as int?,
+  totalQuestions: attemptMap['gradable_questions'] as int?,
+  status: attemptMap['status'] as String?,
+);
     } on DioException catch (e) {
       throw e.error as AppException? ?? const ServerException();
     }

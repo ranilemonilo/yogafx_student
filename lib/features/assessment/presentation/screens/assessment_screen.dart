@@ -136,7 +136,6 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                     // Header
                     _AssessmentHeader(
                       assessment: data.assessment,
-                      // Opsional: Matikan back di header jika memicu error yang sama
                       canGoBack: false, 
                       onBack: () => _handleBack(context),
                       onClose: () => _handleClose(context),
@@ -178,7 +177,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                     _BottomAction(
                       questionType: data.question.questionType,
                       isLastQuestion: data.isLastQuestion,
-                      canGoBack: false, // Disetel false untuk menghapus tombol Previous
+                      canGoBack: false,
                       submitting: _submitting,
                       hasAnswer: _hasAnswer(data.question),
                       canManuallyProceed: data.question.questionType == 'text'
@@ -186,7 +185,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                           : (!data.question.hasCorrectnessGate ||
                               _isOptionAnswerCorrect),
                       isRequired: data.question.required,
-                      onPrevious: () {}, // Dikosongkan
+                      onPrevious: () {},
                       onSubmit: () => _handleSubmit(context, data),
                     ),
                   ],
@@ -581,32 +580,47 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
-                width: 72,
-                height: 72,
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 4,
-                ),
+              // PERUBAHAN: Countdown sekarang ada di tengah loading circle
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  const SizedBox(
+                    width: 76,
+                    height: 76,
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 4.5,
+                    ),
+                  ),
+                  Text(
+                    '$countdown',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 24),
               const Text(
                 'Processing Your Answers',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'Montserrat',
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Processing your answer... ${countdown}s',
+              const SizedBox(height: 8),
+              const Text(
+                'Please wait a moment...',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontFamily: 'Montserrat',
                   height: 1.5,
                 ),
@@ -638,7 +652,6 @@ class _AssessmentHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
       child: Row(
         children: [
-          // Back button or spacer
           if (canGoBack)
             _HeaderIconBtn(
               icon: Icons.arrow_back_ios_new_rounded,
@@ -647,11 +660,9 @@ class _AssessmentHeader extends StatelessWidget {
           else
             const SizedBox(width: 48),
 
-          // Title
           Expanded(
             child: Column(
               children: [
-                // Red "ASSESSMENT" eyebrow label
                 const Text(
                   'ASSESSMENT',
                   style: TextStyle(
@@ -680,7 +691,6 @@ class _AssessmentHeader extends StatelessWidget {
             ),
           ),
 
-          // Close button
           _HeaderIconBtn(
             icon: Icons.close_rounded,
             onTap: onClose,
@@ -729,7 +739,6 @@ class _NetflixProgressBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Step dots
           Row(
             children: List.generate(progress.total, (i) {
               final done = i < progress.current;
@@ -793,7 +802,6 @@ class _QuestionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Question type badge
         if (question.title.isNotEmpty &&
             question.title != 'Question ${question.id}')
           Container(
@@ -817,7 +825,6 @@ class _QuestionBody extends StatelessWidget {
             ),
           ),
 
-        // Question text — big, bold, Netflix-feel
         if (question.questionText.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -834,7 +841,6 @@ class _QuestionBody extends StatelessWidget {
             ),
           ),
 
-        // Instruction
         if (question.showInstruction && question.instructionText != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 24),
@@ -851,7 +857,6 @@ class _QuestionBody extends StatelessWidget {
         else
           const SizedBox(height: 28),
 
-        // Options
         if (question.questionType == 'radio_buttons' ||
             question.questionType == 'checkboxes')
           ...question.options.asMap().entries.map(
@@ -974,7 +979,6 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
             ),
             child: Row(
               children: [
-                // Selector indicator
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: 22,
@@ -997,7 +1001,6 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
                 ),
                 const SizedBox(width: 16),
 
-                // Option image
                 if (widget.option.imageUrl != null) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
@@ -1022,7 +1025,6 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
                   const SizedBox(width: 14),
                 ],
 
-                // Label
                 Expanded(
                   child: Text(
                     widget.option.label,
@@ -1038,7 +1040,6 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
                   ),
                 ),
 
-                // Selected checkmark accent on the right
                 if (widget.isSelected)
                   Padding(
                     padding: const EdgeInsets.only(left: 10),
@@ -1139,12 +1140,12 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
 class _BottomAction extends StatelessWidget {
   final String questionType;
   final bool isLastQuestion;
-  final bool canGoBack; // Ini sekarang diabaikan di UI karena kita set false di atas
+  final bool canGoBack;
   final bool submitting;
   final bool hasAnswer;
   final bool canManuallyProceed;
   final bool isRequired;
-  final VoidCallback onPrevious; // Diabaikan di UI
+  final VoidCallback onPrevious;
   final VoidCallback onSubmit;
 
   const _BottomAction({
