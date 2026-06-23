@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../lesson/presentation/providers/lesson_provider.dart';
+import '../../../lesson/data/models/lesson_model.dart';
+import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
 
 /// Netflix-inspired palette, scoped to this screen only so the rest of the
@@ -31,6 +34,8 @@ class AssessmentResultScreen extends ConsumerWidget {
     final resultAsync = ref.watch(
       assessmentResultProvider((lessonId: lessonId, attemptId: attemptId)),
     );
+    final lessonAsync = ref.watch(lessonDetailProvider(lessonId));
+    final nextLesson = lessonAsync.valueOrNull?.nextLesson;
 
     return Scaffold(
       backgroundColor: _NetflixPalette.background,
@@ -48,6 +53,7 @@ class AssessmentResultScreen extends ConsumerWidget {
             scorePercentage: result.scorePercentage,
             correctAnswers: result.correctAnswers,
             totalQuestions: result.totalQuestions,
+            nextLesson: nextLesson,
           ),
         ),
       ),
@@ -62,6 +68,7 @@ class _ResultContent extends StatefulWidget {
   final double? scorePercentage;
   final int? correctAnswers;
   final int? totalQuestions;
+  final NextLesson? nextLesson;
 
   const _ResultContent({
     required this.lessonId,
@@ -70,6 +77,7 @@ class _ResultContent extends StatefulWidget {
     required this.scorePercentage,
     required this.correctAnswers,
     required this.totalQuestions,
+    required this.nextLesson,
   });
 
   @override
@@ -144,7 +152,13 @@ class _ResultContentState extends State<_ResultContent>
   Widget build(BuildContext context) {
     final isCompleted = widget.status == 'completed' || widget.status == 'result';
     final score = widget.scorePercentage;
-    final scoreLabel = score == null ? '--' : '${score.toStringAsFixed(0)}%';
+    
+    // Format skor untuk UI baru (hanya angka tanpa tanda %)
+    final scoreValue = score == null ? '--' : score.toStringAsFixed(0);
+    
+    final correctnessLabel = score == null
+        ? null
+        : '${score.toStringAsFixed(0)}% correct';
     final summary = widget.correctAnswers != null && widget.totalQuestions != null
         ? '${widget.correctAnswers} of ${widget.totalQuestions} answers correct'
         : 'Your answers have been processed successfully.';
@@ -180,43 +194,83 @@ class _ResultContentState extends State<_ResultContent>
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 14,
+                  if (isCompleted && correctnessLabel != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      correctnessLabel,
+                      style: const TextStyle(
+                        color: _NetflixPalette.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                        letterSpacing: 0.3,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
+                  ],
+                  
+                  // PERUBAHAN: Desain UI Kotak Skor Baru
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: _NetflixPalette.surface,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _NetflixPalette.divider),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _NetflixPalette.red.withOpacity(0.3),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _NetflixPalette.red.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
-                          'Total Score',
+                          'TOTAL SCORE',
                           style: TextStyle(
-                            color: _NetflixPalette.greyMuted,
+                            color: _NetflixPalette.grey,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'Montserrat',
-                            letterSpacing: 0.4,
+                            letterSpacing: 1.5,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          scoreLabel,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'Montserrat',
-                          ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              scoreValue,
+                              style: const TextStyle(
+                                color: _NetflixPalette.red,
+                                fontSize: 48,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                            const Text(
+                              ' / 100',
+                              style: TextStyle(
+                                color: _NetflixPalette.greyMuted,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+
                   Text(
                     summary,
                     style: const TextStyle(
@@ -244,6 +298,15 @@ class _ResultContentState extends State<_ResultContent>
                     filled: true,
                     onTap: () => context.go('/lessons/${widget.lessonId}'),
                   ),
+                  if (widget.nextLesson != null && widget.nextLesson!.isUnlocked) ...[
+                    const SizedBox(height: 12),
+                    _ResultButton(
+                      label: 'Next Lesson',
+                      icon: Icons.play_arrow_rounded,
+                      filled: true,
+                      onTap: () => context.go('/lessons/${widget.nextLesson!.id}'),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _ResultButton(
                     label: 'Browse Modules',
@@ -413,4 +476,3 @@ class _ResultButtonState extends State<_ResultButton> {
     );
   }
 }
-
