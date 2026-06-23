@@ -23,9 +23,11 @@ import '../../features/module/presentation/screens/module_list_screen.dart';
 import '../../features/profile/presentation/screens/change_password_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../shell/main_shell.dart';
 
 class AppRoutes {
+  static const splash = '/splash';
   static const login = '/login';
   static const loginOtp = '/login/otp';
   static const resetPassword = '/reset-password';
@@ -56,11 +58,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: AppRoutes.dashboard,
+    initialLocation: AppRoutes.splash,
     redirect: (context, state) {
       final isInitial = authState.status == AuthStatus.initial;
       final isLoading = authState.status == AuthStatus.loading;
       final isAuthenticated = authState.isAuthenticated;
+
+      final isSplashRoute = state.matchedLocation == AppRoutes.splash;
+
       final publicRoutes = {
         AppRoutes.login,
         AppRoutes.loginOtp,
@@ -68,9 +73,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         AppRoutes.resetPasswordNative,
       };
       final isResetPasswordNativeRoute =
-          state.matchedLocation.startsWith('/reset-password/');
+      state.matchedLocation.startsWith('/reset-password/');
       final isPublicRoute = publicRoutes.contains(state.matchedLocation) ||
           isResetPasswordNativeRoute;
+
+      // Splash selalu boleh tampil duluan, navigasi diatur sendiri oleh splash
+      if (isSplashRoute) return null;
 
       if (isInitial || isLoading) return null;
       if (!isAuthenticated && !isPublicRoute) return AppRoutes.login;
@@ -82,6 +90,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
+        path: AppRoutes.splash,
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.login,
         name: 'login',
         builder: (context, state) => const LoginScreen(),
@@ -91,7 +104,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'loginOtp',
         builder: (context, state) => LoginOtpScreen(
           challenge: state.extra
-              as LoginOtpScreenArgs,
+          as LoginOtpScreenArgs,
         ),
       ),
       GoRoute(

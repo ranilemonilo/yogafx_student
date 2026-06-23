@@ -11,7 +11,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/running_login_time_provider.dart';
 import '../utils/access_time_helper.dart';
 import '../../data/models/dashboard_model.dart';
-
+import 'package:cached_network_image/cached_network_image.dart';
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 
 const _kRed = Color(0xFFE50914);
@@ -398,10 +398,20 @@ class _YogaFXAppBar extends ConsumerWidget {
           ),
         ),
       ),
-      title: Image.asset(
-        'assets/images/yogafx_logo.png',
+      title: CachedNetworkImage(
+        imageUrl: 'https://yogafx.b-cdn.net/content/Logo%20YogAFX.png',
         height: 26,
         fit: BoxFit.contain,
+        placeholder: (_, __) => const SizedBox(height: 26, width: 90),
+        errorWidget: (_, __, ___) => const Text(
+          'YogaFX',
+          style: TextStyle(
+            color: _kTextPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Montserrat',
+          ),
+        ),
       ),
       actions: [
         Padding(
