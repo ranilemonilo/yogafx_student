@@ -94,7 +94,7 @@ class ModuleItem {
   final bool certificateEnabled;
   final bool ebookEnabled;
   final String? thumbnailUrl;
-  
+
   // Field baru
   final List<String> viewTypes;
   final String? primaryCtaLabel;
@@ -261,6 +261,38 @@ class ModuleCertificateItem {
   final String? downloadUrl;
 }
 
+class ModuleVideoLecturerItem {
+  const ModuleVideoLecturerItem({
+    required this.id,
+    required this.title,
+    required this.slug,
+    required this.index,
+    required this.status,
+    this.description,
+    this.thumbnailUrl,
+  });
+
+  factory ModuleVideoLecturerItem.fromJson(Map<String, dynamic> json) {
+    return ModuleVideoLecturerItem(
+      id: json['id'] as int? ?? 0,
+      title: json['title'] as String? ?? '',
+      slug: json['url_slug'] as String? ?? '',
+      description: json['description'] as String?,
+      index: json['index'] as int? ?? 0,
+      status: json['status'] as String? ?? 'unavailable',
+      thumbnailUrl: json['thumbnail_url'] as String?,
+    );
+  }
+
+  final int id;
+  final String title;
+  final String slug;
+  final String? description;
+  final int index;
+  final String status;
+  final String? thumbnailUrl;
+}
+
 class ModuleDetail {
   const ModuleDetail({
     required this.id,
@@ -282,6 +314,7 @@ class ModuleDetail {
     required this.certificates,
     required this.lessons,
     required this.assignments,
+    required this.videoLecturers,
     required this.viewTypes, // Field Baru
     required this.primaryCtaLabel, // Field Baru
     required this.primaryCtaUrl, // Field Baru
@@ -295,6 +328,7 @@ class ModuleDetail {
     final rawCertificates = json['certificates'] as List<dynamic>? ?? const [];
     final rawLessons = json['lessons'] as List<dynamic>? ?? const [];
     final rawAssignments = json['assignments'] as List<dynamic>? ?? const [];
+    final rawVideoLecturers = json['video_lecturers'] as List<dynamic>? ?? const [];
 
     return ModuleDetail(
       id: json['id'] as int? ?? 0,
@@ -314,17 +348,26 @@ class ModuleDetail {
       certificateEnabled: json['certificate_enabled'] as bool? ?? false,
       ebookEnabled: json['ebook_enabled'] as bool? ?? false,
       thumbnailUrl: json['thumbnail_url'] as String?,
-      
+
       // Mapping field baru
       viewTypes: List<String>.from(json['view_types'] ?? []),
       primaryCtaLabel: json['primary_cta_label'] as String?,
       primaryCtaUrl: json['primary_cta_url'] as String?,
       primaryCtaKind: json['primary_cta_kind'] as String?,
-      
-      ebooks: rawEbooks.map((ebook) => ModuleEbookItem.fromJson(ebook as Map<String, dynamic>)).toList(),
-      certificates: rawCertificates.map((cert) => ModuleCertificateItem.fromJson(cert as Map<String, dynamic>)).toList(),
-      lessons: rawLessons.map((lesson) => ModuleLesson.fromJson(lesson as Map<String, dynamic>)).toList(),
+
+      ebooks: rawEbooks
+          .map((ebook) => ModuleEbookItem.fromJson(ebook as Map<String, dynamic>))
+          .toList(),
+      certificates: rawCertificates
+          .map((cert) => ModuleCertificateItem.fromJson(cert as Map<String, dynamic>))
+          .toList(),
+      lessons: rawLessons
+          .map((lesson) => ModuleLesson.fromJson(lesson as Map<String, dynamic>))
+          .toList(),
       assignments: rawAssignments,
+      videoLecturers: rawVideoLecturers
+          .map((v) => ModuleVideoLecturerItem.fromJson(v as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -349,7 +392,8 @@ class ModuleDetail {
   final List<ModuleCertificateItem> certificates;
   final List<ModuleLesson> lessons;
   final List<dynamic> assignments;
-  
+  final List<ModuleVideoLecturerItem> videoLecturers;
+
   // Field baru
   final List<String> viewTypes;
   final String? primaryCtaLabel;

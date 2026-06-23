@@ -30,8 +30,11 @@ void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
         context.push('/lessons/${firstLesson.id}');
       }
     } else if (module.viewTypes.contains('video_lecturer')) {
-      // TODO: Navigasi ke video lecturer player jika rutenya sudah tersedia
-      // context.push('/courses/video-lecturer-id');
+      // Ambil video pertama yang siap
+      final firstVideo = module.videoLecturers.where((v) => v.status == 'ready').firstOrNull;
+      if (firstVideo != null) {
+        context.push('/courses/${firstVideo.slug}');
+      }
     }
   } else if (kind == 'download') {
     final firstCertificate = module.certificates.firstOrNull;
@@ -112,6 +115,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         widget.module.assignments.length +
         widget.module.ebooks.length +
         widget.module.certificates.length +
+        widget.module.videoLecturers.length +
         15; // Buffer cukup besar untuk header/sections/video_lecturer
 
     _itemCtrlList = List.generate(
@@ -324,47 +328,16 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   }
 
   List<Widget> _buildVideoLecturerList(ModuleDetail module) {
-    // Karena list video_lecturers mungkin belum masuk ke JSON mapping module_model.dart, 
-    // kita tampilkan placeholder atau item jika tersedia.
+    if (module.videoLecturers.isEmpty) return [];
     return [
-      _buildAnimated(const _SectionHeader(title: 'Video Lecturer', count: 1)),
+      _buildAnimated(_SectionHeader(title: 'Video Lecturer', count: module.videoLecturers.length)),
       const SizedBox(height: 12),
-      _buildAnimated(
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: _kSurface,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _kDivider, width: 0.5),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: _kNetflixRed.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(Icons.play_circle_fill, color: _kNetflixRed),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Video Lecturer Ready',
-                  style: TextStyle(
-                    color: _kTextPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: _kTextMuted),
-            ],
-          ),
-        ),
-      ),
+      ...module.videoLecturers.asMap().entries.map((entry) => _buildAnimated(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _VideoLecturerRow(video: entry.value, index: entry.key),
+            ),
+          )),
       const SizedBox(height: 16),
     ];
   }
@@ -846,7 +819,189 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ─── List Items (Lesson, Ebook, Assignment, dsb) ──────────────────────────────
+// ─── List Items (Video, Ebook, Certificate, Lesson, Assignment) ───────────────
+
+class _VideoLecturerRow extends StatefulWidget {
+  final ModuleVideoLecturerItem video;
+  final int index;
+
+  const _VideoLecturerRow({required this.video, required this.index});
+
+  @override
+  State<_VideoLecturerRow> createState() => _VideoLecturerRowState();
+}
+
+class _VideoLecturerRowState extends State<_VideoLecturerRow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressCtrl;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 130),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final video = widget.video;
+    final isReady = video.status == 'ready';
+
+    return GestureDetector(
+      // Navigasi ke video player dengan route slug course
+      onTap: isReady ? () => context.push('/courses/${video.slug}') : null,
+      onTapDown: (_) => _pressCtrl.forward(),
+      onTapUp: (_) => _pressCtrl.reverse(),
+      onTapCancel: () => _pressCtrl.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _kSurface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _kDivider, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              // Thumbnail
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: SizedBox(
+                  width: 76,
+                  height: 52,
+                  child: video.thumbnailUrl != null
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            AuthNetworkImage(
+                              imageUrl: video.thumbnailUrl!,
+                              fit: BoxFit.cover,
+                              placeholderBuilder: (_) =>
+                                  _VideoThumbnailFallback(index: widget.index),
+                              errorBuilderWidget: (_, __) =>
+                                  _VideoThumbnailFallback(index: widget.index),
+                            ),
+                            // Mini play overlay
+                            Container(
+                              color: Colors.black.withOpacity(0.25),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : _VideoThumbnailFallback(index: widget.index),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${widget.index + 1}. ',
+                          style: const TextStyle(
+                            color: _kTextMuted,
+                            fontSize: 12,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            video.title,
+                            style: TextStyle(
+                              color: isReady ? _kTextPrimary : _kTextMuted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Montserrat',
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isReady ? _kNetflixRed.withOpacity(0.12) : _kSurfaceElevated,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isReady ? 'Ready' : 'Unavailable',
+                        style: TextStyle(
+                          color: isReady ? _kNetflixRed : _kTextMuted,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Right icon
+              Icon(
+                isReady ? Icons.chevron_right : Icons.lock_outline,
+                color: isReady ? _kTextSecondary : _kTextMuted,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VideoThumbnailFallback extends StatelessWidget {
+  final int index;
+
+  const _VideoThumbnailFallback({required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: _kSurfaceElevated,
+      child: Center(
+        child: Text(
+          '${index + 1}',
+          style: const TextStyle(
+            color: _kTextSecondary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Montserrat',
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 List<_ModuleAssignmentItem> _parseAssignments(List<dynamic> assignments) {
   return assignments
