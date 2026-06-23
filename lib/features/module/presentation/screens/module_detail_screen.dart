@@ -840,45 +840,49 @@ class _LessonRowState extends State<_LessonRow>
                   height: 52,
                   child: lesson.thumbnailUrl != null
                       ? Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        lesson.thumbnailUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, error, __) {
-                          return _LessonThumbnailFallback(
-                            index: widget.index,
-                            isLocked: isLocked,
-                          );
-                        },
-                      ),
-                      if (isLocked)
-                        Container(
-                          color: Colors.black.withOpacity(0.55),
-                          child: const Icon(
-                            Icons.lock_outline,
-                            color: _kTextMuted,
-                            size: 18,
-                          ),
-                        )
-                      else
-                      // Mini play overlay
-                        Container(
-                          color: Colors.black.withOpacity(0.25),
-                          child: const Center(
-                            child: Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              size: 22,
+                          fit: StackFit.expand,
+                          children: [
+                            AuthNetworkImage(
+                              imageUrl: lesson.thumbnailUrl!,
+                              fit: BoxFit.cover,
+                              placeholderBuilder: (_) =>
+                                  _LessonThumbnailFallback(
+                                    index: widget.index,
+                                    isLocked: isLocked,
+                                  ),
+                              errorBuilderWidget: (_, __) =>
+                                  _LessonThumbnailFallback(
+                                    index: widget.index,
+                                    isLocked: isLocked,
+                                  ),
                             ),
-                          ),
-                        ),
-                    ],
-                  )
+                            if (isLocked)
+                              Container(
+                                color: Colors.black.withOpacity(0.55),
+                                child: const Icon(
+                                  Icons.lock_outline,
+                                  color: _kTextMuted,
+                                  size: 18,
+                                ),
+                              )
+                            else
+                              // Mini play overlay
+                              Container(
+                                color: Colors.black.withOpacity(0.25),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.play_arrow,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        )
                       : _LessonThumbnailFallback(
-                    index: widget.index,
-                    isLocked: isLocked,
-                  ),
+                          index: widget.index,
+                          isLocked: isLocked,
+                        ),
                 ),
               ),
               const SizedBox(width: 12),

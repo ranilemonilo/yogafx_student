@@ -21,6 +21,10 @@ class AuthNetworkImage extends StatelessWidget {
     return FutureBuilder<String?>(
       future: SecureStorageService.getToken(),
       builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return placeholderBuilder?.call(context) ?? const SizedBox.shrink();
+        }
+
         final token = snapshot.data;
         final uri = Uri.tryParse(imageUrl);
         final isSignedUrl =

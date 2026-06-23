@@ -982,20 +982,24 @@ class _ContinueCardState extends State<_ContinueCard>
                 offset: const Offset(0, 8),
               ),
             ],
-            image: section.thumbnailUrl != null
-                ? DecorationImage(
-              image: NetworkImage(section.thumbnailUrl!),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.5),
-                BlendMode.darken,
-              ),
-            )
-                : null,
           ),
           clipBehavior: Clip.hardEdge,
           child: Stack(
             children: [
+              if (section.thumbnailUrl != null)
+                Positioned.fill(
+                  child: AuthNetworkImage(
+                    imageUrl: section.thumbnailUrl!,
+                    fit: BoxFit.cover,
+                    placeholderBuilder: (_) => Container(color: _kSurface),
+                    errorBuilderWidget: (_, __) => Container(color: _kSurface),
+                  ),
+                ),
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                ),
+              ),
               // Gradient overlay
               Container(
                 decoration: BoxDecoration(
