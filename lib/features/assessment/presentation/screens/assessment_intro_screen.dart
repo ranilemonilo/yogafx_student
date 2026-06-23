@@ -759,30 +759,22 @@ class _IntroSkeletonState extends State<_IntroSkeleton>
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _block(
-              width: double.infinity,
-              height: 220,
-              radius: BorderRadius.circular(10),
-            ),
-            const SizedBox(height: 24),
-            _block(width: 90, height: 14),
-            const SizedBox(height: 10),
-            _block(width: 220, height: 22),
-            const SizedBox(height: 16),
-            _block(width: double.infinity, height: 14),
-            const SizedBox(height: 8),
-            _block(width: 200, height: 14),
-            const SizedBox(height: 24),
-            _block(width: 160, height: 14),
-            const SizedBox(height: 28),
-            _block(width: double.infinity, height: 52),
-          ],
+    return Center(
+      child: FadeTransition(
+        opacity: _pulse,
+        child: SizedBox(
+          width: 220,
+          child: Image.network(
+            'https://yogafx.b-cdn.net/content/Logo%20YogAFX.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) {
+              return const Icon(
+                Icons.image_outlined,
+                color: _NetflixPalette.greyMuted,
+                size: 56,
+              );
+            },
+          ),
         ),
       ),
     );

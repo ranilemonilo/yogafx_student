@@ -88,110 +88,111 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       body: Stack(
         children: [
           attemptAsync.when(
-        loading: () => const _NetflixLoader(),
-        error: (e, _) => _AttemptError(
-          message: e.toString(),
-          onBack: () => context.pop(),
-          onRetry: () => ref
-              .read(assessmentAttemptProvider(
-            (lessonId: widget.lessonId, attemptId: widget.attemptId),
-          ).notifier)
-              .load(),
-        ),
-        data: (data) {
-          if (data == null) return const SizedBox.shrink();
+            loading: () => const _NetflixLoader(),
+            error: (e, _) => _AttemptError(
+              message: e.toString(),
+              onBack: () => context.pop(),
+              onRetry: () => ref
+                  .read(assessmentAttemptProvider(
+                (lessonId: widget.lessonId, attemptId: widget.attemptId),
+              ).notifier)
+                  .load(),
+            ),
+            data: (data) {
+              if (data == null) return const SizedBox.shrink();
 
-          if (data.mode != 'question') {
-            _startResultProcessing(context);
-            return const _NetflixLoader();
-          }
+              if (data.mode != 'question') {
+                _startResultProcessing(context);
+                return const _NetflixLoader();
+              }
 
-          if (_lastQuestionId != data.question.id) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              setState(() {
-                _lastQuestionId = data.question.id;
-                _selectedOptionIds = List.from(data.question.saved.optionIds);
-                _answerText = data.question.saved.answerText;
-                _optionFeedbackMessage = null;
-                _isOptionAnswerCorrect = false;
-                _submitting = false;
-              });
-            });
-          }
+              if (_lastQuestionId != data.question.id) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  setState(() {
+                    _lastQuestionId = data.question.id;
+                    _selectedOptionIds = List.from(data.question.saved.optionIds);
+                    _answerText = data.question.saved.answerText;
+                    _optionFeedbackMessage = null;
+                    _isOptionAnswerCorrect = false;
+                    _submitting = false;
+                  });
+                });
+              }
 
-          if (_selectedOptionIds.isEmpty &&
-              data.question.saved.optionIds.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              setState(() {
-                _selectedOptionIds =
-                    List.from(data.question.saved.optionIds);
-              });
-            });
-          }
+              if (_selectedOptionIds.isEmpty &&
+                  data.question.saved.optionIds.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  setState(() {
+                    _selectedOptionIds =
+                        List.from(data.question.saved.optionIds);
+                  });
+                });
+              }
 
-          return SafeArea(
-            child: Column(
-              children: [
-                // Header
-                _AssessmentHeader(
-                  assessment: data.assessment,
-                  canGoBack: data.canGoBack,
-                  onBack: () => _handleBack(context),
-                  onClose: () => _handleClose(context),
-                ),
+              return SafeArea(
+                child: Column(
+                  children: [
+                    // Header
+                    _AssessmentHeader(
+                      assessment: data.assessment,
+                      canGoBack: false, 
+                      onBack: () => _handleBack(context),
+                      onClose: () => _handleClose(context),
+                    ),
 
-                // Slim progress bar
-                if (data.assessment.showProgressBar)
-                  _NetflixProgressBar(progress: data.assessment.progress),
+                    // Slim progress bar
+                    if (data.assessment.showProgressBar)
+                      _NetflixProgressBar(progress: data.assessment.progress),
 
-                // Question content — animated
-                Expanded(
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: SingleChildScrollView(
-                        padding:
-                        const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                        child: _QuestionBody(
-                          question: data.question,
-                          selectedOptionIds: _selectedOptionIds,
-                          answerText: _answerText,
-                          optionFeedbackMessage: _optionFeedbackMessage,
-                          onOptionSelected: (optionId) =>
-                              _handleOptionSelected(context, data, optionId),
-                          onTextChanged: (text) {
-                            setState(() {
-                              _answerText = text;
-                              _optionFeedbackMessage = null;
-                              _isOptionAnswerCorrect = false;
-                            });
-                          },
+                    // Question content — animated
+                    Expanded(
+                      child: FadeTransition(
+                        opacity: _fadeAnim,
+                        child: SlideTransition(
+                          position: _slideAnim,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                            child: _QuestionBody(
+                              question: data.question,
+                              selectedOptionIds: _selectedOptionIds,
+                              answerText: _answerText,
+                              optionFeedbackMessage: _optionFeedbackMessage,
+                              onOptionSelected: (optionId) =>
+                                  _handleOptionSelected(context, data, optionId),
+                              onTextChanged: (text) {
+                                setState(() {
+                                  _answerText = text;
+                                  _optionFeedbackMessage = null;
+                                  _isOptionAnswerCorrect = false;
+                                });
+                              },
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
 
-                // Bottom CTA
-                _BottomAction(
-                  questionType: data.question.questionType,
-                  isLastQuestion: data.isLastQuestion,
-                  submitting: _submitting,
-                  hasAnswer: _hasAnswer(data.question),
-                  canManuallyProceed: data.question.questionType == 'text'
-                      ? _hasAnswer(data.question)
-                      : (!data.question.hasCorrectnessGate ||
-                          _isOptionAnswerCorrect),
-                  isRequired: data.question.required,
-                  onSubmit: () => _handleSubmit(context, data),
+                    // Bottom CTA
+                    _BottomAction(
+                      questionType: data.question.questionType,
+                      isLastQuestion: data.isLastQuestion,
+                      canGoBack: false,
+                      submitting: _submitting,
+                      hasAnswer: _hasAnswer(data.question),
+                      canManuallyProceed: data.question.questionType == 'text'
+                          ? _hasAnswer(data.question)
+                          : (!data.question.hasCorrectnessGate ||
+                              _isOptionAnswerCorrect),
+                      isRequired: data.question.required,
+                      onPrevious: () {},
+                      onSubmit: () => _handleSubmit(context, data),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
           if (_processingResult)
             Positioned.fill(
               child: _AssessmentProcessingOverlay(
@@ -405,8 +406,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
         filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
         child: AlertDialog(
           backgroundColor: const Color(0xFF1F1F1F),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: const Text(
             'Leave assessment?',
             style: TextStyle(
@@ -426,14 +426,12 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
               height: 1.6,
             ),
           ),
-          actionsPadding:
-          const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               style: TextButton.styleFrom(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
               child: const Text(
                 'Stay',
@@ -453,8 +451,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4)),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               child: const Text(
                 'Leave',
@@ -492,8 +489,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
         ),
         backgroundColor: const Color(0xFF1F1F1F),
         behavior: SnackBarBehavior.floating,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
     );
@@ -521,11 +517,10 @@ class _NetflixLoaderState extends State<_NetflixLoader>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _pulse =
-        Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(
-          parent: _ctrl,
-          curve: Curves.easeInOut,
-        ));
+    _pulse = Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(
+      parent: _ctrl,
+      curve: Curves.easeInOut,
+    ));
   }
 
   @override
@@ -539,24 +534,18 @@ class _NetflixLoaderState extends State<_NetflixLoader>
     return Center(
       child: FadeTransition(
         opacity: _pulse,
-        child: Container(
-          width: 96,
-          height: 96,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.18),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Image.asset(
-            'assets/images/yogafx_logo.png',
+        child: SizedBox(
+          width: 220,
+          child: Image.network(
+            'https://yogafx.b-cdn.net/content/Logo%20YogAFX.png',
             fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) {
+              return const Icon(
+                Icons.image_outlined,
+                color: AppColors.textMuted,
+                size: 56,
+              );
+            },
           ),
         ),
       ),
@@ -564,7 +553,7 @@ class _NetflixLoaderState extends State<_NetflixLoader>
   }
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
+// ─── Header & Overlay ─────────────────────────────────────────────────────────
 
 class _AssessmentProcessingOverlay extends StatelessWidget {
   final int countdown;
@@ -591,32 +580,47 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
-                width: 72,
-                height: 72,
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 4,
-                ),
+              // PERUBAHAN: Countdown sekarang ada di tengah loading circle
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  const SizedBox(
+                    width: 76,
+                    height: 76,
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 4.5,
+                    ),
+                  ),
+                  Text(
+                    '$countdown',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 24),
               const Text(
                 'Processing Your Answers',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'Montserrat',
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Showing your score in ${countdown}s',
+              const SizedBox(height: 8),
+              const Text(
+                'Please wait a moment...',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontFamily: 'Montserrat',
                   height: 1.5,
                 ),
@@ -648,7 +652,6 @@ class _AssessmentHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
       child: Row(
         children: [
-          // Back button or spacer
           if (canGoBack)
             _HeaderIconBtn(
               icon: Icons.arrow_back_ios_new_rounded,
@@ -657,11 +660,9 @@ class _AssessmentHeader extends StatelessWidget {
           else
             const SizedBox(width: 48),
 
-          // Title
           Expanded(
             child: Column(
               children: [
-                // Red "ASSESSMENT" eyebrow label
                 const Text(
                   'ASSESSMENT',
                   style: TextStyle(
@@ -690,7 +691,6 @@ class _AssessmentHeader extends StatelessWidget {
             ),
           ),
 
-          // Close button
           _HeaderIconBtn(
             icon: Icons.close_rounded,
             onTap: onClose,
@@ -739,7 +739,6 @@ class _NetflixProgressBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Step dots
           Row(
             children: List.generate(progress.total, (i) {
               final done = i < progress.current;
@@ -753,8 +752,8 @@ class _NetflixProgressBar extends StatelessWidget {
                     color: done
                         ? AppColors.primary
                         : active
-                        ? AppColors.primary.withOpacity(0.5)
-                        : AppColors.divider,
+                            ? AppColors.primary.withOpacity(0.5)
+                            : AppColors.divider,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -803,13 +802,11 @@ class _QuestionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Question type badge
         if (question.title.isNotEmpty &&
             question.title != 'Question ${question.id}')
           Container(
             margin: const EdgeInsets.only(bottom: 12),
-            padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.primary.withOpacity(0.15),
               borderRadius: BorderRadius.circular(4),
@@ -828,7 +825,6 @@ class _QuestionBody extends StatelessWidget {
             ),
           ),
 
-        // Question text — big, bold, Netflix-feel
         if (question.questionText.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -845,7 +841,6 @@ class _QuestionBody extends StatelessWidget {
             ),
           ),
 
-        // Instruction
         if (question.showInstruction && question.instructionText != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 24),
@@ -862,46 +857,29 @@ class _QuestionBody extends StatelessWidget {
         else
           const SizedBox(height: 28),
 
-        // Options
         if (question.questionType == 'radio_buttons' ||
             question.questionType == 'checkboxes')
           ...question.options.asMap().entries.map(
                 (entry) => _AnimatedOptionCard(
-              index: entry.key,
-              option: entry.value,
-              isSelected: selectedOptionIds.contains(entry.value.id),
-              isMulti: question.allowMultiSelect,
-              onTap: () => onOptionSelected(entry.value.id),
-            ),
-          ),
+                  index: entry.key,
+                  option: entry.value,
+                  isSelected: selectedOptionIds.contains(entry.value.id),
+                  isMulti: question.allowMultiSelect,
+                  onTap: () => onOptionSelected(entry.value.id),
+                ),
+              ),
         if (optionFeedbackMessage != null &&
             optionFeedbackMessage!.trim().isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: isCorrectFeedback
-                    ? Colors.green.withOpacity(0.12)
-                    : AppColors.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isCorrectFeedback
-                      ? Colors.green.withOpacity(0.24)
-                      : AppColors.primary.withOpacity(0.24),
-                  width: 0.8,
-                ),
-              ),
-              child: Text(
-                optionFeedbackMessage!,
-                style: TextStyle(
-                  color: isCorrectFeedback ? Colors.green : AppColors.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Montserrat',
-                  height: 1.5,
-                ),
+            padding: const EdgeInsets.only(top: 8, left: 2, right: 2),
+            child: Text(
+              optionFeedbackMessage!,
+              style: TextStyle(
+                color: isCorrectFeedback ? Colors.green : AppColors.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Montserrat',
+                height: 1.5,
               ),
             ),
           )
@@ -977,60 +955,52 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
           scale: _scaleAnim,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
               color: widget.isSelected
-                  ? const Color(0xFF1A0A0A) // dark red tint
-                  : const Color(0xFF1A1A1A),
+                  ? const Color(0xFF2B1212)
+                  : const Color(0xFF242424),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color: widget.isSelected
                     ? AppColors.primary
-                    : const Color(0xFF2A2A2A),
+                    : const Color(0xFF4A4A4A),
                 width: widget.isSelected ? 1.5 : 1.0,
               ),
               boxShadow: widget.isSelected
                   ? [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.18),
-                  blurRadius: 12,
-                  offset: const Offset(0, 2),
-                ),
-              ]
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.18),
+                        blurRadius: 12,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
                   : [],
             ),
             child: Row(
               children: [
-                // Selector indicator
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                    shape: widget.isMulti
-                        ? BoxShape.rectangle
-                        : BoxShape.circle,
-                    borderRadius:
-                    widget.isMulti ? BorderRadius.circular(5) : null,
+                    shape: widget.isMulti ? BoxShape.rectangle : BoxShape.circle,
+                    borderRadius: widget.isMulti ? BorderRadius.circular(5) : null,
                     color: widget.isSelected
                         ? AppColors.primary
                         : Colors.transparent,
                     border: Border.all(
-                      color: widget.isSelected
-                          ? AppColors.primary
-                          : const Color(0xFF555555),
+                      color: AppColors.primary,
                       width: 1.5,
                     ),
                   ),
                   child: widget.isSelected
                       ? const Icon(Icons.check_rounded,
-                      color: Colors.white, size: 14)
+                          color: Colors.white, size: 14)
                       : null,
                 ),
                 const SizedBox(width: 16),
 
-                // Option image
                 if (widget.option.imageUrl != null) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
@@ -1039,30 +1009,37 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 50,
+                        height: 50,
+                        color: const Color(0xFF303030),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.image_outlined,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
                 ],
 
-                // Label
                 Expanded(
                   child: Text(
                     widget.option.label,
                     style: TextStyle(
-                      color: widget.isSelected
-                          ? AppColors.textPrimary
-                          : const Color(0xFFAAAAAA),
+                      color: Colors.white,
                       fontSize: 15,
                       fontWeight: widget.isSelected
                           ? FontWeight.w600
-                          : FontWeight.w400,
+                          : FontWeight.w500,
                       fontFamily: 'Montserrat',
                       height: 1.4,
                     ),
                   ),
                 ),
 
-                // Selected checkmark accent on the right
                 if (widget.isSelected)
                   Padding(
                     padding: const EdgeInsets.only(left: 10),
@@ -1118,12 +1095,12 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
           color: const Color(0xFF1A1A1A),
           boxShadow: _focused
               ? [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.12),
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ]
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
               : [],
         ),
         child: TextField(
@@ -1163,19 +1140,23 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
 class _BottomAction extends StatelessWidget {
   final String questionType;
   final bool isLastQuestion;
+  final bool canGoBack;
   final bool submitting;
   final bool hasAnswer;
   final bool canManuallyProceed;
   final bool isRequired;
+  final VoidCallback onPrevious;
   final VoidCallback onSubmit;
 
   const _BottomAction({
     required this.questionType,
     required this.isLastQuestion,
+    required this.canGoBack,
     required this.submitting,
     required this.hasAnswer,
     required this.canManuallyProceed,
     required this.isRequired,
+    required this.onPrevious,
     required this.onSubmit,
   });
 
@@ -1187,20 +1168,19 @@ class _BottomAction extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 14, 24, 34),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.background,
         border: Border(
           top: BorderSide(
-            color: const Color(0xFF2A2A2A),
+            color: Color(0xFF2A2A2A),
             width: 0.5,
           ),
         ),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+      child: Center(
+        child: SizedBox(
+          width: double.infinity,
+          height: 54,
           child: ElevatedButton(
             onPressed: isEnabled ? onSubmit : null,
             style: ElevatedButton.styleFrom(
@@ -1216,46 +1196,48 @@ class _BottomAction extends StatelessWidget {
             ),
             child: submitting
                 ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2.5,
-              ),
-            )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
                 : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  isLastQuestion ? 'Submit Assessment' : 'Next Question',
-                  style: TextStyle(
-                    color: canProceed
-                        ? Colors.white
-                        : AppColors.textMuted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 0.2,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        isLastQuestion
+                            ? 'Submit Assessment'
+                            : 'Next Question',
+                        style: TextStyle(
+                          color: canProceed
+                              ? Colors.white
+                              : AppColors.textMuted,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      if (canProceed && !isLastQuestion) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ],
+                      if (canProceed && isLastQuestion) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.check_circle_outline_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ],
+                    ],
                   ),
-                ),
-                if (canProceed && !isLastQuestion) ...[
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ],
-                if (canProceed && isLastQuestion) ...[
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.check_circle_outline_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ],
-              ],
-            ),
           ),
         ),
       ),
