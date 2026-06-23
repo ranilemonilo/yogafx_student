@@ -19,7 +19,7 @@ class ProfileData with _$ProfileData {
     String? gender,
     @JsonKey(name: 'practicing_yoga_for') String? practicingYogaFor,
     @JsonKey(name: 'yoga_sequence_experience') String? yogaSequenceExperience,
-    @JsonKey(name: 'hours_per_week') int? hoursPerWeek,
+    @JsonKey(name: 'hours_per_week') String? hoursPerWeek,
     @JsonKey(name: 'current_fitness_level') String? currentFitnessLevel,
     @JsonKey(name: 'flexibility_rating') String? flexibilityRating,
     String? motivation,

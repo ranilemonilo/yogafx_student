@@ -184,7 +184,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _genderController.text = profile.gender ?? '';
     _practicingController.text = profile.practicingYogaFor ?? '';
     _sequenceController.text = profile.yogaSequenceExperience ?? '';
-    _hoursPerWeekController.text = profile.hoursPerWeek?.toString() ?? '';
+    _hoursPerWeekController.text = profile.hoursPerWeek ?? '';
     _fitnessLevelController.text = profile.currentFitnessLevel ?? '';
     _flexibilityController.text = profile.flexibilityRating ?? '';
     _motivationController.text = profile.motivation ?? '';
@@ -342,7 +342,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           'gender': _genderController.text.trim(),
           'practicing_yoga_for': _practicingController.text.trim(),
           'yoga_sequence_experience': _sequenceController.text.trim(),
-          'hours_per_week': int.tryParse(_hoursPerWeekController.text.trim()) ?? '',
+          'hours_per_week': _hoursPerWeekController.text.trim(),
           'current_fitness_level': _fitnessLevelController.text.trim(),
           'flexibility_rating': _flexibilityController.text.trim(),
           'motivation': _motivationController.text.trim(),

@@ -22,13 +22,18 @@ class AuthNetworkImage extends StatelessWidget {
       future: SecureStorageService.getToken(),
       builder: (context, snapshot) {
         final token = snapshot.data;
+        final uri = Uri.tryParse(imageUrl);
+        final isSignedUrl =
+            uri != null && uri.queryParameters.containsKey('signature');
+        final headers =
+            token == null || token.isEmpty || isSignedUrl
+                ? null
+                : {'Authorization': 'Bearer $token'};
 
         return Image.network(
           imageUrl,
           fit: fit,
-          headers: token == null || token.isEmpty
-              ? null
-              : {'Authorization': 'Bearer $token'},
+          headers: headers,
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
             return placeholderBuilder?.call(context) ?? const SizedBox.shrink();

@@ -38,7 +38,7 @@ mixin _$ProfileData {
   @JsonKey(name: 'yoga_sequence_experience')
   String? get yogaSequenceExperience => throw _privateConstructorUsedError;
   @JsonKey(name: 'hours_per_week')
-  int? get hoursPerWeek => throw _privateConstructorUsedError;
+  String? get hoursPerWeek => throw _privateConstructorUsedError;
   @JsonKey(name: 'current_fitness_level')
   String? get currentFitnessLevel => throw _privateConstructorUsedError;
   @JsonKey(name: 'flexibility_rating')
@@ -80,7 +80,7 @@ abstract class $ProfileDataCopyWith<$Res> {
       String? gender,
       @JsonKey(name: 'practicing_yoga_for') String? practicingYogaFor,
       @JsonKey(name: 'yoga_sequence_experience') String? yogaSequenceExperience,
-      @JsonKey(name: 'hours_per_week') int? hoursPerWeek,
+      @JsonKey(name: 'hours_per_week') String? hoursPerWeek,
       @JsonKey(name: 'current_fitness_level') String? currentFitnessLevel,
       @JsonKey(name: 'flexibility_rating') String? flexibilityRating,
       String? motivation,
@@ -180,7 +180,7 @@ class _$ProfileDataCopyWithImpl<$Res, $Val extends ProfileData>
       hoursPerWeek: freezed == hoursPerWeek
           ? _value.hoursPerWeek
           : hoursPerWeek // ignore: cast_nullable_to_non_nullable
-              as int?,
+              as String?,
       currentFitnessLevel: freezed == currentFitnessLevel
           ? _value.currentFitnessLevel
           : currentFitnessLevel // ignore: cast_nullable_to_non_nullable
@@ -246,7 +246,7 @@ abstract class _$$ProfileDataImplCopyWith<$Res>
       String? gender,
       @JsonKey(name: 'practicing_yoga_for') String? practicingYogaFor,
       @JsonKey(name: 'yoga_sequence_experience') String? yogaSequenceExperience,
-      @JsonKey(name: 'hours_per_week') int? hoursPerWeek,
+      @JsonKey(name: 'hours_per_week') String? hoursPerWeek,
       @JsonKey(name: 'current_fitness_level') String? currentFitnessLevel,
       @JsonKey(name: 'flexibility_rating') String? flexibilityRating,
       String? motivation,
@@ -345,7 +345,7 @@ class __$$ProfileDataImplCopyWithImpl<$Res>
       hoursPerWeek: freezed == hoursPerWeek
           ? _value.hoursPerWeek
           : hoursPerWeek // ignore: cast_nullable_to_non_nullable
-              as int?,
+              as String?,
       currentFitnessLevel: freezed == currentFitnessLevel
           ? _value.currentFitnessLevel
           : currentFitnessLevel // ignore: cast_nullable_to_non_nullable
@@ -442,7 +442,7 @@ class _$ProfileDataImpl implements _ProfileData {
   final String? yogaSequenceExperience;
   @override
   @JsonKey(name: 'hours_per_week')
-  final int? hoursPerWeek;
+  final String? hoursPerWeek;
   @override
   @JsonKey(name: 'current_fitness_level')
   final String? currentFitnessLevel;
@@ -572,7 +572,7 @@ abstract class _ProfileData implements ProfileData {
       @JsonKey(name: 'practicing_yoga_for') final String? practicingYogaFor,
       @JsonKey(name: 'yoga_sequence_experience')
       final String? yogaSequenceExperience,
-      @JsonKey(name: 'hours_per_week') final int? hoursPerWeek,
+      @JsonKey(name: 'hours_per_week') final String? hoursPerWeek,
       @JsonKey(name: 'current_fitness_level') final String? currentFitnessLevel,
       @JsonKey(name: 'flexibility_rating') final String? flexibilityRating,
       final String? motivation,
@@ -617,7 +617,7 @@ abstract class _ProfileData implements ProfileData {
   String? get yogaSequenceExperience;
   @override
   @JsonKey(name: 'hours_per_week')
-  int? get hoursPerWeek;
+  String? get hoursPerWeek;
   @override
   @JsonKey(name: 'current_fitness_level')
   String? get currentFitnessLevel;

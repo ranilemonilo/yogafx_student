@@ -363,7 +363,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       ),
                       _InfoRow(
                         label: 'Hours per week',
-                        value: profile.hoursPerWeek?.toString(),
+                        value: profile.hoursPerWeek,
                       ),
                       _InfoRow(
                         label: 'Fitness level',

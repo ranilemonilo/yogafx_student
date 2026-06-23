@@ -7,20 +7,17 @@ class ResetPasswordLinkParser {
     final uri = Uri.tryParse(rawLink.trim());
     if (uri == null) return null;
 
-    final segments = uri.pathSegments;
-    final resetIndex = segments.indexOf('reset-password');
-    if (resetIndex == -1 || resetIndex + 1 >= segments.length) {
-      return null;
+    final candidates = <Uri>[
+      uri,
+      ..._fragmentCandidates(uri),
+    ];
+
+    for (final candidate in candidates) {
+      final parsed = _parseCandidate(candidate);
+      if (parsed != null) return parsed;
     }
 
-    final token = segments[resetIndex + 1].trim();
-    if (token.isEmpty) return null;
-
-    final email = uri.queryParameters['email']?.trim();
-    return ResetPasswordLinkData(
-      token: token,
-      email: email != null && email.isNotEmpty ? email : null,
-    );
+    return null;
   }
 
   static String buildAppRoute(ResetPasswordLinkData data) {
@@ -37,5 +34,74 @@ class ResetPasswordLinkParser {
 
   static void debugPrintInvalid(String rawLink) {
     debugPrint('Unable to parse reset password link: $rawLink');
+  }
+
+  static ResetPasswordLinkData? _parseCandidate(Uri uri) {
+    final token = _extractToken(uri);
+    if (token == null) return null;
+
+    final email = _extractEmail(uri);
+    return ResetPasswordLinkData(
+      token: token,
+      email: email,
+    );
+  }
+
+  static List<Uri> _fragmentCandidates(Uri uri) {
+    final fragment = uri.fragment.trim();
+    if (fragment.isEmpty) return const [];
+
+    final normalized = fragment.startsWith('/') ? fragment : '/$fragment';
+    final fragmentUri = Uri.tryParse(normalized);
+    if (fragmentUri == null) return const [];
+
+    return [
+      fragmentUri,
+      Uri(
+        path: fragmentUri.path,
+        query: fragmentUri.hasQuery ? fragmentUri.query : null,
+      ),
+    ];
+  }
+
+  static String? _extractToken(Uri uri) {
+    final segments = uri.pathSegments;
+    for (var index = 0; index < segments.length; index++) {
+      final segment = segments[index];
+      if (!_isResetSegment(segment)) continue;
+
+      if (index + 1 < segments.length) {
+        final nextSegment = segments[index + 1].trim();
+        if (nextSegment.isNotEmpty) return nextSegment;
+      }
+    }
+
+    for (final key in const ['token', 'reset_token']) {
+      final value = uri.queryParameters[key]?.trim();
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  static String? _extractEmail(Uri uri) {
+    for (final key in const ['email', 'user', 'username']) {
+      final value = uri.queryParameters[key]?.trim();
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  static bool _isResetSegment(String segment) {
+    final normalized = segment.trim().toLowerCase();
+    return normalized == 'reset-password' ||
+        normalized == 'password' ||
+        normalized == 'reset' ||
+        normalized == 'change';
   }
 }

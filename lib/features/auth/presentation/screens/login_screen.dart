@@ -152,27 +152,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ),
           ),
 
-          // ── Header ──
+          // ── Full centered layout ──
           SafeArea(
-            child: Padding(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-              child: ScaleTransition(
-                scale: _logoScale,
-                child: _buildHeader(),
-              ),
-            ),
-          ),
-
-          // ── Centered form ──
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(top: 80),
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: SlideTransition(
-                  position: _slideAnim,
-                  child: _buildCard(isLoading, error),
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: SlideTransition(
+                    position: _slideAnim,
+                    child: _buildContent(isLoading, error),
+                  ),
                 ),
               ),
             ),
@@ -182,167 +172,132 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        // ── Logo image ──
-        Image.asset(
-          'assets/images/yogafx_logo.png',
-          width: 36,
-          height: 36,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Text(
-              'YogaFX',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                fontFamily: 'Montserrat',
-                letterSpacing: -0.3,
-              ),
-            ),
-            Text(
-              'STUDENT PORTAL',
-              style: TextStyle(
-                color: Color(0xFF808080),
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Montserrat',
-                letterSpacing: 2.8,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  Widget _buildContent(bool isLoading, String? error) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 360),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 48),
 
-  Widget _buildCard(bool isLoading, String? error) {
-    return Container(
-      width: 400,
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 44),
-      decoration: BoxDecoration(
-        color: const Color(0xE6000000),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Title ──
-            const Text(
+          // ── Centered Logo ──
+          ScaleTransition(
+            scale: _logoScale,
+            child: _buildLogo(),
+          ),
+
+          const SizedBox(height: 40),
+
+          // ── Title ──
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
               'Sign In',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 30,
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
                 fontFamily: 'Montserrat',
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Welcome back to YogaFX',
-              style: TextStyle(
-                color: Color(0xFF808080),
-                fontSize: 13,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-            const SizedBox(height: 28),
+          ),
 
-            // ── Error banner ──
-            if (error != null) ...[
-              _buildErrorBanner(error),
-              const SizedBox(height: 20),
-            ],
+          const SizedBox(height: 28),
 
-            // ── Email ──
-            _buildLabel('Email'),
-            const SizedBox(height: 8),
-            _NetflixField(
-              controller: _emailController,
-              hintText: 'your@email.com',
-              keyboardType: TextInputType.emailAddress,
-              enabled: !isLoading,
-              suffixIcon: Icons.mail_outline_rounded,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Email is required';
-                }
-                if (!value.contains('@')) return 'Enter a valid email';
-                return null;
-              },
-            ),
-            const SizedBox(height: 18),
-
-            // ── Password ──
-            _buildLabel('Password'),
-            const SizedBox(height: 8),
-            _NetflixField(
-              controller: _passwordController,
-              hintText: '••••••••',
-              obscureText: _obscurePassword,
-              enabled: !isLoading,
-              suffixIcon: _obscurePassword
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              onSuffixTap: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Password is required';
-                }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
-              onSubmitted: (_) => _handleLogin(),
-            ),
-            const SizedBox(height: 28),
-
-            // ── Sign In button ──
-            _SignInButton(isLoading: isLoading, onTap: _handleLogin),
-
+          // ── Error banner ──
+          if (error != null) ...[
+            _buildErrorBanner(error),
             const SizedBox(height: 20),
+          ],
 
-            // ── Footer links ──
-            Row(
+          // ── Form ──
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _LinkButton(
-                  label: 'Reset password',
-                  onTap: () => context.push(AppRoutes.resetPassword),
+                // ── Email ──
+                _buildLabel('Email'),
+                const SizedBox(height: 8),
+                _NetflixField(
+                  controller: _emailController,
+                  hintText: 'your@email.com',
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !isLoading,
+                  suffixIcon: Icons.mail_outline_rounded,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Email is required';
+                    }
+                    if (!value.contains('@')) return 'Enter a valid email';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 18),
+
+                // ── Password ──
+                _buildLabel('Password'),
+                const SizedBox(height: 8),
+                _NetflixField(
+                  controller: _passwordController,
+                  hintText: '••••••••',
+                  obscureText: _obscurePassword,
+                  enabled: !isLoading,
+                  suffixIcon: _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  onSuffixTap: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Password is required';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                  onSubmitted: (_) => _handleLogin(),
+                ),
+                const SizedBox(height: 28),
+
+                // ── Sign In button ──
+                _SignInButton(isLoading: isLoading, onTap: _handleLogin),
+
+                const SizedBox(height: 20),
+
+                // ── Footer links ──
+                Row(
+                  children: [
+                    _LinkButton(
+                      label: 'Reset password',
+                      onTap: () => context.push(AppRoutes.resetPassword),
+                    ),
+                  ],
                 ),
               ],
             ),
+          ),
 
-            const SizedBox(height: 20),
-
-            // ── Divider ──
-            Container(height: 0.5, color: const Color(0xFF2A2A2A)),
-            const SizedBox(height: 16),
-
-            const Text(
-              'Use your YogaFX student account',
-              style: TextStyle(
-                color: Color(0xFF555555),
-                fontSize: 12,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ],
-        ),
+          const SizedBox(height: 48),
+        ],
       ),
+    );
+  }
+
+  // ── UPDATE: Membesarkan ukuran logo, pakai Network Image ──
+  Widget _buildLogo() {
+    return Image.network(
+      'https://yogafx.b-cdn.net/content/Logo%20YogAFX.png',
+      width: 260,
+      height: 120,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback jika gambar gagal dimuat
+        return const Icon(Icons.image_not_supported, color: Colors.white, size: 80);
+      },
     );
   }
 

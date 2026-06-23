@@ -20,7 +20,7 @@ _$ProfileDataImpl _$$ProfileDataImplFromJson(Map<String, dynamic> json) =>
       gender: json['gender'] as String?,
       practicingYogaFor: json['practicing_yoga_for'] as String?,
       yogaSequenceExperience: json['yoga_sequence_experience'] as String?,
-      hoursPerWeek: (json['hours_per_week'] as num?)?.toInt(),
+      hoursPerWeek: json['hours_per_week'] as String?,
       currentFitnessLevel: json['current_fitness_level'] as String?,
       flexibilityRating: json['flexibility_rating'] as String?,
       motivation: json['motivation'] as String?,
