@@ -145,6 +145,19 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     return video != null && video.isReady;
   }
 
+  bool get _requiresWorkbookFirst =>
+      widget.lesson.workbook.isAvailable &&
+      !widget.lesson.progress.isWorkbookDownloaded;
+
+  bool get _isVideoUnlocked => !_requiresWorkbookFirst;
+
+  bool get _isAssessmentUnlocked {
+    if (_requiresWorkbookFirst) return false;
+    final hasPlayableVideo = widget.lesson.video != null && widget.lesson.video!.isReady;
+    if (!hasPlayableVideo) return true;
+    return widget.lesson.progress.watchProgress >= 95;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -172,7 +185,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       }
     });
 
-    if (_hasPlayableVideo) {
+    if (_hasPlayableVideo && _isVideoUnlocked) {
       _initVideo();
     }
     if (widget.lesson.audio.isAvailable && widget.lesson.audio.url != null) {
@@ -181,6 +194,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   Future<void> _initVideo() async {
+    if (!_isVideoUnlocked) return;
     final video = widget.lesson.video!;
     try {
       final canReachVideoHost = await _canResolveMediaHost(video.hlsUrl);
@@ -290,6 +304,17 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     ref.invalidate(moduleDetailProvider(widget.lesson.module.id));
     ref.invalidate(moduleListProvider);
     ref.invalidate(dashboardProvider);
+  }
+
+  @override
+  void didUpdateWidget(covariant _LessonContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_hasPlayableVideo &&
+        _isVideoUnlocked &&
+        _videoController == null &&
+        !_videoInitialized) {
+      _initVideo();
+    }
   }
 
   Future<void> _initAudio() async {
@@ -485,6 +510,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             videoError: _videoError,
             videoErrorMessage: _videoErrorMessage,
             videoController: _videoController,
+            videoUnlocked: _isVideoUnlocked,
             onRetry: _initVideo,
             onBack: () => _handleBack(context),
             onTogglePlayback: _toggleVideoPlayback,
@@ -530,6 +556,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                   // Action chips
                   _ActionRow(
                     lesson: lesson,
+                    isAssessmentUnlocked: _isAssessmentUnlocked,
+                    onWorkbookDismissed: _refreshLesson,
                     audioLoading: _audioLoading,
                     audioReady: _audioReady,
                     audioError: _audioError,
@@ -546,7 +574,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
                   // Workbook
                   if (lesson.workbook.isAvailable) ...[
-                    _WorkbookSection(workbook: lesson.workbook),
+                    _WorkbookSection(
+                      workbook: lesson.workbook,
+                      onDismissed: _refreshLesson,
+                    ),
                     const SizedBox(height: 28),
                   ],
 
@@ -554,6 +585,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                   if (lesson.assessment != null) ...[
                     _AssessmentBanner(
                       lesson: lesson,
+                      isUnlocked: _isAssessmentUnlocked,
                     ),
                     const SizedBox(height: 28),
                   ],
@@ -598,6 +630,7 @@ class _VideoSection extends StatelessWidget {
   final bool videoError;
   final String? videoErrorMessage;
   final VideoPlayerController? videoController;
+  final bool videoUnlocked;
   final VoidCallback onRetry;
   final VoidCallback onBack;
   final Future<void> Function() onTogglePlayback;
@@ -611,6 +644,7 @@ class _VideoSection extends StatelessWidget {
     required this.videoError,
     required this.videoErrorMessage,
     required this.videoController,
+    required this.videoUnlocked,
     required this.onRetry,
     required this.onBack,
     required this.onTogglePlayback,
@@ -660,6 +694,12 @@ class _VideoSection extends StatelessWidget {
   }
 
   Widget _buildVideoBody() {
+    if (!videoUnlocked) {
+      return _VideoPlaceholder(
+        thumbnailUrl: lesson.thumbnailUrl,
+        message: 'Open or download the workbook first to unlock the video.',
+      );
+    }
     if (lesson.video == null || !lesson.video!.isReady) {
       return _VideoPlaceholder(
         thumbnailUrl: lesson.thumbnailUrl,
@@ -1211,6 +1251,8 @@ class _LessonProgressBar extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   final LessonDetail lesson;
+  final bool isAssessmentUnlocked;
+  final Future<void> Function() onWorkbookDismissed;
   final bool audioLoading;
   final bool audioReady;
   final String? audioError;
@@ -1219,6 +1261,8 @@ class _ActionRow extends StatelessWidget {
 
   const _ActionRow({
     required this.lesson,
+    required this.isAssessmentUnlocked,
+    required this.onWorkbookDismissed,
     required this.audioLoading,
     required this.audioReady,
     required this.audioError,
@@ -1234,7 +1278,7 @@ class _ActionRow extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => _WorkbookSheet(workbook: lesson.workbook),
-    );
+    ).whenComplete(onWorkbookDismissed);
   }
 
   void _openAudio(BuildContext context) {
@@ -1282,8 +1326,10 @@ class _ActionRow extends StatelessWidget {
         if (lesson.assessment != null)
           _ActionChip(
             icon: Icons.quiz_rounded,
-            label: 'Assessment',
-            onTap: () => context.push('/lessons/${lesson.id}/assessment'),
+            label: isAssessmentUnlocked ? 'Assessment' : 'Assessment Locked',
+            onTap: isAssessmentUnlocked
+                ? () => context.push('/lessons/${lesson.id}/assessment')
+                : null,
           ),
       ],
     );
@@ -1397,7 +1443,12 @@ class _ContentSection extends StatelessWidget {
 
 class _WorkbookSection extends StatelessWidget {
   final LessonWorkbook workbook;
-  const _WorkbookSection({required this.workbook});
+  final Future<void> Function() onDismissed;
+
+  const _WorkbookSection({
+    required this.workbook,
+    required this.onDismissed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1414,7 +1465,7 @@ class _WorkbookSection extends StatelessWidget {
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
             builder: (_) => _WorkbookSheet(workbook: workbook),
-          ),
+          ).whenComplete(onDismissed),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1761,7 +1812,11 @@ class _SheetButton extends StatelessWidget {
 
 class _AssessmentBanner extends StatefulWidget {
   final LessonDetail lesson;
-  const _AssessmentBanner({required this.lesson});
+  final bool isUnlocked;
+  const _AssessmentBanner({
+    required this.lesson,
+    required this.isUnlocked,
+  });
 
   @override
   State<_AssessmentBanner> createState() => _AssessmentBannerState();
@@ -1791,13 +1846,17 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
 
   @override
   Widget build(BuildContext context) {
+    final hasWorkbookGate =
+        widget.lesson.workbook.isAvailable &&
+        !widget.lesson.progress.isWorkbookDownloaded;
     final hasPlayableVideo =
         widget.lesson.video != null && widget.lesson.video!.isReady;
-    final isUnlocked =
-        !hasPlayableVideo || widget.lesson.progress.watchProgress >= 95;
-    final lockMessage = hasPlayableVideo
-        ? 'Watch at least 95% of the video to unlock it.'
-        : 'Complete the lesson materials to unlock it.';
+    final isUnlocked = widget.isUnlocked;
+    final lockMessage = hasWorkbookGate
+        ? 'Open or download the workbook first to unlock the video and assessment.'
+        : hasPlayableVideo
+            ? 'Watch at least 95% of the video to unlock it.'
+            : 'Complete the lesson materials to unlock it.';
 
     return AnimatedBuilder(
       animation: _pulseAnim,
