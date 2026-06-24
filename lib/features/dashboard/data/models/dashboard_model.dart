@@ -41,15 +41,13 @@ class ContinueLearningSection with _$ContinueLearningSection {
     @JsonKey(name: 'progress_percentage') required int progressPercentage,
     @JsonKey(name: 'cta_label') required String ctaLabel,
     @JsonKey(name: 'thumbnail_url') String? thumbnailUrl,
-    required DashboardLesson lesson,
-    required DashboardModule module,
+    DashboardLesson? lesson,
+    DashboardModule? module,
     required String status,
   }) = _ContinueLearningSection;
-
   factory ContinueLearningSection.fromJson(Map<String, dynamic> json) =>
       _$ContinueLearningSectionFromJson(json);
 }
-
 @freezed
 class DashboardLesson with _$DashboardLesson {
   const factory DashboardLesson({

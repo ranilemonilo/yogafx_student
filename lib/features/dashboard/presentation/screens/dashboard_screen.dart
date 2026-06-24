@@ -337,33 +337,33 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
           parent: BouncingScrollPhysics(),
         ),
         slivers: [
-        _YogaFXAppBar(student: data.student),
-        SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _animated(0, _HeroSection(data: data)),
-              if (data.continueLearningSection.state != 'empty') ...[
-                const SizedBox(height: 28),
+          _YogaFXAppBar(student: data.student),
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _animated(0, _HeroSection(data: data)),
+                if (data.continueLearningSection.state != 'empty') ...[
+                  const SizedBox(height: 28),
+                  _animated(
+                    1,
+                    _ContinueLearningSection(section: data.continueLearningSection),
+                  ),
+                ],
+                const SizedBox(height: 32),
                 _animated(
-                  1,
-                  _ContinueLearningSection(section: data.continueLearningSection),
+                  2,
+                  _ProgressSection(
+                    section: data.progressSummarySection,
+                    continueLearningSection: data.continueLearningSection,
+                  ),
                 ),
+                const SizedBox(height: 32),
+                _animated(3, _ModulesSection(section: data.availableModulesSection)),
+                const SizedBox(height: 56),
               ],
-              const SizedBox(height: 32),
-              _animated(
-                2,
-                _ProgressSection(
-                  section: data.progressSummarySection,
-                  continueLearningSection: data.continueLearningSection,
-                ),
-              ),
-              const SizedBox(height: 32),
-              _animated(3, _ModulesSection(section: data.availableModulesSection)),
-              const SizedBox(height: 56),
-            ],
+            ),
           ),
-        ),
         ],
       ),
     );
@@ -459,15 +459,15 @@ class _DashboardProfileAvatar extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: hasImage
           ? AuthNetworkImage(
-              imageUrl: imageUrl!,
-              fit: BoxFit.cover,
-              placeholderBuilder: (_) => _DashboardProfileFallback(
-                displayName: displayName,
-              ),
-              errorBuilderWidget: (_, __) => _DashboardProfileFallback(
-                displayName: displayName,
-              ),
-            )
+        imageUrl: imageUrl!,
+        fit: BoxFit.cover,
+        placeholderBuilder: (_) => _DashboardProfileFallback(
+          displayName: displayName,
+        ),
+        errorBuilderWidget: (_, __) => _DashboardProfileFallback(
+          displayName: displayName,
+        ),
+      )
           : _DashboardProfileFallback(displayName: displayName),
     );
   }
@@ -973,7 +973,7 @@ class _ContinueCardState extends State<_ContinueCard>
     final section = widget.section;
 
     return GestureDetector(
-      onTap: () => context.push('/lessons/${section.lesson.id}'),
+      onTap: () => context.push('/lessons/${section.lesson!.id}'),
       onTapDown: (_) => _scaleCtrl.forward(),
       onTapUp: (_) => _scaleCtrl.reverse(),
       onTapCancel: () => _scaleCtrl.reverse(),
@@ -1043,7 +1043,7 @@ class _ContinueCardState extends State<_ContinueCard>
                   children: [
                     // Module label
                     Text(
-                      section.module.title.toUpperCase(),
+                      (section.module?.title ?? '').toUpperCase(),
                       style: const TextStyle(
                         color: _kRed,
                         fontSize: 9,
@@ -1055,7 +1055,7 @@ class _ContinueCardState extends State<_ContinueCard>
                     const SizedBox(height: 5),
                     // Lesson title
                     Text(
-                      section.lesson.title,
+                      section.lesson?.title ?? '',
                       style: const TextStyle(
                         color: _kTextPrimary,
                         fontSize: 20,
@@ -1174,14 +1174,20 @@ class _ProgressSectionState extends State<_ProgressSection>
                 onTap: () => context.push(AppRoutes.modules),
               ),
               const SizedBox(width: 10),
+              // Sesudah
               _AnimatedStatCard(
                 label: 'Lessons',
                 value: '${widget.section.lessonsCompleted}/${widget.section.lessonsTotal}',
                 icon: Icons.play_circle_rounded,
                 animation: _anim,
-                onTap: () => context.push(
-                  '/lessons/${widget.continueLearningSection.lesson.id}',
-                ),
+                onTap: () {
+                  final lessonId = widget.continueLearningSection.lesson?.id;
+                  if (lessonId != null) {
+                    context.push('/lessons/$lessonId');
+                  } else {
+                    context.push(AppRoutes.modules);
+                  }
+                },
               ),
               const SizedBox(width: 10),
               _AnimatedStatCard(
@@ -1198,7 +1204,7 @@ class _ProgressSectionState extends State<_ProgressSection>
                     'lessonsCompleted': widget.section.lessonsCompleted,
                     'lessonsTotal': widget.section.lessonsTotal,
                     'overallProgressPercentage':
-                        widget.section.overallProgressPercentage,
+                    widget.section.overallProgressPercentage,
                   },
                 ),
               ),
@@ -1249,12 +1255,12 @@ class _AnimatedStatCard extends StatelessWidget {
                   ),
                   boxShadow: highlight
                       ? [
-                          BoxShadow(
-                            color: _kRed.withOpacity(0.12),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          )
-                        ]
+                    BoxShadow(
+                      color: _kRed.withOpacity(0.12),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    )
+                  ]
                       : [],
                 ),
                 child: Column(
@@ -1332,10 +1338,12 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
       child: AnimatedBuilder(
         animation: _pulseAnim,
         builder: (_, __) => GestureDetector(
+          // Sesudah
           onTap: () {
-            context.push(
-              '/lessons/${widget.continueLearningSection.lesson.id}/assessment',
-            );
+            final lessonId = widget.continueLearningSection.lesson?.id;
+            if (lessonId != null) {
+              context.push('/lessons/$lessonId/assessment');
+            }
           },
           child: Container(
             padding: const EdgeInsets.all(18),
@@ -1376,40 +1384,42 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Assessments',
-                        style: TextStyle(
-                          color: _kTextPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Continue the assessment from ${widget.continueLearningSection.lesson.title}',
-                        style: const TextStyle(
-                          color: _kTextMuted,
-                          fontSize: 11,
-                          fontFamily: 'Montserrat',
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    const Text(
+                    'Assessments',
+                    style: TextStyle(
+                      color: _kTextPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: _kRed.withOpacity(0.7),
-                  size: 20,
+                  const SizedBox(height: 3),
+                  // Sesudah
+                  Text(
+                    'Continue the assessment from ${widget.continueLearningSection.lesson?.title ?? "your lesson"}',
+                    ...
+                    style: const TextStyle(
+                    color: _kTextMuted,
+                    fontSize: 11,
+                    fontFamily: 'Montserrat',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: _kRed.withOpacity(0.7),
+            size: 20,
+          ),
+          ],
         ),
       ),
+    ),
+    ),
     );
   }
 }
@@ -1508,41 +1518,41 @@ class _ModulesSectionState extends State<_ModulesSection>
                           opacity: _searchFadeAnim,
                           child: _searchOpen
                               ? TextField(
-                                  controller: _searchCtrl,
-                                  autofocus: true,
-                                  onChanged: (v) => setState(() => _query = v),
-                                  style: const TextStyle(
-                                    color: _kTextPrimary,
-                                    fontSize: 13,
-                                    fontFamily: 'Montserrat',
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Search modules...',
-                                    hintStyle: const TextStyle(
-                                      color: _kTextMuted,
-                                      fontSize: 13,
-                                      fontFamily: 'Montserrat',
-                                    ),
-                                    filled: true,
-                                    fillColor: _kSurfaceElevated,
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                      borderSide: const BorderSide(
-                                        color: _kRed,
-                                        width: 1,
-                                      ),
-                                    ),
-                                  ),
-                                )
+                            controller: _searchCtrl,
+                            autofocus: true,
+                            onChanged: (v) => setState(() => _query = v),
+                            style: const TextStyle(
+                              color: _kTextPrimary,
+                              fontSize: 13,
+                              fontFamily: 'Montserrat',
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Search modules...',
+                              hintStyle: const TextStyle(
+                                color: _kTextMuted,
+                                fontSize: 13,
+                                fontFamily: 'Montserrat',
+                              ),
+                              filled: true,
+                              fillColor: _kSurfaceElevated,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: const BorderSide(
+                                  color: _kRed,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          )
                               : const SizedBox.shrink(),
                         ),
                       ),

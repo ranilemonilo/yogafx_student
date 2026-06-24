@@ -447,8 +447,8 @@ mixin _$ContinueLearningSection {
   String get ctaLabel => throw _privateConstructorUsedError;
   @JsonKey(name: 'thumbnail_url')
   String? get thumbnailUrl => throw _privateConstructorUsedError;
-  DashboardLesson get lesson => throw _privateConstructorUsedError;
-  DashboardModule get module => throw _privateConstructorUsedError;
+  DashboardLesson? get lesson => throw _privateConstructorUsedError;
+  DashboardModule? get module => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -471,12 +471,12 @@ abstract class $ContinueLearningSectionCopyWith<$Res> {
       @JsonKey(name: 'progress_percentage') int progressPercentage,
       @JsonKey(name: 'cta_label') String ctaLabel,
       @JsonKey(name: 'thumbnail_url') String? thumbnailUrl,
-      DashboardLesson lesson,
-      DashboardModule module,
+      DashboardLesson? lesson,
+      DashboardModule? module,
       String status});
 
-  $DashboardLessonCopyWith<$Res> get lesson;
-  $DashboardModuleCopyWith<$Res> get module;
+  $DashboardLessonCopyWith<$Res>? get lesson;
+  $DashboardModuleCopyWith<$Res>? get module;
 }
 
 /// @nodoc
@@ -500,8 +500,8 @@ class _$ContinueLearningSectionCopyWithImpl<$Res,
     Object? progressPercentage = null,
     Object? ctaLabel = null,
     Object? thumbnailUrl = freezed,
-    Object? lesson = null,
-    Object? module = null,
+    Object? lesson = freezed,
+    Object? module = freezed,
     Object? status = null,
   }) {
     return _then(_value.copyWith(
@@ -533,14 +533,14 @@ class _$ContinueLearningSectionCopyWithImpl<$Res,
           ? _value.thumbnailUrl
           : thumbnailUrl // ignore: cast_nullable_to_non_nullable
               as String?,
-      lesson: null == lesson
+      lesson: freezed == lesson
           ? _value.lesson
           : lesson // ignore: cast_nullable_to_non_nullable
-              as DashboardLesson,
-      module: null == module
+              as DashboardLesson?,
+      module: freezed == module
           ? _value.module
           : module // ignore: cast_nullable_to_non_nullable
-              as DashboardModule,
+              as DashboardModule?,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -550,16 +550,24 @@ class _$ContinueLearningSectionCopyWithImpl<$Res,
 
   @override
   @pragma('vm:prefer-inline')
-  $DashboardLessonCopyWith<$Res> get lesson {
-    return $DashboardLessonCopyWith<$Res>(_value.lesson, (value) {
+  $DashboardLessonCopyWith<$Res>? get lesson {
+    if (_value.lesson == null) {
+      return null;
+    }
+
+    return $DashboardLessonCopyWith<$Res>(_value.lesson!, (value) {
       return _then(_value.copyWith(lesson: value) as $Val);
     });
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $DashboardModuleCopyWith<$Res> get module {
-    return $DashboardModuleCopyWith<$Res>(_value.module, (value) {
+  $DashboardModuleCopyWith<$Res>? get module {
+    if (_value.module == null) {
+      return null;
+    }
+
+    return $DashboardModuleCopyWith<$Res>(_value.module!, (value) {
       return _then(_value.copyWith(module: value) as $Val);
     });
   }
@@ -582,14 +590,14 @@ abstract class _$$ContinueLearningSectionImplCopyWith<$Res>
       @JsonKey(name: 'progress_percentage') int progressPercentage,
       @JsonKey(name: 'cta_label') String ctaLabel,
       @JsonKey(name: 'thumbnail_url') String? thumbnailUrl,
-      DashboardLesson lesson,
-      DashboardModule module,
+      DashboardLesson? lesson,
+      DashboardModule? module,
       String status});
 
   @override
-  $DashboardLessonCopyWith<$Res> get lesson;
+  $DashboardLessonCopyWith<$Res>? get lesson;
   @override
-  $DashboardModuleCopyWith<$Res> get module;
+  $DashboardModuleCopyWith<$Res>? get module;
 }
 
 /// @nodoc
@@ -612,8 +620,8 @@ class __$$ContinueLearningSectionImplCopyWithImpl<$Res>
     Object? progressPercentage = null,
     Object? ctaLabel = null,
     Object? thumbnailUrl = freezed,
-    Object? lesson = null,
-    Object? module = null,
+    Object? lesson = freezed,
+    Object? module = freezed,
     Object? status = null,
   }) {
     return _then(_$ContinueLearningSectionImpl(
@@ -645,14 +653,14 @@ class __$$ContinueLearningSectionImplCopyWithImpl<$Res>
           ? _value.thumbnailUrl
           : thumbnailUrl // ignore: cast_nullable_to_non_nullable
               as String?,
-      lesson: null == lesson
+      lesson: freezed == lesson
           ? _value.lesson
           : lesson // ignore: cast_nullable_to_non_nullable
-              as DashboardLesson,
-      module: null == module
+              as DashboardLesson?,
+      module: freezed == module
           ? _value.module
           : module // ignore: cast_nullable_to_non_nullable
-              as DashboardModule,
+              as DashboardModule?,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -672,8 +680,8 @@ class _$ContinueLearningSectionImpl implements _ContinueLearningSection {
       @JsonKey(name: 'progress_percentage') required this.progressPercentage,
       @JsonKey(name: 'cta_label') required this.ctaLabel,
       @JsonKey(name: 'thumbnail_url') this.thumbnailUrl,
-      required this.lesson,
-      required this.module,
+      this.lesson,
+      this.module,
       required this.status});
 
   factory _$ContinueLearningSectionImpl.fromJson(Map<String, dynamic> json) =>
@@ -697,9 +705,9 @@ class _$ContinueLearningSectionImpl implements _ContinueLearningSection {
   @JsonKey(name: 'thumbnail_url')
   final String? thumbnailUrl;
   @override
-  final DashboardLesson lesson;
+  final DashboardLesson? lesson;
   @override
-  final DashboardModule module;
+  final DashboardModule? module;
   @override
   final String status;
 
@@ -769,8 +777,8 @@ abstract class _ContinueLearningSection implements ContinueLearningSection {
       required final int progressPercentage,
       @JsonKey(name: 'cta_label') required final String ctaLabel,
       @JsonKey(name: 'thumbnail_url') final String? thumbnailUrl,
-      required final DashboardLesson lesson,
-      required final DashboardModule module,
+      final DashboardLesson? lesson,
+      final DashboardModule? module,
       required final String status}) = _$ContinueLearningSectionImpl;
 
   factory _ContinueLearningSection.fromJson(Map<String, dynamic> json) =
@@ -794,9 +802,9 @@ abstract class _ContinueLearningSection implements ContinueLearningSection {
   @JsonKey(name: 'thumbnail_url')
   String? get thumbnailUrl;
   @override
-  DashboardLesson get lesson;
+  DashboardLesson? get lesson;
   @override
-  DashboardModule get module;
+  DashboardModule? get module;
   @override
   String get status;
   @override
@@ -2618,11 +2626,11 @@ class _$AccessTimeSummaryCopyWithImpl<$Res, $Val extends AccessTimeSummary>
           ? _value.totalAccessDurationSeconds
           : totalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
               as int?,
-      runningTotalAccessDurationSeconds:
-          freezed == runningTotalAccessDurationSeconds
-              ? _value.runningTotalAccessDurationSeconds
-              : runningTotalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
-                  as int?,
+      runningTotalAccessDurationSeconds: freezed ==
+              runningTotalAccessDurationSeconds
+          ? _value.runningTotalAccessDurationSeconds
+          : runningTotalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
+              as int?,
       activeSessionLoginAt: freezed == activeSessionLoginAt
           ? _value.activeSessionLoginAt
           : activeSessionLoginAt // ignore: cast_nullable_to_non_nullable
@@ -2685,11 +2693,11 @@ class __$$AccessTimeSummaryImplCopyWithImpl<$Res>
           ? _value.totalAccessDurationSeconds
           : totalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
               as int?,
-      runningTotalAccessDurationSeconds:
-          freezed == runningTotalAccessDurationSeconds
-              ? _value.runningTotalAccessDurationSeconds
-              : runningTotalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
-                  as int?,
+      runningTotalAccessDurationSeconds: freezed ==
+              runningTotalAccessDurationSeconds
+          ? _value.runningTotalAccessDurationSeconds
+          : runningTotalAccessDurationSeconds // ignore: cast_nullable_to_non_nullable
+              as int?,
       activeSessionLoginAt: freezed == activeSessionLoginAt
           ? _value.activeSessionLoginAt
           : activeSessionLoginAt // ignore: cast_nullable_to_non_nullable
@@ -2754,8 +2762,8 @@ class _$AccessTimeSummaryImpl implements _AccessTimeSummary {
             other is _$AccessTimeSummaryImpl &&
             (identical(other.formattedTotal, formattedTotal) ||
                 other.formattedTotal == formattedTotal) &&
-            (identical(
-                    other.totalAccessDurationSeconds, totalAccessDurationSeconds) ||
+            (identical(other.totalAccessDurationSeconds,
+                    totalAccessDurationSeconds) ||
                 other.totalAccessDurationSeconds ==
                     totalAccessDurationSeconds) &&
             (identical(other.runningTotalAccessDurationSeconds,
@@ -2772,15 +2780,14 @@ class _$AccessTimeSummaryImpl implements _AccessTimeSummary {
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode =>
-      Object.hash(
-          runtimeType,
-          formattedTotal,
-          totalAccessDurationSeconds,
-          runningTotalAccessDurationSeconds,
-          activeSessionLoginAt,
-          lastVisitAt,
-          currentlyActive);
+  int get hashCode => Object.hash(
+      runtimeType,
+      formattedTotal,
+      totalAccessDurationSeconds,
+      runningTotalAccessDurationSeconds,
+      activeSessionLoginAt,
+      lastVisitAt,
+      currentlyActive);
 
   @JsonKey(ignore: true)
   @override

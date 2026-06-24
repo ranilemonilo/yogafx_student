@@ -501,7 +501,7 @@ class _$AssessmentEligibilityCopyWithImpl<$Res,
   @override
   $Res call({
     Object? isUnlocked = null,
-    Object? watchProgress = null,
+    Object? watchProgress = freezed,
     Object? requiresWatchProgress = null,
   }) {
     return _then(_value.copyWith(
@@ -2881,11 +2881,11 @@ mixin _$AssessmentResultData {
   String get mode => throw _privateConstructorUsedError;
   @JsonKey(name: 'attempt_id')
   int get attemptId => throw _privateConstructorUsedError;
-  @JsonKey(name: 'score_percentage')
+  @JsonKey(name: 'percentage_correct')
   double? get scorePercentage => throw _privateConstructorUsedError;
   @JsonKey(name: 'correct_answers')
   int? get correctAnswers => throw _privateConstructorUsedError;
-  @JsonKey(name: 'total_questions')
+  @JsonKey(name: 'gradable_questions')
   int? get totalQuestions => throw _privateConstructorUsedError;
   String? get status => throw _privateConstructorUsedError;
 
@@ -2901,14 +2901,13 @@ abstract class $AssessmentResultDataCopyWith<$Res> {
           $Res Function(AssessmentResultData) then) =
       _$AssessmentResultDataCopyWithImpl<$Res, AssessmentResultData>;
   @useResult
-  $Res call({
-    String mode,
-    @JsonKey(name: 'attempt_id') int attemptId,
-    @JsonKey(name: 'score_percentage') double? scorePercentage,
-    @JsonKey(name: 'correct_answers') int? correctAnswers,
-    @JsonKey(name: 'total_questions') int? totalQuestions,
-    String? status
-  });
+  $Res call(
+      {String mode,
+      @JsonKey(name: 'attempt_id') int attemptId,
+      @JsonKey(name: 'percentage_correct') double? scorePercentage,
+      @JsonKey(name: 'correct_answers') int? correctAnswers,
+      @JsonKey(name: 'gradable_questions') int? totalQuestions,
+      String? status});
 }
 
 /// @nodoc
@@ -2969,14 +2968,13 @@ abstract class _$$AssessmentResultDataImplCopyWith<$Res>
       __$$AssessmentResultDataImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String mode,
-    @JsonKey(name: 'attempt_id') int attemptId,
-    @JsonKey(name: 'score_percentage') double? scorePercentage,
-    @JsonKey(name: 'correct_answers') int? correctAnswers,
-    @JsonKey(name: 'total_questions') int? totalQuestions,
-    String? status
-  });
+  $Res call(
+      {String mode,
+      @JsonKey(name: 'attempt_id') int attemptId,
+      @JsonKey(name: 'percentage_correct') double? scorePercentage,
+      @JsonKey(name: 'correct_answers') int? correctAnswers,
+      @JsonKey(name: 'gradable_questions') int? totalQuestions,
+      String? status});
 }
 
 /// @nodoc
@@ -3032,9 +3030,9 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
   const _$AssessmentResultDataImpl(
       {required this.mode,
       @JsonKey(name: 'attempt_id') required this.attemptId,
-      @JsonKey(name: 'score_percentage') this.scorePercentage,
+      @JsonKey(name: 'percentage_correct') this.scorePercentage,
       @JsonKey(name: 'correct_answers') this.correctAnswers,
-      @JsonKey(name: 'total_questions') this.totalQuestions,
+      @JsonKey(name: 'gradable_questions') this.totalQuestions,
       this.status});
 
   factory _$AssessmentResultDataImpl.fromJson(Map<String, dynamic> json) =>
@@ -3046,13 +3044,13 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
   @JsonKey(name: 'attempt_id')
   final int attemptId;
   @override
-  @JsonKey(name: 'score_percentage')
+  @JsonKey(name: 'percentage_correct')
   final double? scorePercentage;
   @override
   @JsonKey(name: 'correct_answers')
   final int? correctAnswers;
   @override
-  @JsonKey(name: 'total_questions')
+  @JsonKey(name: 'gradable_questions')
   final int? totalQuestions;
   @override
   final String? status;
@@ -3081,8 +3079,8 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, mode, attemptId,
-      scorePercentage, correctAnswers, totalQuestions, status);
+  int get hashCode => Object.hash(runtimeType, mode, attemptId, scorePercentage,
+      correctAnswers, totalQuestions, status);
 
   @JsonKey(ignore: true)
   @override
@@ -3102,13 +3100,12 @@ class _$AssessmentResultDataImpl implements _AssessmentResultData {
 
 abstract class _AssessmentResultData implements AssessmentResultData {
   const factory _AssessmentResultData(
-          {required final String mode,
-          @JsonKey(name: 'attempt_id') required final int attemptId,
-          @JsonKey(name: 'score_percentage') final double? scorePercentage,
-          @JsonKey(name: 'correct_answers') final int? correctAnswers,
-          @JsonKey(name: 'total_questions') final int? totalQuestions,
-          final String? status}) =
-      _$AssessmentResultDataImpl;
+      {required final String mode,
+      @JsonKey(name: 'attempt_id') required final int attemptId,
+      @JsonKey(name: 'percentage_correct') final double? scorePercentage,
+      @JsonKey(name: 'correct_answers') final int? correctAnswers,
+      @JsonKey(name: 'gradable_questions') final int? totalQuestions,
+      final String? status}) = _$AssessmentResultDataImpl;
 
   factory _AssessmentResultData.fromJson(Map<String, dynamic> json) =
       _$AssessmentResultDataImpl.fromJson;
@@ -3119,13 +3116,13 @@ abstract class _AssessmentResultData implements AssessmentResultData {
   @JsonKey(name: 'attempt_id')
   int get attemptId;
   @override
-  @JsonKey(name: 'score_percentage')
+  @JsonKey(name: 'percentage_correct')
   double? get scorePercentage;
   @override
   @JsonKey(name: 'correct_answers')
   int? get correctAnswers;
   @override
-  @JsonKey(name: 'total_questions')
+  @JsonKey(name: 'gradable_questions')
   int? get totalQuestions;
   @override
   String? get status;

@@ -251,9 +251,9 @@ _$AssessmentResultDataImpl _$$AssessmentResultDataImplFromJson(
     _$AssessmentResultDataImpl(
       mode: json['mode'] as String,
       attemptId: (json['attempt_id'] as num).toInt(),
-      scorePercentage: (json['score_percentage'] as num?)?.toDouble(),
+      scorePercentage: (json['percentage_correct'] as num?)?.toDouble(),
       correctAnswers: (json['correct_answers'] as num?)?.toInt(),
-      totalQuestions: (json['total_questions'] as num?)?.toInt(),
+      totalQuestions: (json['gradable_questions'] as num?)?.toInt(),
       status: json['status'] as String?,
     );
 
@@ -262,8 +262,8 @@ Map<String, dynamic> _$$AssessmentResultDataImplToJson(
     <String, dynamic>{
       'mode': instance.mode,
       'attempt_id': instance.attemptId,
-      'score_percentage': instance.scorePercentage,
+      'percentage_correct': instance.scorePercentage,
       'correct_answers': instance.correctAnswers,
-      'total_questions': instance.totalQuestions,
+      'gradable_questions': instance.totalQuestions,
       'status': instance.status,
     };

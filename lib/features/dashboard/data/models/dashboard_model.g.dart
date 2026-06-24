@@ -51,8 +51,12 @@ _$ContinueLearningSectionImpl _$$ContinueLearningSectionImplFromJson(
       progressPercentage: (json['progress_percentage'] as num).toInt(),
       ctaLabel: json['cta_label'] as String,
       thumbnailUrl: json['thumbnail_url'] as String?,
-      lesson: DashboardLesson.fromJson(json['lesson'] as Map<String, dynamic>),
-      module: DashboardModule.fromJson(json['module'] as Map<String, dynamic>),
+      lesson: json['lesson'] == null
+          ? null
+          : DashboardLesson.fromJson(json['lesson'] as Map<String, dynamic>),
+      module: json['module'] == null
+          ? null
+          : DashboardModule.fromJson(json['module'] as Map<String, dynamic>),
       status: json['status'] as String,
     );
 
@@ -226,8 +230,8 @@ _$AccessTimeSummaryImpl _$$AccessTimeSummaryImplFromJson(
         Map<String, dynamic> json) =>
     _$AccessTimeSummaryImpl(
       formattedTotal: json['formatted_total_access_duration'] as String,
-      totalAccessDurationSeconds: (json['total_access_duration_seconds'] as num?)
-          ?.toInt(),
+      totalAccessDurationSeconds:
+          (json['total_access_duration_seconds'] as num?)?.toInt(),
       runningTotalAccessDurationSeconds:
           (json['running_total_access_duration_seconds'] as num?)?.toInt(),
       activeSessionLoginAt: json['active_session_login_at'] as String?,
