@@ -7,6 +7,25 @@ import '../../data/repositories/auth_repository.dart';
 import 'login_otp_screen.dart';
 import '../providers/auth_provider.dart';
 
+// ─── Design tokens (DESIGN_SYSTEM.md) ────────────────────────────────────────
+class _DS {
+  static const bgPage       = Color(0xFF060908);
+  static const bgCard       = Color(0xFF120F0E);
+  static const bgInput      = Color(0xFF0E0B0A);       // rgba(255,255,255,0.05)
+  static const bgInputFocus = Color(0xFF161210);       // rgba(255,255,255,0.10)
+  static const primary      = Color(0xFFDB202C);
+  static const primaryHover = Color(0xFFF6121D);
+  static const warning      = Color(0xFFDF6739);       // warm orange DS
+  static const white        = Color(0xFFFFFFFF);
+  static const textSec      = Color(0xFFA6A6A6);       // rgba(255,255,255,0.65)
+  static const textMuted    = Color(0xFF737373);       // rgba(255,255,255,0.45)
+  static const border       = Color(0xFF1A1A1A);       // rgba(255,255,255,0.10)
+  static const borderFocus  = Color(0xFFFFFFFF);
+  static const fontFamily   = 'Montserrat';
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -43,8 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
 
     _logoCtrl = AnimationController(
       vsync: this,
@@ -93,20 +111,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       );
     } on AppException catch (e) {
       if (!mounted) return;
-      setState(() {
-        _requestError = _resolveErrorMessage(e);
-      });
+      setState(() => _requestError = _resolveErrorMessage(e));
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _requestError = e.toString();
-      });
+      setState(() => _requestError = e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -114,45 +124,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final errors = exception.errors;
     if (errors != null) {
       for (final value in errors.values) {
-        if (value is List && value.isNotEmpty) {
-          return value.first.toString();
-        }
-        if (value is String && value.isNotEmpty) {
-          return value;
-        }
+        if (value is List && value.isNotEmpty) return value.first.toString();
+        if (value is String && value.isNotEmpty) return value;
       }
     }
-
     return exception.message;
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isLoading =
-        _isSubmitting || authState.status == AuthStatus.loading;
+    final isLoading = _isSubmitting || authState.status == AuthStatus.loading;
     final error = _requestError ?? authState.error;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: _DS.bgPage,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // ── Subtle vignette ──
+          // ── Radial vignette — sesuai DS warm dark palette ──
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment.topRight,
                 radius: 1.8,
                 colors: [
-                  Color(0x18E50914),
+                  _DS.primary.withOpacity(0.08),
                   Colors.transparent,
                 ],
               ),
             ),
           ),
 
-          // ── Full centered layout ──
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -181,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         children: [
           const SizedBox(height: 48),
 
-          // ── Centered Logo ──
+          // ── Logo ──
           ScaleTransition(
             scale: _logoScale,
             child: _buildLogo(),
@@ -195,10 +198,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: Text(
               'Sign In',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                fontFamily: 'Montserrat',
+                color: _DS.white,
+                fontSize: 28, // DS: Semi Bold / Title 1
+                fontWeight: FontWeight.w700,
+                fontFamily: _DS.fontFamily,
                 letterSpacing: -0.5,
               ),
             ),
@@ -221,7 +224,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 // ── Email ──
                 _buildLabel('Email'),
                 const SizedBox(height: 8),
-                _NetflixField(
+                _DSField(
                   controller: _emailController,
                   hintText: 'your@email.com',
                   keyboardType: TextInputType.emailAddress,
@@ -240,7 +243,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 // ── Password ──
                 _buildLabel('Password'),
                 const SizedBox(height: 8),
-                _NetflixField(
+                _DSField(
                   controller: _passwordController,
                   hintText: '••••••••',
                   obscureText: _obscurePassword,
@@ -261,6 +264,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   },
                   onSubmitted: (_) => _handleLogin(),
                 ),
+
                 const SizedBox(height: 28),
 
                 // ── Sign In button ──
@@ -287,7 +291,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  // ── UPDATE: Membesarkan ukuran logo, pakai Network Image ──
   Widget _buildLogo() {
     return Image.network(
       'https://yogafx.b-cdn.net/content/Logo%20YogAFX.png',
@@ -295,8 +298,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       height: 120,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
-        // Fallback jika gambar gagal dimuat
-        return const Icon(Icons.image_not_supported, color: Colors.white, size: 80);
+        return const Icon(Icons.image_not_supported,
+            color: _DS.white, size: 80);
       },
     );
   }
@@ -305,11 +308,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return Text(
       text.toUpperCase(),
       style: const TextStyle(
-        color: Color(0xFFB3B3B3),
+        color: _DS.textMuted,
         fontSize: 10,
         fontWeight: FontWeight.w600,
-        fontFamily: 'Montserrat',
-        letterSpacing: 1.2,
+        fontFamily: _DS.fontFamily,
+        letterSpacing: 1.5,
       ),
     );
   }
@@ -319,23 +322,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A0A00),
+        color: _DS.warning.withOpacity(0.07),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE87C03).withOpacity(0.6)),
+        border: Border.all(color: _DS.warning.withOpacity(0.30), width: 1),
       ),
       child: Row(
         children: [
           const Icon(Icons.error_outline_rounded,
-              color: Color(0xFFE87C03), size: 18),
+              color: _DS.warning, size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                color: Color(0xFFE87C03),
-                fontSize: 13,
-                fontFamily: 'Montserrat',
-                height: 1.4,
+                color: _DS.warning,
+                fontSize: 12,
+                fontFamily: _DS.fontFamily,
+                height: 1.5,
               ),
             ),
           ),
@@ -345,9 +348,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 }
 
-// ─── Netflix Field ────────────────────────────────────────────────────────────
+// ─── DS Field ─────────────────────────────────────────────────────────────────
 
-class _NetflixField extends StatefulWidget {
+class _DSField extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
   final bool obscureText;
@@ -358,7 +361,7 @@ class _NetflixField extends StatefulWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onSubmitted;
 
-  const _NetflixField({
+  const _DSField({
     required this.controller,
     required this.hintText,
     this.obscureText = false,
@@ -371,10 +374,10 @@ class _NetflixField extends StatefulWidget {
   });
 
   @override
-  State<_NetflixField> createState() => _NetflixFieldState();
+  State<_DSField> createState() => _DSFieldState();
 }
 
-class _NetflixFieldState extends State<_NetflixField> {
+class _DSFieldState extends State<_DSField> {
   bool _focused = false;
 
   @override
@@ -385,13 +388,14 @@ class _NetflixFieldState extends State<_NetflixField> {
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
+          // DS: focus glow merah tipis
           boxShadow: _focused
               ? [
             BoxShadow(
-              color: const Color(0xFFE50914).withOpacity(0.15),
+              color: _DS.primary.withOpacity(0.12),
               blurRadius: 10,
               offset: const Offset(0, 2),
-            )
+            ),
           ]
               : [],
         ),
@@ -404,54 +408,58 @@ class _NetflixFieldState extends State<_NetflixField> {
           onFieldSubmitted: widget.onSubmitted,
           validator: widget.validator,
           style: const TextStyle(
-            color: Colors.white,
-            fontFamily: 'Montserrat',
+            color: _DS.white,
+            fontFamily: _DS.fontFamily,
             fontSize: 15,
           ),
           decoration: InputDecoration(
             hintText: widget.hintText,
-            hintStyle: const TextStyle(color: Color(0xFF555555)),
+            hintStyle: TextStyle(
+              color: _DS.textMuted.withOpacity(0.6),
+              fontFamily: _DS.fontFamily,
+            ),
+            // DS: default rgba(255,255,255,0.10) | focus rgba(255,255,255,0.15)
             filled: true,
-            fillColor: _focused
-                ? const Color(0xFF3A3A3A)
-                : const Color(0xFF2E2E2E),
+            fillColor: _focused ? _DS.bgInputFocus : _DS.bgInput,
+            contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(color: _DS.border, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
-              borderSide:
-              const BorderSide(color: Color(0xFF3A3A3A), width: 1),
+              // DS: default border rgba(255,255,255,0.3)
+              borderSide: const BorderSide(
+                  color: Color(0xFF2E2E2E), width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
+              // DS: focus border #FFFFFF solid
               borderSide:
-              const BorderSide(color: Color(0xFFE50914), width: 1.5),
+              const BorderSide(color: _DS.borderFocus, width: 1),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: Color(0xFFE87C03)),
+              // DS: error border #DB202C
+              borderSide: const BorderSide(color: _DS.primary),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: Color(0xFFE87C03)),
+              borderSide: const BorderSide(color: _DS.primary),
             ),
             errorStyle: const TextStyle(
-              color: Color(0xFFE87C03),
-              fontFamily: 'Montserrat',
+              color: _DS.primary,
+              fontFamily: _DS.fontFamily,
               fontSize: 11,
             ),
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             suffixIcon: widget.onSuffixTap != null
                 ? IconButton(
               onPressed: widget.onSuffixTap,
               icon: Icon(widget.suffixIcon,
-                  color: const Color(0xFF666666), size: 20),
+                  color: _DS.textMuted, size: 20),
             )
-                : Icon(widget.suffixIcon,
-                color: const Color(0xFF555555), size: 20),
+                : Icon(widget.suffixIcon, color: _DS.textMuted, size: 20),
           ),
         ),
       ),
@@ -509,19 +517,19 @@ class _SignInButtonState extends State<_SignInButton>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: double.infinity,
-          height: 52,
+          height: 48, // DS: Large button ~42px
           decoration: BoxDecoration(
             color: widget.isLoading
-                ? const Color(0x80E50914)
-                : const Color(0xFFE50914),
+                ? _DS.primary.withOpacity(0.5)
+                : _DS.primary,
             borderRadius: BorderRadius.circular(4),
             boxShadow: widget.isLoading
                 ? []
                 : [
               BoxShadow(
-                color: const Color(0xFFE50914).withOpacity(0.4),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+                color: _DS.primary.withOpacity(0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -531,15 +539,15 @@ class _SignInButtonState extends State<_SignInButton>
               width: 22,
               height: 22,
               child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2.5),
+                  color: _DS.white, strokeWidth: 2.5),
             )
                 : const Text(
               'Sign In',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+                color: _DS.white,
+                fontSize: 16, // DS: Large button 16px Bold
                 fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
                 letterSpacing: 0.3,
               ),
             ),
@@ -575,13 +583,13 @@ class _LinkButtonState extends State<_LinkButton> {
       child: AnimatedDefaultTextStyle(
         duration: const Duration(milliseconds: 120),
         style: TextStyle(
-          color: _hovering ? Colors.white : const Color(0xFF808080),
+          color: _hovering ? _DS.white : _DS.textMuted,
           fontSize: 12,
-          fontFamily: 'Montserrat',
+          fontFamily: _DS.fontFamily,
           fontWeight: FontWeight.w500,
           decoration:
           _hovering ? TextDecoration.underline : TextDecoration.none,
-          decorationColor: Colors.white,
+          decorationColor: _DS.white,
         ),
         child: Text(widget.label),
       ),

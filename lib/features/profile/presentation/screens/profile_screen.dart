@@ -8,6 +8,22 @@ import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../data/models/profile_model.dart';
 import '../providers/profile_provider.dart';
 
+// ─── Design System Colors ────────────────────────────────────────────────────
+class _DSColors {
+  static const Color bg = Color(0xFF060908); // Neutral / Black (Main Bg)
+  static const Color header = Color(0xFF141110); // Neutral / Black (Header)
+  static const Color card = Color(0xFF120F0E); // Neutral / Black (Card/Panel)
+  static const Color primary = Color(0xFFDB202C); // Primary / Red
+  static const Color primaryHover = Color(0xFFF6121D); // Red Hover
+  static const Color success = Color(0xFF00B14F); // Secondary / Emerald
+  static const Color textMain = Color(0xFFFFFFFF); // White
+  static const Color textSec = Color(0xA6FFFFFF); // Transparent White 65%
+  static const Color textMuted = Color(0x73FFFFFF); // Transparent White 45%
+  static const Color overlay10 = Color(0x1AFFFFFF); // Transparent White 10%
+  static const Color overlay20 = Color(0x33FFFFFF); // Button Secondary
+  static const Color border = Color(0x4DFFFFFF); // Transparent White 30%
+}
+
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -16,7 +32,7 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _DSColors.bg,
       body: profileAsync.when(
         loading: () => const _ProfileSkeleton(),
         error: (e, _) => _ProfileError(
@@ -40,9 +56,9 @@ void _handleProfileBack(BuildContext context) {
 Future<void> _showProfileActions(BuildContext context, WidgetRef ref) async {
   await showModalBottomSheet<void>(
     context: context,
-    backgroundColor: AppColors.surface,
+    backgroundColor: const Color(0xFF1A1A1A), // Modal background
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
     ),
     builder: (sheetContext) {
       return SafeArea(
@@ -57,18 +73,18 @@ Future<void> _showProfileActions(BuildContext context, WidgetRef ref) async {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.divider,
-                    borderRadius: BorderRadius.circular(999),
+                    color: _DSColors.border,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 24),
               const Text(
                 'Profile Actions',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  color: _DSColors.textMain,
+                  fontSize: 22, // Headline 1
+                  fontWeight: FontWeight.w500, // Medium
                   fontFamily: 'Montserrat',
                 ),
               ),
@@ -84,7 +100,7 @@ Future<void> _showProfileActions(BuildContext context, WidgetRef ref) async {
                   }
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               _ProfileActionTile(
                 icon: Icons.logout_rounded,
                 title: 'Log Out',
@@ -110,20 +126,22 @@ Future<bool?> _confirmLogout(BuildContext context) {
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), // Modal radius
         title: const Text(
           'Log Out',
           style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
+            color: _DSColors.textMain,
+            fontSize: 24, // Title 2
+            fontWeight: FontWeight.w600, // Semi Bold
             fontFamily: 'Montserrat',
           ),
         ),
         content: const Text(
           'Are you sure you want to log out of your account?',
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: _DSColors.textSec,
+            fontSize: 14,
             fontFamily: 'Montserrat',
             height: 1.5,
           ),
@@ -131,11 +149,23 @@ Future<bool?> _confirmLogout(BuildContext context) {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            style: TextButton.styleFrom(foregroundColor: _DSColors.textMain),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w600),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Log Out'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _DSColors.primary,
+              foregroundColor: _DSColors.textMain,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text(
+              'Log Out',
+              style: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       );
@@ -153,7 +183,7 @@ Future<void> _sendPasswordResetEmail(
     barrierDismissible: false,
     builder: (dialogContext) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+        child: CircularProgressIndicator(color: _DSColors.primary),
       );
     },
   );
@@ -168,8 +198,10 @@ Future<void> _sendPasswordResetEmail(
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
+            backgroundColor: _DSColors.success,
             content: Text(
               'A password reset email has been sent to ${profile.email}.',
+              style: const TextStyle(fontFamily: 'Montserrat', color: _DSColors.textMain),
             ),
           ),
         );
@@ -181,8 +213,11 @@ Future<void> _sendPasswordResetEmail(
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.error,
+            content: Text(
+              e.toString(),
+              style: const TextStyle(fontFamily: 'Montserrat', color: _DSColors.textMain),
+            ),
+            backgroundColor: _DSColors.primary,
           ),
         );
     }
@@ -257,7 +292,8 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
   Widget build(BuildContext context) {
     final profile = widget.profile;
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: _DSColors.primary,
+      backgroundColor: _DSColors.card,
       onRefresh: () async {
         ref.invalidate(profileProvider);
         await ref.read(profileProvider.future);
@@ -267,34 +303,34 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
         slivers: [
           // ── AppBar ──────────────────────────────────────────────────────
           SliverAppBar(
-            backgroundColor: AppColors.background,
+            backgroundColor: _DSColors.header,
             floating: true,
             snap: true,
-            elevation: 0,
+            elevation: 4,
+            shadowColor: Colors.black.withOpacity(0.7), // shadow depth per DS
             titleSpacing: 4,
             leading: IconButton(
               onPressed: () => _handleProfileBack(context),
               icon: const Icon(
-                Icons.arrow_back_ios_new,
-                size: 18,
-                color: AppColors.textPrimary,
+                Icons.arrow_back,
+                size: 24,
+                color: _DSColors.textMain,
               ),
             ),
             title: const Text(
               'My Profile',
               style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+                color: _DSColors.textMain,
+                fontSize: 22, // Headline 1
+                fontWeight: FontWeight.w500, // Medium
                 fontFamily: 'Montserrat',
-                letterSpacing: 0.3,
               ),
             ),
           ),
 
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), // 4% horizontal
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -302,9 +338,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                     alignment: Alignment.centerRight,
                     child: const RunningLoginTimeCard(),
                   )),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   _a(1, _ProfileHeroCard(profile: profile)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   _a(2, Row(
                     children: [
                       Expanded(
@@ -312,17 +348,17 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                           label: 'Edit Profile',
                           icon: Icons.edit_outlined,
                           onTap: () => context.push('/profile/edit'),
-                          filled: true,
+                          isPrimary: true,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _NetflixButton(
                           label: 'Reset Password',
                           icon: Icons.lock_reset_outlined,
                           onTap: () =>
                               _sendPasswordResetEmail(context, ref, profile),
-                          filled: false,
+                          isPrimary: false,
                         ),
                       ),
                     ],
@@ -330,7 +366,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                   const SizedBox(height: 24),
                   _a(4, _SectionCard(
                     title: 'Account',
-                    icon: Icons.person_outline_rounded,
                     children: [
                       _InfoRow(label: 'Full name', value: profile.name),
                       _InfoRow(label: 'Email', value: profile.email),
@@ -338,20 +373,18 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       _InfoRow(label: 'Instagram', value: profile.instagram),
                     ],
                   )),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   _a(5, _SectionCard(
                     title: 'Personal',
-                    icon: Icons.badge_outlined,
                     children: [
                       _InfoRow(label: 'Country', value: profile.country),
                       _InfoRow(label: 'Birth date', value: profile.birthDate),
                       _InfoRow(label: 'Gender', value: profile.gender),
                     ],
                   )),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   _a(6, _SectionCard(
                     title: 'Practice',
-                    icon: Icons.self_improvement_rounded,
                     children: [
                       _InfoRow(
                         label: 'Practicing yoga for',
@@ -375,10 +408,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       ),
                     ],
                   )),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   _a(7, _SectionCard(
                     title: 'Motivation',
-                    icon: Icons.emoji_objects_outlined,
                     children: [
                       _InfoRow(label: 'Motivation', value: profile.motivation),
                       _InfoRow(label: 'Why YogaFX', value: profile.whyYogafx),
@@ -409,54 +441,45 @@ class _ProfileHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        color: _DSColors.card,
+        borderRadius: BorderRadius.circular(8), // Modal/panel radius
+        border: Border.all(color: _DSColors.border, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Avatar with red ring accent
+          // Avatar with Netflix style shape & border
           Stack(
             children: [
               Container(
-                padding: const EdgeInsets.all(2.5),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primary, width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _DSColors.primary, width: 2), // Active red border
                 ),
-                child: CircleAvatar(
-                  radius: 32,
-                  backgroundColor: AppColors.surfaceElevated,
-                  backgroundImage: profile.profilePhoto != null
-                      ? NetworkImage(profile.profilePhoto!)
-                      : null,
-                  child: profile.profilePhoto == null
-                      ? Text(
-                    _initials(profile.name),
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    color: _DSColors.overlay10,
+                    child: profile.profilePhoto != null
+                        ? Image.network(
+                      profile.profilePhoto!,
+                      fit: BoxFit.cover,
+                    )
+                        : Center(
+                      child: Text(
+                        _initials(profile.name),
+                        style: const TextStyle(
+                          color: _DSColors.textMain,
+                          fontSize: 24, // Title 2
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
                     ),
-                  )
-                      : null,
-                ),
-              ),
-              // Online dot
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surface, width: 2),
                   ),
                 ),
               ),
@@ -472,26 +495,24 @@ class _ProfileHeroCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    color: _DSColors.textMain,
+                    fontSize: 24, // Title 2
+                    fontWeight: FontWeight.w600, // Semi Bold
                     fontFamily: 'Montserrat',
-                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   profile.accessTier.name.toUpperCase(),
                   style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    color: _DSColors.primary,
+                    fontSize: 12, // Caption
+                    fontWeight: FontWeight.w700, // Bold
                     fontFamily: 'Montserrat',
-                    letterSpacing: 1.5,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                const SizedBox(height: 10),
-                // Profile status badge
+                const SizedBox(height: 12),
                 _StatusBadge(completed: profile.profileCompleted),
               ],
             ),
@@ -517,33 +538,24 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = completed ? AppColors.success : AppColors.primary;
+    final color = completed ? _DSColors.success : _DSColors.primary;
     final label = completed ? 'PROFILE COMPLETE' : 'PROFILE INCOMPLETE';
-    final icon = completed ? Icons.verified_rounded : Icons.info_outline_rounded;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.28), width: 0.8),
+        borderRadius: BorderRadius.circular(2), // Badge small radius
+        border: Border.all(color: color.withOpacity(0.6), width: 1), // 0.6 border opacity
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 11),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Montserrat',
-              letterSpacing: 1.1,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          color: _DSColors.textMain,
+          fontSize: 12,
+          fontWeight: FontWeight.w600, // Semi Bold
+          fontFamily: 'Montserrat',
+        ),
       ),
     );
   }
@@ -555,13 +567,13 @@ class _NetflixButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  final bool filled;
+  final bool isPrimary; // True = Red, False = Gray transparent
 
   const _NetflixButton({
     required this.label,
     required this.icon,
     required this.onTap,
-    required this.filled,
+    required this.isPrimary,
   });
 
   @override
@@ -570,33 +582,30 @@ class _NetflixButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4), // Button radius 4px
         child: Ink(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
-            color: filled ? AppColors.primary : AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(6),
-            border: filled
-                ? null
-                : Border.all(color: AppColors.divider, width: 0.8),
+            color: isPrimary ? _DSColors.primary : _DSColors.overlay20,
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
-                size: 15,
-                color: filled ? Colors.white : AppColors.textSecondary,
+                size: 16,
+                color: _DSColors.textMain,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: filled ? Colors.white : AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  style: const TextStyle(
+                    color: _DSColors.textMain,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700, // Bold
                     fontFamily: 'Montserrat',
                   ),
                 ),
@@ -626,35 +635,33 @@ class _ProfileActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDanger ? AppColors.primary : AppColors.textPrimary;
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.divider, width: 0.8),
+            color: _DSColors.overlay10,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: _DSColors.border, width: 1),
           ),
           child: Row(
             children: [
-              Icon(icon, color: color, size: 20),
+              Icon(icon, color: isDanger ? _DSColors.primary : _DSColors.textMain, size: 20),
               const SizedBox(width: 12),
               Text(
                 title,
                 style: TextStyle(
-                  color: color,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  color: isDanger ? _DSColors.primary : _DSColors.textMain,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400, // Regular
                   fontFamily: 'Montserrat',
                 ),
               ),
               const Spacer(),
-              Icon(Icons.chevron_right_rounded, color: color, size: 20),
+              Icon(Icons.chevron_right_rounded, color: _DSColors.textMuted, size: 20),
             ],
           ),
         ),
@@ -667,12 +674,10 @@ class _ProfileActionTile extends StatelessWidget {
 
 class _SectionCard extends StatelessWidget {
   final String title;
-  final IconData icon;
   final List<Widget> children;
 
   const _SectionCard({
     required this.title,
-    required this.icon,
     required this.children,
   });
 
@@ -681,46 +686,34 @@ class _SectionCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        color: _DSColors.card,
+        borderRadius: BorderRadius.circular(8), // Modal/Panel radius
+        border: Border.all(color: _DSColors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section header with subtle left accent bar
+          // Section header (simpler layout aligned with Netflix style info dropdowns)
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            decoration: const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: AppColors.divider, width: 0.5),
-                left: BorderSide(color: AppColors.primary, width: 3),
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
+                bottom: BorderSide(color: _DSColors.border, width: 1),
               ),
             ),
-            child: Row(
-              children: [
-                Icon(icon, color: AppColors.primary, size: 14),
-                const SizedBox(width: 8),
-                Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 1.4,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: _DSColors.textMain,
+                fontSize: 22, // Headline 1
+                fontWeight: FontWeight.w500, // Medium
+                fontFamily: 'Montserrat',
+              ),
             ),
           ),
           // Info rows
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Column(
               children: children,
             ),
@@ -743,7 +736,7 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isEmpty = value == null || value!.trim().isEmpty;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -752,26 +745,24 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 12,
+                color: _DSColors.textSec, // 65% transparency
+                fontSize: 14,
                 fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w400, // Regular
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             flex: 6,
             child: Text(
               isEmpty ? '—' : value!,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: isEmpty
-                    ? AppColors.textMuted
-                    : AppColors.textPrimary,
-                fontSize: 12,
+                color: isEmpty ? _DSColors.textMuted : _DSColors.textMain,
+                fontSize: 14,
                 fontFamily: 'Montserrat',
-                fontWeight:
-                isEmpty ? FontWeight.w400 : FontWeight.w500,
+                fontWeight: isEmpty ? FontWeight.w400 : FontWeight.w500,
               ),
             ),
           ),
@@ -791,15 +782,15 @@ class _ProfileSkeleton extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         const SliverAppBar(
-          backgroundColor: AppColors.background,
+          backgroundColor: _DSColors.header,
           floating: true,
           snap: true,
           title: Text(
             'My Profile',
             style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
+              color: _DSColors.textMain,
+              fontSize: 22,
+              fontWeight: FontWeight.w500,
               fontFamily: 'Montserrat',
             ),
           ),
@@ -809,29 +800,21 @@ class _ProfileSkeleton extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _shimmer(height: 100, radius: 10),
-                const SizedBox(height: 14),
+                _shimmer(height: 100, radius: 8),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
+                    Expanded(child: _shimmer(height: 42, radius: 4)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _shimmer(height: 42, radius: 4)),
                   ],
                 ),
                 const SizedBox(height: 24),
                 ...List.generate(
                   4,
                       (_) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _shimmer(height: 140, radius: 10),
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _shimmer(height: 140, radius: 8),
                   ),
                 ),
               ],
@@ -846,7 +829,7 @@ class _ProfileSkeleton extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.shimmer,
+        color: _DSColors.overlay10,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -871,7 +854,7 @@ class _ProfileError extends StatelessWidget {
           children: [
             const Icon(
               Icons.wifi_off_outlined,
-              color: AppColors.textMuted,
+              color: _DSColors.textMuted,
               size: 48,
             ),
             const SizedBox(height: 16),
@@ -879,7 +862,7 @@ class _ProfileError extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: AppColors.textSecondary,
+                color: _DSColors.textSec,
                 fontSize: 14,
                 fontFamily: 'Montserrat',
               ),
@@ -889,7 +872,15 @@ class _ProfileError extends StatelessWidget {
               width: 140,
               child: ElevatedButton(
                 onPressed: onRetry,
-                child: const Text('Try again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _DSColors.primary,
+                  foregroundColor: _DSColors.textMain,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+                child: const Text(
+                  'Try again',
+                  style: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ],

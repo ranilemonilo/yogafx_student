@@ -8,8 +8,120 @@ import '../../../../core/theme/app_theme.dart';
 import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Design Tokens — identik dengan intro & result screen
+// ─────────────────────────────────────────────────────────────────────────────
+abstract class _DS {
+  // Colors
+  static const Color background    = Color(0xFF141110);
+  static const Color surface       = Color(0xFF1F1D1C);
+  static const Color surfaceRaised = Color(0xFF2A2826);
+  static const Color red           = Color(0xFFDB202C);
+  static const Color white         = Color(0xFFFFFFFF);
+  static const Color textPrimary   = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFA8A8A8);
+  static const Color textMuted     = Color(0xFF737373);
+  static const Color divider       = Color(0xFF3A3836);
 
+  // Option card states
+  static const Color optionDefault  = Color(0xFF1F1D1C); // surface
+  static const Color optionSelected = Color(0xFF2A0A0C); // red tint gelap
+
+  // Border-radius
+  static const double radiusButton = 4;
+  static const double radiusBadge  = 2;
+  static const double radiusCard   = 4;
+  static const double radiusInput  = 4;
+
+  // Spacing (8px grid)
+  static const double sp2  = 2;
+  static const double sp4  = 4;
+  static const double sp6  = 6;
+  static const double sp8  = 8;
+  static const double sp10 = 10;
+  static const double sp12 = 12;
+  static const double sp14 = 14;
+  static const double sp16 = 16;
+  static const double sp18 = 18;
+  static const double sp20 = 20;
+  static const double sp22 = 22;
+  static const double sp24 = 24;
+  static const double sp28 = 28;
+  static const double sp32 = 32;
+  static const double sp34 = 34;
+  static const double sp40 = 40;
+  static const double sp48 = 48;
+
+  // Type scale — Montserrat
+  static TextStyle caption({Color? color, double? letterSpacing}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: color ?? textMuted,
+    height: 1.5,
+    letterSpacing: letterSpacing,
+  );
+
+  static TextStyle body({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: color ?? textSecondary,
+    height: 1.6,
+  );
+
+  static TextStyle label({
+    Color? color,
+    double? fontSize,
+    FontWeight? weight,
+    double? letterSpacing,
+  }) =>
+      TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: fontSize ?? 14,
+        fontWeight: weight ?? FontWeight.w500,
+        color: color ?? textPrimary,
+        letterSpacing: letterSpacing,
+      );
+
+  static TextStyle labelSmall({Color? color, double? letterSpacing}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    color: color ?? red,
+    letterSpacing: letterSpacing ?? 2.0,
+    height: 1.2,
+  );
+
+  static TextStyle questionText() => const TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    color: textPrimary,
+    height: 1.35,
+    letterSpacing: -0.4,
+  );
+
+  static TextStyle buttonLabel({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: color ?? Colors.black,
+    letterSpacing: 0.2,
+  );
+
+  static TextStyle navTitle() => const TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: textPrimary,
+    letterSpacing: -0.2,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Screen — LOGIKA TIDAK DIUBAH
+// ─────────────────────────────────────────────────────────────────────────────
 class AssessmentScreen extends ConsumerStatefulWidget {
   final int lessonId;
   final int attemptId;
@@ -52,11 +164,13 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       vsync: this,
       duration: const Duration(milliseconds: 450),
     );
-    _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _fadeAnim =
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+    ).animate(
+        CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 
     _fadeController.forward();
     _slideController.forward();
@@ -84,7 +198,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
     ));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _DS.background,
       body: Stack(
         children: [
           attemptAsync.when(
@@ -94,7 +208,10 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
               onBack: () => context.pop(),
               onRetry: () => ref
                   .read(assessmentAttemptProvider(
-                (lessonId: widget.lessonId, attemptId: widget.attemptId),
+                (
+                lessonId: widget.lessonId,
+                attemptId: widget.attemptId
+                ),
               ).notifier)
                   .load(),
             ),
@@ -111,7 +228,8 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                   if (!mounted) return;
                   setState(() {
                     _lastQuestionId = data.question.id;
-                    _selectedOptionIds = List.from(data.question.saved.optionIds);
+                    _selectedOptionIds =
+                        List.from(data.question.saved.optionIds);
                     _answerText = data.question.saved.answerText;
                     _optionFeedbackMessage = null;
                     _isOptionAnswerCorrect = false;
@@ -133,26 +251,25 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
               return SafeArea(
                 child: Column(
                   children: [
-                    // Header
                     _AssessmentHeader(
                       assessment: data.assessment,
-                      canGoBack: false, 
+                      canGoBack: false,
                       onBack: () => _handleBack(context),
                       onClose: () => _handleClose(context),
                     ),
 
-                    // Slim progress bar
                     if (data.assessment.showProgressBar)
                       _NetflixProgressBar(progress: data.assessment.progress),
 
-                    // Question content — animated
                     Expanded(
                       child: FadeTransition(
                         opacity: _fadeAnim,
                         child: SlideTransition(
                           position: _slideAnim,
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                            padding: const EdgeInsets.fromLTRB(
+                              _DS.sp24, _DS.sp32, _DS.sp24, _DS.sp24,
+                            ),
                             child: _QuestionBody(
                               question: data.question,
                               selectedOptionIds: _selectedOptionIds,
@@ -173,17 +290,17 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                       ),
                     ),
 
-                    // Bottom CTA
                     _BottomAction(
                       questionType: data.question.questionType,
                       isLastQuestion: data.isLastQuestion,
                       canGoBack: false,
                       submitting: _submitting,
                       hasAnswer: _hasAnswer(data.question),
-                      canManuallyProceed: data.question.questionType == 'text'
+                      canManuallyProceed:
+                      data.question.questionType == 'text'
                           ? _hasAnswer(data.question)
                           : (!data.question.hasCorrectnessGate ||
-                              _isOptionAnswerCorrect),
+                          _isOptionAnswerCorrect),
                       isRequired: data.question.required,
                       onPrevious: () {},
                       onSubmit: () => _handleSubmit(context, data),
@@ -193,6 +310,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
               );
             },
           ),
+
           if (_processingResult)
             Positioned.fill(
               child: _AssessmentProcessingOverlay(
@@ -203,6 +321,8 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       ),
     );
   }
+
+  // ── SEMUA LOGIKA DI BAWAH INI TIDAK DIUBAH ────────────────────────────────
 
   void _startResultProcessing(BuildContext context) {
     if (_processingResult) return;
@@ -225,9 +345,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
           );
           return;
         }
-        setState(() {
-          _processingCountdown -= 1;
-        });
+        setState(() => _processingCountdown -= 1);
       });
     });
   }
@@ -244,10 +362,10 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
   }
 
   Future<void> _handleOptionSelected(
-    BuildContext context,
-    AssessmentAttemptData data,
-    int optionId,
-  ) async {
+      BuildContext context,
+      AssessmentAttemptData data,
+      int optionId,
+      ) async {
     if (_submitting) return;
 
     List<int> nextSelection;
@@ -270,7 +388,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
 
     final selectedOption = data.question.options
         .cast<AssessmentOption?>()
-        .firstWhere((option) => option?.id == optionId, orElse: () => null);
+        .firstWhere((o) => o?.id == optionId, orElse: () => null);
 
     setState(() {
       _selectedOptionIds = nextSelection;
@@ -289,7 +407,8 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
         question.questionType == 'checkboxes';
 
     if (isRequired && !_hasAnswer(question)) {
-      _showNetflixSnack(context, 'Please answer this question before continuing.');
+      _showNetflixSnack(
+          context, 'Please answer this question before continuing.');
       return;
     }
 
@@ -308,7 +427,8 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       ).notifier)
           .submitAnswer(
         questionId: question.id,
-        optionIds: _selectedOptionIds.isNotEmpty ? _selectedOptionIds : null,
+        optionIds:
+        _selectedOptionIds.isNotEmpty ? _selectedOptionIds : null,
         answerText: _answerText,
       );
 
@@ -335,10 +455,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
         _submitting = false;
         _isOptionAnswerCorrect = false;
       });
-      _showNetflixSnack(
-        context,
-        'Something went wrong. Please try again later.',
-      );
+      _showNetflixSnack(context, 'Something went wrong. Please try again later.');
     }
   }
 
@@ -375,10 +492,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
         _optionFeedbackMessage = null;
         _isOptionAnswerCorrect = false;
       });
-      _showNetflixSnack(
-        context,
-        'Something went wrong. Please try again later.',
-      );
+      _showNetflixSnack(context, 'Something went wrong. Please try again later.');
     }
   }
 
@@ -386,15 +500,10 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
     final errors = exception.errors;
     if (errors != null) {
       for (final value in errors.values) {
-        if (value is List && value.isNotEmpty) {
-          return value.first.toString();
-        }
-        if (value is String && value.isNotEmpty) {
-          return value;
-        }
+        if (value is List && value.isNotEmpty) return value.first.toString();
+        if (value is String && value.isNotEmpty) return value;
       }
     }
-
     return exception.message;
   }
 
@@ -405,62 +514,61 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       builder: (ctx) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1F1F1F),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: const Text(
-            'Leave assessment?',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Montserrat',
-              letterSpacing: -0.3,
-            ),
+          backgroundColor: _DS.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_DS.radiusCard),
+            side: BorderSide(color: _DS.divider),
           ),
-          content: const Text(
+          titlePadding: const EdgeInsets.fromLTRB(
+            _DS.sp24, _DS.sp24, _DS.sp24, _DS.sp8,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(
+            _DS.sp24, _DS.sp8, _DS.sp24, _DS.sp8,
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(
+            _DS.sp16, _DS.sp8, _DS.sp16, _DS.sp16,
+          ),
+          title: Text('Leave assessment?', style: _DS.label(fontSize: 18, weight: FontWeight.w700)),
+          content: Text(
             'Your progress will be saved. You can continue later.',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              fontFamily: 'Montserrat',
-              height: 1.6,
-            ),
+            style: _DS.body(),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
-            TextButton(
+            // Stay — tombol sekunder (outline style)
+            OutlinedButton(
               onPressed: () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: const Text(
-                'Stay',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w500,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _DS.textSecondary,
+                side: BorderSide(color: _DS.divider),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _DS.sp20,
+                  vertical: _DS.sp12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(_DS.radiusButton),
                 ),
               ),
+              child: Text('Stay', style: _DS.label(color: _DS.textSecondary, weight: FontWeight.w600)),
             ),
+            // Leave — tombol primer merah
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(ctx);
                 context.pop();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: _DS.red,
+                foregroundColor: _DS.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _DS.sp24,
+                  vertical: _DS.sp12,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: const Text(
-                'Leave',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
+                  borderRadius: BorderRadius.circular(_DS.radiusButton),
                 ),
               ),
+              child: Text('Leave', style: _DS.buttonLabel(color: _DS.white)),
             ),
           ],
         ),
@@ -473,31 +581,30 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-            const SizedBox(width: 10),
+            Icon(Icons.info_outline, color: _DS.red, size: 16),
+            const SizedBox(width: _DS.sp10),
             Expanded(
-              child: Text(
-                msg,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Montserrat',
-                  fontSize: 13,
-                ),
-              ),
+              child: Text(msg, style: _DS.caption(color: _DS.textPrimary)),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF1F1F1F),
+        backgroundColor: _DS.surface,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_DS.radiusCard),
+          side: BorderSide(color: _DS.divider),
+        ),
+        margin: const EdgeInsets.fromLTRB(
+          _DS.sp16, 0, _DS.sp16, _DS.sp16,
+        ),
       ),
     );
   }
 }
 
-// ─── Netflix Loader ───────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Netflix Loader — pulsing logo (TIDAK DIUBAH)
+// ─────────────────────────────────────────────────────────────────────────────
 class _NetflixLoader extends StatefulWidget {
   const _NetflixLoader();
 
@@ -517,10 +624,9 @@ class _NetflixLoaderState extends State<_NetflixLoader>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(
-      parent: _ctrl,
-      curve: Curves.easeInOut,
-    ));
+    _pulse = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -539,13 +645,11 @@ class _NetflixLoaderState extends State<_NetflixLoader>
           child: Image.network(
             'https://yogafx.b-cdn.net/content/Logo%20YogAFX.png',
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) {
-              return const Icon(
-                Icons.image_outlined,
-                color: AppColors.textMuted,
-                size: 56,
-              );
-            },
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.image_outlined,
+              color: _DS.textMuted,
+              size: 56,
+            ),
           ),
         ),
       ),
@@ -553,14 +657,13 @@ class _NetflixLoaderState extends State<_NetflixLoader>
   }
 }
 
-// ─── Header & Overlay ─────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Processing Overlay — countdown di tengah spinner (TIDAK DIUBAH)
+// ─────────────────────────────────────────────────────────────────────────────
 class _AssessmentProcessingOverlay extends StatelessWidget {
   final int countdown;
 
-  const _AssessmentProcessingOverlay({
-    required this.countdown,
-  });
+  const _AssessmentProcessingOverlay({required this.countdown});
 
   @override
   Widget build(BuildContext context) {
@@ -569,61 +672,59 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
       child: Center(
         child: Container(
           width: 280,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          padding: const EdgeInsets.symmetric(
+            horizontal: _DS.sp24,
+            vertical: _DS.sp28,
+          ),
           decoration: BoxDecoration(
-            color: const Color(0xFF171717),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.28),
-            ),
+            color: _DS.surface,
+            borderRadius: BorderRadius.circular(_DS.radiusCard),
+            border: Border.all(color: _DS.red.withOpacity(0.28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // PERUBAHAN: Countdown sekarang ada di tengah loading circle
+              // Spinner + countdown number
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  const SizedBox(
-                    width: 76,
-                    height: 76,
+                  SizedBox(
+                    width: 72,
+                    height: 72,
                     child: CircularProgressIndicator(
-                      color: AppColors.primary,
-                      strokeWidth: 4.5,
+                      color: _DS.red,
+                      strokeWidth: 3,
                     ),
                   ),
                   Text(
                     '$countdown',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: _DS.label(
                       fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Montserrat',
+                      weight: FontWeight.w800,
+                      color: _DS.white,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              const Text(
+              const SizedBox(height: _DS.sp24),
+
+              // Title
+              Text(
                 'Processing Your Answers',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'Montserrat',
+                style: _DS.label(
+                  fontSize: 16,
+                  weight: FontWeight.w800,
+                  color: _DS.white,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              const SizedBox(height: _DS.sp8),
+
+              // Subtitle
+              Text(
                 'Please wait a moment...',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontFamily: 'Montserrat',
-                  height: 1.5,
-                ),
+                style: _DS.body(),
               ),
             ],
           ),
@@ -633,6 +734,9 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Assessment Header — top bar dengan back/close
+// ─────────────────────────────────────────────────────────────────────────────
 class _AssessmentHeader extends StatelessWidget {
   final AssessmentPlayInfo assessment;
   final bool canGoBack;
@@ -649,40 +753,34 @@ class _AssessmentHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: _DS.sp4),
+      // Divider bawah tipis — konsisten dengan header DS
+      decoration: BoxDecoration(
+        color: _DS.background,
+        border: Border(bottom: BorderSide(color: _DS.divider, width: 0.5)),
+      ),
       child: Row(
         children: [
+          // Back button atau placeholder lebar sama
           if (canGoBack)
-            _HeaderIconBtn(
-              icon: Icons.arrow_back_ios_new_rounded,
-              onTap: onBack,
-            )
+            _HeaderIconBtn(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack)
           else
             const SizedBox(width: 48),
 
+          // Center: eyebrow label + judul
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   'ASSESSMENT',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 2.5,
-                  ),
+                  style: _DS.labelSmall(color: _DS.red, letterSpacing: 2.5),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: _DS.sp2),
                 Text(
                   assessment.title,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: -0.2,
-                  ),
+                  style: _DS.navTitle(),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -691,10 +789,8 @@ class _AssessmentHeader extends StatelessWidget {
             ),
           ),
 
-          _HeaderIconBtn(
-            icon: Icons.close_rounded,
-            onTap: onClose,
-          ),
+          // Close button
+          _HeaderIconBtn(icon: Icons.close_rounded, onTap: onClose),
         ],
       ),
     );
@@ -715,16 +811,17 @@ class _HeaderIconBtn extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Icon(icon, color: AppColors.textPrimary, size: 18),
+          padding: const EdgeInsets.all(_DS.sp12),
+          child: Icon(icon, color: _DS.textPrimary, size: 18),
         ),
       ),
     );
   }
 }
 
-// ─── Netflix Progress Bar ─────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress Bar — segmented, identik dengan video progress indicator DS
+// ─────────────────────────────────────────────────────────────────────────────
 class _NetflixProgressBar extends StatelessWidget {
   final AssessmentProgress progress;
 
@@ -732,13 +829,14 @@ class _NetflixProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final frac = progress.current / progress.total;
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+      padding: const EdgeInsets.fromLTRB(
+        _DS.sp24, _DS.sp12, _DS.sp24, _DS.sp4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Segmented progress bar — satu slot per soal
           Row(
             children: List.generate(progress.total, (i) {
               final done = i < progress.current;
@@ -750,25 +848,22 @@ class _NetflixProgressBar extends StatelessWidget {
                   height: 3,
                   decoration: BoxDecoration(
                     color: done
-                        ? AppColors.primary
+                        ? _DS.red
                         : active
-                            ? AppColors.primary.withOpacity(0.5)
-                            : AppColors.divider,
+                        ? _DS.red.withOpacity(0.4)
+                        : _DS.divider,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               );
             }),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: _DS.sp8),
+
+          // Counter — caption muted
           Text(
             '${progress.current} / ${progress.total}',
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 11,
-              fontFamily: 'Montserrat',
-              letterSpacing: 0.5,
-            ),
+            style: _DS.caption(letterSpacing: 0.5),
           ),
         ],
       ),
@@ -776,8 +871,9 @@ class _NetflixProgressBar extends StatelessWidget {
   }
 }
 
-// ─── Question Body ────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Question Body — judul, instruksi, opsi / text field
+// ─────────────────────────────────────────────────────────────────────────────
 class _QuestionBody extends StatelessWidget {
   final AssessmentQuestion question;
   final List<int> selectedOptionIds;
@@ -802,87 +898,47 @@ class _QuestionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Eyebrow / question title badge — mengikuti label style DS
         if (question.title.isNotEmpty &&
-            question.title != 'Question ${question.id}')
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3), width: 0.5),
-            ),
-            child: Text(
-              question.title.toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
+            question.title != 'Question ${question.id}') ...[
+          _QuestionEyebrow(label: question.title),
+          const SizedBox(height: _DS.sp12),
+        ],
 
-        if (question.questionText.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              question.questionText,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                fontFamily: 'Montserrat',
-                height: 1.35,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ),
+        // ── Question text — Bold Display style
+        if (question.questionText.isNotEmpty) ...[
+          Text(question.questionText, style: _DS.questionText()),
+          const SizedBox(height: _DS.sp8),
+        ],
 
-        if (question.showInstruction && question.instructionText != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 24),
-            child: Text(
-              question.instructionText!,
-              style: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.8),
-                fontSize: 13,
-                fontFamily: 'Montserrat',
-                height: 1.6,
-              ),
-            ),
-          )
-        else
-          const SizedBox(height: 28),
+        // ── Instruction — body muted
+        if (question.showInstruction && question.instructionText != null) ...[
+          Text(question.instructionText!, style: _DS.body()),
+          const SizedBox(height: _DS.sp28),
+        ] else
+          const SizedBox(height: _DS.sp28),
 
+        // ── Options (radio / checkbox)
         if (question.questionType == 'radio_buttons' ||
             question.questionType == 'checkboxes')
           ...question.options.asMap().entries.map(
                 (entry) => _AnimatedOptionCard(
-                  index: entry.key,
-                  option: entry.value,
-                  isSelected: selectedOptionIds.contains(entry.value.id),
-                  isMulti: question.allowMultiSelect,
-                  onTap: () => onOptionSelected(entry.value.id),
-                ),
-              ),
+              index: entry.key,
+              option: entry.value,
+              isSelected: selectedOptionIds.contains(entry.value.id),
+              isMulti: question.allowMultiSelect,
+              onTap: () => onOptionSelected(entry.value.id),
+            ),
+          ),
+
+        // ── Feedback message (correct / wrong)
         if (optionFeedbackMessage != null &&
             optionFeedbackMessage!.trim().isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8, left: 2, right: 2),
-            child: Text(
-              optionFeedbackMessage!,
-              style: TextStyle(
-                color: isCorrectFeedback ? Colors.green : AppColors.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-                height: 1.5,
-              ),
-            ),
+          _FeedbackBanner(
+            message: optionFeedbackMessage!,
+            isCorrect: isCorrectFeedback,
           )
+        // ── Text field
         else if (question.questionType == 'text')
           _NetflixTextField(
             onChanged: onTextChanged,
@@ -893,8 +949,83 @@ class _QuestionBody extends StatelessWidget {
   }
 }
 
-// ─── Animated Option Card ─────────────────────────────────────────────────────
+/// Eyebrow badge di atas pertanyaan — pola dari DS label/badge
+class _QuestionEyebrow extends StatelessWidget {
+  final String label;
 
+  const _QuestionEyebrow({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _DS.sp10,
+        vertical: _DS.sp4,
+      ),
+      decoration: BoxDecoration(
+        color: _DS.red.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(_DS.radiusBadge),
+        border: Border.all(color: _DS.red.withOpacity(0.3), width: 0.5),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: _DS.labelSmall(color: _DS.red, letterSpacing: 1.5),
+      ),
+    );
+  }
+}
+
+/// Banner feedback — benar (emerald) / salah (merah)
+class _FeedbackBanner extends StatelessWidget {
+  final String message;
+  final bool isCorrect;
+
+  const _FeedbackBanner({required this.message, required this.isCorrect});
+
+  static const Color _emerald = Color(0xFF00B14F);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isCorrect ? _emerald : _DS.red;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: _DS.sp12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: _DS.sp14,
+          vertical: _DS.sp12,
+        ),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(_DS.radiusCard),
+          border: Border.all(color: color.withOpacity(0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              isCorrect ? Icons.check_circle_outline : Icons.cancel_outlined,
+              color: color,
+              size: 16,
+            ),
+            const SizedBox(width: _DS.sp8),
+            Expanded(
+              child: Text(
+                message,
+                style: _DS.caption(color: color.withOpacity(0.9)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Animated Option Card — logika scale & setState TIDAK DIUBAH
+// ─────────────────────────────────────────────────────────────────────────────
 class _AnimatedOptionCard extends StatefulWidget {
   final int index;
   final AssessmentOption option;
@@ -945,7 +1076,7 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: _DS.sp10),
       child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: _onTapDown,
@@ -954,101 +1085,85 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
         child: ScaleTransition(
           scale: _scaleAnim,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(
+              horizontal: _DS.sp16,
+              vertical: _DS.sp16,
+            ),
             decoration: BoxDecoration(
+              // Selected: tint merah gelap | Default: surface
               color: widget.isSelected
-                  ? const Color(0xFF2B1212)
-                  : const Color(0xFF242424),
-              borderRadius: BorderRadius.circular(6),
+                  ? _DS.optionSelected
+                  : _DS.optionDefault,
+              borderRadius: BorderRadius.circular(_DS.radiusCard),
               border: Border.all(
-                color: widget.isSelected
-                    ? AppColors.primary
-                    : const Color(0xFF4A4A4A),
+                color: widget.isSelected ? _DS.red : _DS.divider,
                 width: widget.isSelected ? 1.5 : 1.0,
               ),
-              boxShadow: widget.isSelected
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.18),
-                        blurRadius: 12,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [],
             ),
             child: Row(
               children: [
+                // Checkbox / radio indicator — mengikuti DS checkbox style
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 22,
-                  height: 22,
+                  duration: const Duration(milliseconds: 180),
+                  width: 20,
+                  height: 20,
                   decoration: BoxDecoration(
-                    shape: widget.isMulti ? BoxShape.rectangle : BoxShape.circle,
-                    borderRadius: widget.isMulti ? BorderRadius.circular(5) : null,
-                    color: widget.isSelected
-                        ? AppColors.primary
-                        : Colors.transparent,
+                    shape: widget.isMulti
+                        ? BoxShape.rectangle
+                        : BoxShape.circle,
+                    borderRadius:
+                    widget.isMulti ? BorderRadius.circular(3) : null,
+                    color: widget.isSelected ? _DS.red : Colors.transparent,
                     border: Border.all(
-                      color: AppColors.primary,
+                      color: widget.isSelected ? _DS.red : _DS.textMuted,
                       width: 1.5,
                     ),
                   ),
                   child: widget.isSelected
                       ? const Icon(Icons.check_rounded,
-                          color: Colors.white, size: 14)
+                      color: Colors.white, size: 13)
                       : null,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: _DS.sp14),
 
+                // Image opsional
                 if (widget.option.imageUrl != null) ...[
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(_DS.radiusBadge),
                     child: Image.network(
                       widget.option.imageUrl!,
-                      width: 50,
-                      height: 50,
+                      width: 48,
+                      height: 48,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                        width: 50,
-                        height: 50,
-                        color: const Color(0xFF303030),
+                        width: 48,
+                        height: 48,
+                        color: _DS.surfaceRaised,
                         alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.image_outlined,
-                          color: Colors.white70,
-                          size: 18,
-                        ),
+                        child: Icon(Icons.image_outlined,
+                            color: _DS.textMuted, size: 16),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: _DS.sp12),
                 ],
 
+                // Label teks
                 Expanded(
                   child: Text(
                     widget.option.label,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: widget.isSelected
+                    style: _DS.label(
+                      fontSize: 14,
+                      weight: widget.isSelected
                           ? FontWeight.w600
                           : FontWeight.w500,
-                      fontFamily: 'Montserrat',
-                      height: 1.4,
+                      color: widget.isSelected
+                          ? _DS.textPrimary
+                          : _DS.textSecondary,
                     ),
                   ),
                 ),
-
-                if (widget.isSelected)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 10),
-                    child: Icon(
-                      Icons.circle,
-                      color: AppColors.primary.withOpacity(0.7),
-                      size: 7,
-                    ),
-                  ),
               ],
             ),
           ),
@@ -1058,8 +1173,10 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
   }
 }
 
-// ─── Netflix Text Field ───────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Text Field — mengikuti input field DS
+// Focus: border putih | Default: border divider
+// ─────────────────────────────────────────────────────────────────────────────
 class _NetflixTextField extends StatefulWidget {
   final void Function(String) onChanged;
   final int? characterLimit;
@@ -1085,49 +1202,30 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
     return Focus(
       onFocusChange: (v) => setState(() => _focused = v),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(_DS.radiusInput),
           border: Border.all(
-            color: _focused ? AppColors.primary : const Color(0xFF2A2A2A),
+            // Focus: border putih (persis input field DS)
+            // Default: border divider gelap
+            color: _focused ? _DS.white : _DS.divider,
             width: _focused ? 1.5 : 1.0,
           ),
-          color: const Color(0xFF1A1A1A),
-          boxShadow: _focused
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.12),
-                    blurRadius: 12,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
+          color: _DS.surface,
         ),
         child: TextField(
           controller: _ctrl,
           maxLines: 6,
           maxLength: widget.characterLimit,
           onChanged: widget.onChanged,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontFamily: 'Montserrat',
-            fontSize: 14,
-            height: 1.6,
-          ),
+          style: _DS.body(color: _DS.textPrimary),
+          cursorColor: _DS.red,
           decoration: InputDecoration(
             hintText: 'Write your answer here...',
-            hintStyle: TextStyle(
-              color: AppColors.textMuted.withOpacity(0.6),
-              fontFamily: 'Montserrat',
-              fontSize: 14,
-            ),
-            counterStyle: const TextStyle(
-              color: AppColors.textMuted,
-              fontFamily: 'Montserrat',
-              fontSize: 11,
-            ),
+            hintStyle: _DS.body(color: _DS.textMuted),
+            counterStyle: _DS.caption(),
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.all(16),
+            contentPadding: const EdgeInsets.all(_DS.sp16),
           ),
         ),
       ),
@@ -1135,8 +1233,10 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
   }
 }
 
-// ─── Bottom Action ────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Bottom Action — CTA button "Next Question" / "Submit Assessment"
+// Logika enabled/disabled TIDAK DIUBAH
+// ─────────────────────────────────────────────────────────────────────────────
 class _BottomAction extends StatelessWidget {
   final String questionType;
   final bool isLastQuestion;
@@ -1163,81 +1263,62 @@ class _BottomAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canProceed = !isRequired || hasAnswer;
-    final showManualSubmit = questionType == 'text' || canManuallyProceed;
+    final showManualSubmit =
+        questionType == 'text' || canManuallyProceed;
     final isEnabled = !submitting && canProceed && showManualSubmit;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 34),
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFF2A2A2A),
-            width: 0.5,
-          ),
-        ),
+      padding: const EdgeInsets.fromLTRB(
+        _DS.sp24, _DS.sp14, _DS.sp24, _DS.sp34,
       ),
-      child: Center(
-        child: SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: isEnabled ? onSubmit : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: canProceed && showManualSubmit
-                  ? AppColors.primary
-                  : const Color(0xFF2A2A2A),
-              disabledBackgroundColor: const Color(0xFF2A2A2A),
-              elevation: canProceed ? 4 : 0,
-              shadowColor: AppColors.primary.withOpacity(0.4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
+      decoration: BoxDecoration(
+        color: _DS.background,
+        border: Border(top: BorderSide(color: _DS.divider, width: 0.5)),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton(
+          onPressed: isEnabled ? onSubmit : null,
+          style: ElevatedButton.styleFrom(
+            // Enabled aktif: putih (Play button style dari DS)
+            // Enabled tapi belum siap / disabled: surfaceRaised
+            backgroundColor: isEnabled ? _DS.white : _DS.surfaceRaised,
+            disabledBackgroundColor: _DS.surfaceRaised,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_DS.radiusButton),
             ),
-            child: submitting
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isLastQuestion
-                            ? 'Submit Assessment'
-                            : 'Next Question',
-                        style: TextStyle(
-                          color: canProceed
-                              ? Colors.white
-                              : AppColors.textMuted,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      if (canProceed && !isLastQuestion) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ],
-                      if (canProceed && isLastQuestion) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.check_circle_outline_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ],
-                    ],
-                  ),
+          ),
+          child: submitting
+              ? SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              color: _DS.background,
+              strokeWidth: 2,
+            ),
+          )
+              : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                isLastQuestion ? 'Submit Assessment' : 'Next Question',
+                style: _DS.buttonLabel(
+                  color: isEnabled ? Colors.black : _DS.textMuted,
+                ),
+              ),
+              if (isEnabled && !isLastQuestion) ...[
+                const SizedBox(width: _DS.sp8),
+                Icon(Icons.arrow_forward_rounded,
+                    color: Colors.black, size: 18),
+              ],
+              if (isEnabled && isLastQuestion) ...[
+                const SizedBox(width: _DS.sp8),
+                Icon(Icons.check_circle_outline_rounded,
+                    color: Colors.black, size: 18),
+              ],
+            ],
           ),
         ),
       ),
@@ -1245,8 +1326,9 @@ class _BottomAction extends StatelessWidget {
   }
 }
 
-// ─── Error State ──────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Error State — konsisten dengan intro & result screen
+// ─────────────────────────────────────────────────────────────────────────────
 class _AttemptError extends StatelessWidget {
   final String message;
   final VoidCallback onBack;
@@ -1262,89 +1344,81 @@ class _AttemptError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(_DS.sp32),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Error icon — konsisten dengan kedua file sebelumnya
               Container(
-                width: 64,
-                height: 64,
+                padding: const EdgeInsets.all(_DS.sp20),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(32),
+                  color: _DS.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _DS.divider),
                 ),
-                child: const Icon(
-                  Icons.wifi_off_rounded,
-                  color: AppColors.primary,
-                  size: 28,
-                ),
+                child: Icon(Icons.wifi_off_rounded,
+                    color: _DS.textSecondary, size: 32),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Something went wrong',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: _DS.sp20),
+
               Text(
-                message,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontFamily: 'Montserrat',
-                  height: 1.5,
-                ),
+                'Something went wrong',
+                style: _DS.label(weight: FontWeight.w700),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12,
-                runSpacing: 12,
+              const SizedBox(height: _DS.sp8),
+
+              Text(message, style: _DS.body(), textAlign: TextAlign.center),
+              const SizedBox(height: _DS.sp32),
+
+              // Dua tombol sejajar — pola dari intro & result screen
+              Row(
                 children: [
-                  OutlinedButton(
-                    onPressed: onBack,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: Color(0xFF2A2A2A)),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onBack,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _DS.textSecondary,
+                        side: BorderSide(color: _DS.divider),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _DS.sp20,
+                          vertical: _DS.sp16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(_DS.radiusButton),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+                      child: Text(
+                        'Go Back',
+                        style: _DS.label(
+                          color: _DS.textSecondary,
+                          weight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Go Back',
-                      style: TextStyle(fontFamily: 'Montserrat'),
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: onRetry,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 12,
+                  const SizedBox(width: _DS.sp12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onRetry,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _DS.red,
+                        foregroundColor: _DS.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _DS.sp20,
+                          vertical: _DS.sp16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(_DS.radiusButton),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    child: const Text(
-                      'Try Again',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w700,
+                      child: Text(
+                        'Try Again',
+                        style: _DS.buttonLabel(color: _DS.white),
                       ),
                     ),
                   ),

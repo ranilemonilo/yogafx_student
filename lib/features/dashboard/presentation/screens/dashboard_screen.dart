@@ -12,20 +12,41 @@ import '../providers/running_login_time_provider.dart';
 import '../utils/access_time_helper.dart';
 import '../../data/models/dashboard_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-// ─── Design Tokens ────────────────────────────────────────────────────────────
 
-const _kRed = Color(0xFFE50914);
-const _kRedDim = Color(0xFFB20710);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kSurfaceHigh = Color(0xFF262626);
-const _kDivider = Color(0xFF252525);
-const _kWhite = Colors.white;
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
-const _kGreen = Color(0xFF46D369);
+// ─── Design tokens (DESIGN_SYSTEM.md) ────────────────────────────────────────
+// bg utama   : #060908   (Neutral/Black paling gelap)
+// bg card    : #120F0E   (card & panel)
+// bg header  : #141110   (header, bottom sheet)
+// overlay    : #161210   (card hover layer)
+// elevated   : #1A1410   (elevated surface, warm dark)
+// high       : #281D16   (card hover warm)
+// primary    : #DB202C
+// success    : #00B14F
+// warm-orange: #DF6739   (aksen sekunder)
+// white      : #FFFFFF
+// text sec   : rgba(255,255,255,0.65) → #A6A6A6
+// text muted : rgba(255,255,255,0.45) → #737373
+// border     : rgba(255,255,255,0.10) → #1A1A1A
+
+class _DS {
+  static const bgPage    = Color(0xFF060908);
+  static const bgCard    = Color(0xFF120F0E);
+  static const bgHeader  = Color(0xFF141110);
+  static const bgOverlay = Color(0xFF161210);
+  static const bgElevated= Color(0xFF1A1410);
+  static const bgHigh    = Color(0xFF281D16);
+  static const primary   = Color(0xFFDB202C);
+  static const success   = Color(0xFF00B14F);
+  static const orange    = Color(0xFFDF6739);
+  static const white     = Color(0xFFFFFFFF);
+  static const textSec   = Color(0xFFA6A6A6);
+  static const textMuted = Color(0xFF737373);
+  static const border    = Color(0xFF1A1A1A);
+  static const fontFamily = 'Montserrat';
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const _kLockedModuleMessage =
     'This page is not available yet. Please complete the previous module first.';
 
@@ -33,17 +54,19 @@ void _showLockedModuleSnackBar(BuildContext context) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
-      const SnackBar(
-        content: Text(_kLockedModuleMessage),
+      SnackBar(
+        content: const Text(_kLockedModuleMessage,
+            style: TextStyle(fontFamily: _DS.fontFamily, fontSize: 13)),
+        backgroundColor: _DS.bgHeader,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
 }
 
 bool _canOpenModule(String status) {
-  final normalizedStatus = status.toLowerCase();
-  return normalizedStatus != 'locked' &&
-      normalizedStatus != 'unavailable' &&
-      normalizedStatus != 'hidden';
+  final s = status.toLowerCase();
+  return s != 'locked' && s != 'unavailable' && s != 'hidden';
 }
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
@@ -58,14 +81,14 @@ class DashboardScreen extends ConsumerWidget {
 
     if (authStatus == AuthStatus.initial || authStatus == AuthStatus.loading) {
       return const Scaffold(
-        backgroundColor: _kBg,
+        backgroundColor: _DS.bgPage,
         body: _DashboardSkeleton(),
       );
     }
 
     if (authStatus != AuthStatus.authenticated) {
       return const Scaffold(
-        backgroundColor: _kBg,
+        backgroundColor: _DS.bgPage,
         body: SizedBox.shrink(),
       );
     }
@@ -73,7 +96,7 @@ class DashboardScreen extends ConsumerWidget {
     final dashboardAsync = ref.watch(dashboardProvider);
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: _DS.bgPage,
       extendBodyBehindAppBar: true,
       body: dashboardAsync.when(
         loading: () => const _DashboardSkeleton(),
@@ -87,12 +110,14 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
+// ─── Profile & Dialog Menus ───────────────────────────────────────────────────
+
 Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
   await showModalBottomSheet<void>(
     context: context,
-    backgroundColor: _kSurface,
+    backgroundColor: _DS.bgHeader,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
     builder: (sheetContext) {
       return SafeArea(
@@ -104,10 +129,10 @@ Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
             children: [
               Center(
                 child: Container(
-                  width: 44,
+                  width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _kDivider,
+                    color: _DS.border,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -116,10 +141,10 @@ Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
               const Text(
                 'Profile Menu',
                 style: TextStyle(
-                  color: _kTextPrimary,
+                  color: _DS.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
+                  fontFamily: _DS.fontFamily,
                 ),
               ),
               const SizedBox(height: 16),
@@ -155,9 +180,9 @@ Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
 Future<void> _showInstantDialogMenu(BuildContext context) async {
   await showModalBottomSheet<void>(
     context: context,
-    backgroundColor: _kSurface,
+    backgroundColor: _DS.bgHeader,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
     builder: (sheetContext) {
       return SafeArea(
@@ -169,10 +194,10 @@ Future<void> _showInstantDialogMenu(BuildContext context) async {
             children: [
               Center(
                 child: Container(
-                  width: 44,
+                  width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _kDivider,
+                    color: _DS.border,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -181,19 +206,19 @@ Future<void> _showInstantDialogMenu(BuildContext context) async {
               const Text(
                 'Instant Access Dialog',
                 style: TextStyle(
-                  color: _kTextPrimary,
+                  color: _DS.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
+                  fontFamily: _DS.fontFamily,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Text(
                 'Choose the dialog you want to open.',
                 style: TextStyle(
-                  color: _kTextSecondary,
+                  color: _DS.textSec,
                   fontSize: 12,
-                  fontFamily: 'Montserrat',
+                  fontFamily: _DS.fontFamily,
                 ),
               ),
               const SizedBox(height: 16),
@@ -229,36 +254,42 @@ Future<bool?> _confirmLogout(BuildContext context) {
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
-        backgroundColor: _kSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: _DS.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: const Text(
           'Log Out',
           style: TextStyle(
-            color: _kTextPrimary,
+            color: _DS.white,
             fontWeight: FontWeight.w700,
-            fontFamily: 'Montserrat',
+            fontFamily: _DS.fontFamily,
           ),
         ),
         content: const Text(
           'Are you sure you want to log out of your account?',
           style: TextStyle(
-            color: _kTextSecondary,
-            fontFamily: 'Montserrat',
+            color: _DS.textSec,
+            fontFamily: _DS.fontFamily,
             height: 1.5,
+            fontSize: 14,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: _DS.textSec, fontFamily: _DS.fontFamily)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _kRed,
-              foregroundColor: _kWhite,
+              backgroundColor: _DS.primary,
+              foregroundColor: _DS.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4)),
             ),
-            child: const Text('Log Out'),
+            child: const Text('Log Out',
+                style: TextStyle(fontFamily: _DS.fontFamily)),
           ),
         ],
       );
@@ -327,7 +358,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
     final data = widget.data;
 
     return RefreshIndicator(
-      color: _kRed,
+      color: _DS.primary,
+      backgroundColor: _DS.bgCard,
       onRefresh: () async {
         ref.invalidate(dashboardProvider);
         await ref.read(dashboardProvider.future);
@@ -337,33 +369,35 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
           parent: BouncingScrollPhysics(),
         ),
         slivers: [
-        _YogaFXAppBar(student: data.student),
-        SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _animated(0, _HeroSection(data: data)),
-              if (data.continueLearningSection.state != 'empty') ...[
-                const SizedBox(height: 28),
+          _YogaFXAppBar(student: data.student),
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _animated(0, _HeroSection(data: data)),
+                if (data.continueLearningSection.state != 'empty') ...[
+                  const SizedBox(height: 28),
+                  _animated(
+                    1,
+                    _ContinueLearningSection(
+                        section: data.continueLearningSection),
+                  ),
+                ],
+                const SizedBox(height: 32),
                 _animated(
-                  1,
-                  _ContinueLearningSection(section: data.continueLearningSection),
+                  2,
+                  _ProgressSection(
+                    section: data.progressSummarySection,
+                    continueLearningSection: data.continueLearningSection,
+                  ),
                 ),
+                const SizedBox(height: 32),
+                _animated(
+                    3, _ModulesSection(section: data.availableModulesSection)),
+                const SizedBox(height: 56),
               ],
-              const SizedBox(height: 32),
-              _animated(
-                2,
-                _ProgressSection(
-                  section: data.progressSummarySection,
-                  continueLearningSection: data.continueLearningSection,
-                ),
-              ),
-              const SizedBox(height: 32),
-              _animated(3, _ModulesSection(section: data.availableModulesSection)),
-              const SizedBox(height: 56),
-            ],
+            ),
           ),
-        ),
         ],
       ),
     );
@@ -390,11 +424,14 @@ class _YogaFXAppBar extends ConsumerWidget {
       elevation: 0,
       titleSpacing: 20,
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xD0000000), Colors.transparent],
+            colors: [
+              _DS.bgPage.withOpacity(0.95),
+              Colors.transparent,
+            ],
           ),
         ),
       ),
@@ -406,10 +443,10 @@ class _YogaFXAppBar extends ConsumerWidget {
         errorWidget: (_, __, ___) => const Text(
           'YogaFX',
           style: TextStyle(
-            color: _kTextPrimary,
+            color: _DS.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            fontFamily: 'Montserrat',
+            fontFamily: _DS.fontFamily,
           ),
         ),
       ),
@@ -425,8 +462,11 @@ class _YogaFXAppBar extends ConsumerWidget {
           child: GestureDetector(
             onTap: () => _showProfileMenu(context, ref),
             child: _DashboardProfileAvatar(
-              imageUrl: profileAsync.value?.profilePhoto ?? authState.user?.avatar,
-              displayName: profileAsync.value?.name ?? authState.user?.name ?? 'Student',
+              imageUrl: profileAsync.value?.profilePhoto ??
+                  authState.user?.avatar,
+              displayName: profileAsync.value?.name ??
+                  authState.user?.name ??
+                  'Student',
             ),
           ),
         ),
@@ -452,22 +492,21 @@ class _DashboardProfileAvatar extends StatelessWidget {
       width: 34,
       height: 34,
       decoration: BoxDecoration(
-        color: _kRed,
+        color: _DS.primary,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        // DS: avatar active border merah; here using subtle white border
+        border: Border.all(color: _DS.white.withOpacity(0.10)),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasImage
           ? AuthNetworkImage(
-              imageUrl: imageUrl!,
-              fit: BoxFit.cover,
-              placeholderBuilder: (_) => _DashboardProfileFallback(
-                displayName: displayName,
-              ),
-              errorBuilderWidget: (_, __) => _DashboardProfileFallback(
-                displayName: displayName,
-              ),
-            )
+        imageUrl: imageUrl!,
+        fit: BoxFit.cover,
+        placeholderBuilder: (_) =>
+            _DashboardProfileFallback(displayName: displayName),
+        errorBuilderWidget: (_, __) =>
+            _DashboardProfileFallback(displayName: displayName),
+      )
           : _DashboardProfileFallback(displayName: displayName),
     );
   }
@@ -475,7 +514,6 @@ class _DashboardProfileAvatar extends StatelessWidget {
 
 class _DashboardProfileFallback extends StatelessWidget {
   final String displayName;
-
   const _DashboardProfileFallback({required this.displayName});
 
   @override
@@ -484,10 +522,10 @@ class _DashboardProfileFallback extends StatelessWidget {
       child: Text(
         _initials(displayName),
         style: const TextStyle(
-          color: _kWhite,
+          color: _DS.white,
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          fontFamily: 'Montserrat',
+          fontFamily: _DS.fontFamily,
         ),
       ),
     );
@@ -498,19 +536,16 @@ String _initials(String value) {
   final parts = value
       .trim()
       .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
+      .where((p) => p.isNotEmpty)
       .toList();
   if (parts.isEmpty) return 'Y';
-  if (parts.length == 1) {
-    return parts.first.substring(0, 1).toUpperCase();
-  }
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
   return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
       .toUpperCase();
 }
 
 class _InstantDialogButton extends StatelessWidget {
   final VoidCallback onTap;
-
   const _InstantDialogButton({required this.onTap});
 
   @override
@@ -519,33 +554,34 @@ class _InstantDialogButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(4),
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: _kDivider, width: 0.8),
+            // DS: rgba(255,255,255,0.10) background
+            color: _DS.bgOverlay,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: _DS.border, width: 0.8),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
                 child: Text(
                   'Instant Access Dialog',
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _kTextPrimary,
+                  style: const TextStyle(
+                    color: _DS.white,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
+                    fontFamily: _DS.fontFamily,
                   ),
                 ),
               ),
-              SizedBox(width: 6),
-              Icon(
+              const SizedBox(width: 6),
+              const Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: _kTextSecondary,
+                color: _DS.textSec,
                 size: 18,
               ),
             ],
@@ -575,13 +611,13 @@ class _QuickDialogTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         child: Ink(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _kDivider, width: 0.8),
+            color: _DS.bgOverlay,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _DS.border, width: 0.8),
           ),
           child: Row(
             children: [
@@ -589,10 +625,10 @@ class _QuickDialogTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _kRed.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: _DS.primary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: _kRed, size: 22),
+                child: Icon(icon, color: _DS.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -602,19 +638,19 @@ class _QuickDialogTile extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        color: _kTextPrimary,
+                        color: _DS.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: _kTextSecondary,
+                        color: _DS.textSec,
                         fontSize: 12,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                         height: 1.4,
                       ),
                     ),
@@ -622,11 +658,8 @@ class _QuickDialogTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: _kTextSecondary,
-                size: 20,
-              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: _DS.textSec, size: 20),
             ],
           ),
         ),
@@ -650,19 +683,19 @@ class _ProfileMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDanger ? AppColors.primary : _kTextPrimary;
+    final color = isDanger ? _DS.primary : _DS.white;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kDivider, width: 0.8),
+            color: _DS.bgOverlay,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _DS.border, width: 0.8),
           ),
           child: Row(
             children: [
@@ -674,7 +707,7 @@ class _ProfileMenuTile extends StatelessWidget {
                   color: color,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'Montserrat',
+                  fontFamily: _DS.fontFamily,
                 ),
               ),
               const Spacer(),
@@ -725,7 +758,7 @@ class _HeroSectionState extends State<_HeroSection>
 
     return Stack(
       children: [
-        // Background cinematic gradient
+        // DS: warm dark gradient sesuai palette brown/black
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
@@ -733,68 +766,69 @@ class _HeroSectionState extends State<_HeroSection>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF1A0A0A), Color(0xFF0D0D0D)],
+              colors: [Color(0xFF161210), _DS.bgPage],
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tier badge
+              // Tier badge — DS: primary badge styling
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _kRed.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(color: _kRed.withOpacity(0.5), width: 0.8),
+                  color: _DS.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(2),
+                  border: Border.all(
+                      color: _DS.primary.withOpacity(0.35), width: 0.8),
                 ),
                 child: Text(
                   tier.name.toUpperCase(),
                   style: const TextStyle(
-                    color: _kRed,
+                    color: _DS.primary,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
+                    fontFamily: _DS.fontFamily,
                     letterSpacing: 2,
                   ),
                 ),
               ),
               const SizedBox(height: 14),
-              // Welcome line
               const Text(
                 'SELAMAT DATANG KEMBALI',
                 style: TextStyle(
-                  color: _kTextMuted,
+                  color: _DS.textMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'Montserrat',
+                  fontFamily: _DS.fontFamily,
                   letterSpacing: 2,
                 ),
               ),
               const SizedBox(height: 6),
-              // Name with shimmer
               _ShimmerText(
                 text: student.firstName,
                 style: const TextStyle(
-                  color: _kTextPrimary,
-                  fontSize: 36,
+                  color: _DS.white,
+                  fontSize: 36, // DS: Bold / Display
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'Montserrat',
+                  fontFamily: _DS.fontFamily,
                   height: 1.1,
                 ),
               ),
               const SizedBox(height: 20),
-              // Red divider line — Netflix signature
+              // DS: red accent line with glow
               AnimatedBuilder(
                 animation: _glowAnim,
                 builder: (_, __) => Container(
                   width: 48,
                   height: 3,
                   decoration: BoxDecoration(
-                    color: _kRed,
+                    color: _DS.primary,
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: [
                       BoxShadow(
-                        color: _kRed.withOpacity(0.3 + _glowAnim.value * 0.4),
+                        color: _DS.primary
+                            .withOpacity(0.3 + _glowAnim.value * 0.4),
                         blurRadius: 8 + _glowAnim.value * 8,
                         spreadRadius: 0,
                       ),
@@ -806,11 +840,10 @@ class _HeroSectionState extends State<_HeroSection>
           ),
         ),
         Positioned(
-          top: 110,  // tepat di bawah AppBar, sejajar dengan tier badge
+          top: 110,
           right: 20,
           child: const RunningLoginTimeCard(),
         ),
-        // Subtle scanline texture overlay
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(painter: _ScanlinePainter()),
@@ -821,13 +854,13 @@ class _HeroSectionState extends State<_HeroSection>
   }
 }
 
-// ─── Scanline Painter (cinematic texture) ─────────────────────────────────────
+// ─── Scanline Painter ─────────────────────────────────────────────────────────
 
 class _ScanlinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.015)
+      ..color = Colors.white.withOpacity(0.012)
       ..strokeWidth = 1;
     for (double y = 0; y < size.height; y += 4) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
@@ -858,9 +891,8 @@ class _ShimmerTextState extends State<_ShimmerText>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2800),
-    )..repeat();
+        vsync: this, duration: const Duration(milliseconds: 2800))
+      ..repeat();
     _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
@@ -874,27 +906,25 @@ class _ShimmerTextState extends State<_ShimmerText>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) {
-        return ShaderMask(
-          shaderCallback: (bounds) => LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: const [
-              Colors.white,
-              Color(0xFFFFFFFF),
-              Color(0xFFE8E8E8),
-              Colors.white,
-            ],
-            stops: [
-              (_anim.value - 0.3).clamp(0.0, 1.0),
-              (_anim.value - 0.1).clamp(0.0, 1.0),
-              (_anim.value + 0.1).clamp(0.0, 1.0),
-              (_anim.value + 0.3).clamp(0.0, 1.0),
-            ],
-          ).createShader(bounds),
-          child: Text(widget.text, style: widget.style),
-        );
-      },
+      builder: (_, __) => ShaderMask(
+        shaderCallback: (bounds) => LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: const [
+            _DS.white,
+            _DS.white,
+            Color(0xFFE8E8E8),
+            _DS.white,
+          ],
+          stops: [
+            (_anim.value - 0.3).clamp(0.0, 1.0),
+            (_anim.value - 0.1).clamp(0.0, 1.0),
+            (_anim.value + 0.1).clamp(0.0, 1.0),
+            (_anim.value + 0.3).clamp(0.0, 1.0),
+          ],
+        ).createShader(bounds),
+        child: Text(widget.text, style: widget.style),
+      ),
     );
   }
 }
@@ -940,17 +970,12 @@ class _ContinueCardState extends State<_ContinueCard>
   void initState() {
     super.initState();
     _scaleCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
+        vsync: this, duration: const Duration(milliseconds: 200));
     _scaleAnim = Tween<double>(begin: 1.0, end: 1.015).animate(
       CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOut),
     );
-
     _progressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
+        vsync: this, duration: const Duration(milliseconds: 1200));
     _progressAnim = Tween<double>(
       begin: 0,
       end: widget.section.progressPercentage / 100,
@@ -983,12 +1008,13 @@ class _ContinueCardState extends State<_ContinueCard>
           width: double.infinity,
           height: 220,
           decoration: BoxDecoration(
-            color: _kSurface,
+            // DS: card bg #120F0E
+            color: _DS.bgCard,
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-                blurRadius: 20,
+                color: Colors.black.withOpacity(0.6),
+                blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
             ],
@@ -1001,16 +1027,16 @@ class _ContinueCardState extends State<_ContinueCard>
                   child: AuthNetworkImage(
                     imageUrl: section.thumbnailUrl!,
                     fit: BoxFit.cover,
-                    placeholderBuilder: (_) => Container(color: _kSurface),
-                    errorBuilderWidget: (_, __) => Container(color: _kSurface),
+                    placeholderBuilder: (_) =>
+                        Container(color: _DS.bgCard),
+                    errorBuilderWidget: (_, __) =>
+                        Container(color: _DS.bgCard),
                   ),
                 ),
               Positioned.fill(
-                child: Container(
-                  color: Colors.black.withOpacity(0.5),
-                ),
+                child: Container(color: Colors.black.withOpacity(0.5)),
               ),
-              // Gradient overlay
+              // DS: gradient overlay — transparent black
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -1024,65 +1050,55 @@ class _ContinueCardState extends State<_ContinueCard>
                   ),
                 ),
               ),
-              // Left red accent stripe
+              // Left red stripe
               Positioned(
                 left: 0,
                 top: 0,
                 bottom: 0,
-                child: Container(
-                  width: 3,
-                  color: _kRed,
-                ),
+                child: Container(width: 3, color: _DS.primary),
               ),
-              // Content
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Module label
                     Text(
                       section.module.title.toUpperCase(),
                       style: const TextStyle(
-                        color: _kRed,
+                        color: _DS.primary,
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                         letterSpacing: 2,
                       ),
                     ),
                     const SizedBox(height: 5),
-                    // Lesson title
                     Text(
                       section.lesson.title,
                       style: const TextStyle(
-                        color: _kTextPrimary,
+                        color: _DS.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                         height: 1.2,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 14),
-                    // Animated progress bar
                     AnimatedBuilder(
                       animation: _progressAnim,
-                      builder: (_, __) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: _progressAnim.value,
-                              backgroundColor: Colors.white.withOpacity(0.12),
-                              valueColor: const AlwaysStoppedAnimation<Color>(_kRed),
-                              minHeight: 2.5,
-                            ),
-                          ),
-                        ],
+                      builder: (_, __) => ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: _progressAnim.value,
+                          backgroundColor:
+                          Colors.white.withOpacity(0.10),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              _DS.primary),
+                          minHeight: 2.5,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1091,17 +1107,17 @@ class _ContinueCardState extends State<_ContinueCard>
                         Text(
                           section.status,
                           style: const TextStyle(
-                            color: _kTextSecondary,
+                            color: _DS.textSec,
                             fontSize: 11,
-                            fontFamily: 'Montserrat',
+                            fontFamily: _DS.fontFamily,
                           ),
                         ),
                         const Spacer(),
-                        // CTA Button
                         _RedButton(
                           label: section.ctaLabel,
                           icon: Icons.play_arrow_rounded,
-                          onTap: () => context.push('/lessons/${section.lesson.id}'),
+                          onTap: () => context
+                              .push('/lessons/${section.lesson.id}'),
                         ),
                       ],
                     ),
@@ -1140,9 +1156,7 @@ class _ProgressSectionState extends State<_ProgressSection>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
+        vsync: this, duration: const Duration(milliseconds: 1000));
     _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _ctrl.forward();
@@ -1168,7 +1182,8 @@ class _ProgressSectionState extends State<_ProgressSection>
             children: [
               _AnimatedStatCard(
                 label: 'Modules',
-                value: '${widget.section.modulesCompleted}/${widget.section.modulesTotal}',
+                value:
+                '${widget.section.modulesCompleted}/${widget.section.modulesTotal}',
                 icon: Icons.layers_rounded,
                 animation: _anim,
                 onTap: () => context.push(AppRoutes.modules),
@@ -1176,7 +1191,8 @@ class _ProgressSectionState extends State<_ProgressSection>
               const SizedBox(width: 10),
               _AnimatedStatCard(
                 label: 'Lessons',
-                value: '${widget.section.lessonsCompleted}/${widget.section.lessonsTotal}',
+                value:
+                '${widget.section.lessonsCompleted}/${widget.section.lessonsTotal}',
                 icon: Icons.play_circle_rounded,
                 animation: _anim,
                 onTap: () => context.push(
@@ -1198,7 +1214,7 @@ class _ProgressSectionState extends State<_ProgressSection>
                     'lessonsCompleted': widget.section.lessonsCompleted,
                     'lessonsTotal': widget.section.lessonsTotal,
                     'overallProgressPercentage':
-                        widget.section.overallProgressPercentage,
+                    widget.section.overallProgressPercentage,
                   },
                 ),
               ),
@@ -1241,44 +1257,48 @@ class _AnimatedStatCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: highlight ? const Color(0xFF1A0A0A) : _kSurfaceElevated,
+                  // DS: highlight card = warm dark #161210, normal = bgCard
+                  color: highlight ? _DS.bgElevated : _DS.bgCard,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: highlight ? _kRed.withOpacity(0.4) : _kDivider,
+                    color: highlight
+                        ? _DS.primary.withOpacity(0.35)
+                        : _DS.border,
                     width: 0.8,
                   ),
                   boxShadow: highlight
                       ? [
-                          BoxShadow(
-                            color: _kRed.withOpacity(0.12),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          )
-                        ]
+                    BoxShadow(
+                      color: _DS.primary.withOpacity(0.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
                       : [],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(icon,
-                        color: highlight ? _kRed : _kTextMuted, size: 18),
+                        color: highlight ? _DS.primary : _DS.textMuted,
+                        size: 18),
                     const SizedBox(height: 10),
                     Text(
                       value,
                       style: TextStyle(
-                        color: highlight ? _kRed : _kTextPrimary,
+                        color: highlight ? _DS.primary : _DS.white,
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       label,
                       style: const TextStyle(
-                        color: _kTextMuted,
+                        color: _DS.textMuted,
                         fontSize: 10,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -1297,7 +1317,6 @@ class _AnimatedStatCard extends StatelessWidget {
 
 class _AssessmentBanner extends StatefulWidget {
   final ContinueLearningSection continueLearningSection;
-
   const _AssessmentBanner({required this.continueLearningSection});
 
   @override
@@ -1313,10 +1332,10 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
   void initState() {
     super.initState();
     _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
-    _pulseAnim = CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
+        vsync: this, duration: const Duration(milliseconds: 1600))
+      ..repeat(reverse: true);
+    _pulseAnim =
+        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
   }
 
   @override
@@ -1343,16 +1362,18 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
               gradient: const LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: [Color(0xFF1A0A0A), Color(0xFF0D0D0D)],
+                colors: [_DS.bgElevated, _DS.bgPage],
               ),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: _kRed.withOpacity(0.25 + _pulseAnim.value * 0.2),
+                color: _DS.primary
+                    .withOpacity(0.20 + _pulseAnim.value * 0.18),
                 width: 0.8,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _kRed.withOpacity(0.06 + _pulseAnim.value * 0.06),
+                  color: _DS.primary
+                      .withOpacity(0.05 + _pulseAnim.value * 0.05),
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),
@@ -1364,12 +1385,13 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _kRed.withOpacity(0.12),
+                    color: _DS.primary.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: _kRed.withOpacity(0.25), width: 0.8),
+                        color: _DS.primary.withOpacity(0.20), width: 0.8),
                   ),
-                  child: const Icon(Icons.quiz_rounded, color: _kRed, size: 20),
+                  child: const Icon(Icons.quiz_rounded,
+                      color: _DS.primary, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1379,19 +1401,19 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                       const Text(
                         'Assessments',
                         style: TextStyle(
-                          color: _kTextPrimary,
+                          color: _DS.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
+                          fontFamily: _DS.fontFamily,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         'Continue the assessment from ${widget.continueLearningSection.lesson.title}',
                         style: const TextStyle(
-                          color: _kTextMuted,
+                          color: _DS.textMuted,
                           fontSize: 11,
-                          fontFamily: 'Montserrat',
+                          fontFamily: _DS.fontFamily,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -1400,11 +1422,8 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: _kRed.withOpacity(0.7),
-                  size: 20,
-                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: _DS.primary.withOpacity(0.7), size: 20),
               ],
             ),
           ),
@@ -1438,9 +1457,7 @@ class _ModulesSectionState extends State<_ModulesSection>
   void initState() {
     super.initState();
     _searchAnimCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-    );
+        vsync: this, duration: const Duration(milliseconds: 280));
     _searchWidthAnim =
         CurvedAnimation(parent: _searchAnimCtrl, curve: Curves.easeOut);
     _searchFadeAnim =
@@ -1481,16 +1498,13 @@ class _ModulesSectionState extends State<_ModulesSection>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header row
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (!_searchOpen)
-                Expanded(
-                  child: _SectionLabel(text: widget.section.eyebrow),
-                )
+                Expanded(child: _SectionLabel(text: widget.section.eyebrow))
               else
                 const Spacer(),
               Flexible(
@@ -1508,41 +1522,41 @@ class _ModulesSectionState extends State<_ModulesSection>
                           opacity: _searchFadeAnim,
                           child: _searchOpen
                               ? TextField(
-                                  controller: _searchCtrl,
-                                  autofocus: true,
-                                  onChanged: (v) => setState(() => _query = v),
-                                  style: const TextStyle(
-                                    color: _kTextPrimary,
-                                    fontSize: 13,
-                                    fontFamily: 'Montserrat',
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Search modules...',
-                                    hintStyle: const TextStyle(
-                                      color: _kTextMuted,
-                                      fontSize: 13,
-                                      fontFamily: 'Montserrat',
-                                    ),
-                                    filled: true,
-                                    fillColor: _kSurfaceElevated,
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                      borderSide: const BorderSide(
-                                        color: _kRed,
-                                        width: 1,
-                                      ),
-                                    ),
-                                  ),
-                                )
+                            controller: _searchCtrl,
+                            autofocus: true,
+                            onChanged: (v) =>
+                                setState(() => _query = v),
+                            style: const TextStyle(
+                              color: _DS.white,
+                              fontSize: 13,
+                              fontFamily: _DS.fontFamily,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Search modules...',
+                              hintStyle: const TextStyle(
+                                color: _DS.textMuted,
+                                fontSize: 13,
+                                fontFamily: _DS.fontFamily,
+                              ),
+                              filled: true,
+                              fillColor: _DS.bgOverlay,
+                              isDense: true,
+                              contentPadding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              border: OutlineInputBorder(
+                                borderRadius:
+                                BorderRadius.circular(4),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius:
+                                BorderRadius.circular(4),
+                                borderSide: const BorderSide(
+                                    color: _DS.primary, width: 1),
+                              ),
+                            ),
+                          )
                               : const SizedBox.shrink(),
                         ),
                       ),
@@ -1552,9 +1566,11 @@ class _ModulesSectionState extends State<_ModulesSection>
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
-                          _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+                          _searchOpen
+                              ? Icons.close_rounded
+                              : Icons.search_rounded,
                           key: ValueKey(_searchOpen),
-                          color: _searchOpen ? _kRed : _kTextSecondary,
+                          color: _searchOpen ? _DS.primary : _DS.textSec,
                           size: 20,
                         ),
                       ),
@@ -1562,21 +1578,21 @@ class _ModulesSectionState extends State<_ModulesSection>
                     if (!_searchOpen) ...[
                       GestureDetector(
                         onTap: () => context.go(AppRoutes.modules),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
+                            const Text(
                               'Lihat semua',
                               style: TextStyle(
-                                color: _kRed,
+                                color: _DS.primary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                fontFamily: 'Montserrat',
+                                fontFamily: _DS.fontFamily,
                               ),
                             ),
-                            SizedBox(width: 2),
-                            Icon(Icons.chevron_right_rounded,
-                                color: _kRed, size: 16),
+                            const SizedBox(width: 2),
+                            const Icon(Icons.chevron_right_rounded,
+                                color: _DS.primary, size: 16),
                           ],
                         ),
                       ),
@@ -1588,23 +1604,22 @@ class _ModulesSectionState extends State<_ModulesSection>
           ),
         ),
         const SizedBox(height: 14),
-
-        // Results
         if (filtered.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Row(
               children: [
                 const Icon(Icons.search_off_rounded,
-                    color: _kTextMuted, size: 18),
+                    color: _DS.textMuted, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Tidak ada modul untuk "$_query"',
                     style: const TextStyle(
-                      color: _kTextMuted,
+                      color: _DS.textMuted,
                       fontSize: 13,
-                      fontFamily: 'Montserrat',
+                      fontFamily: _DS.fontFamily,
                     ),
                   ),
                 ),
@@ -1649,9 +1664,7 @@ class _ModuleCardState extends State<_ModuleCard>
   void initState() {
     super.initState();
     _hoverCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 180),
-    );
+        vsync: this, duration: const Duration(milliseconds: 180));
     _scaleAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
       CurvedAnimation(parent: _hoverCtrl, curve: Curves.easeOut),
     );
@@ -1689,16 +1702,16 @@ class _ModuleCardState extends State<_ModuleCard>
           child: Container(
             width: 200,
             decoration: BoxDecoration(
-              color: _kSurface,
+              color: _DS.bgCard,
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withOpacity(0.5),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
                 BoxShadow(
-                  color: _kRed.withOpacity(_glowAnim.value * 0.15),
+                  color: _DS.primary.withOpacity(_glowAnim.value * 0.12),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -1711,7 +1724,6 @@ class _ModuleCardState extends State<_ModuleCard>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail
             AspectRatio(
               aspectRatio: 16 / 7,
               child: Stack(
@@ -1722,12 +1734,13 @@ class _ModuleCardState extends State<_ModuleCard>
                     imageUrl: module.thumbnailUrl!,
                     fit: BoxFit.cover,
                     placeholderBuilder: (_) =>
-                        _ModuleThumbnailPlaceholder(title: module.title),
+                        _ModuleThumbnailPlaceholder(
+                            title: module.title),
                     errorBuilderWidget: (_, __) =>
-                        _ModuleThumbnailPlaceholder(title: module.title),
+                        _ModuleThumbnailPlaceholder(
+                            title: module.title),
                   )
                       : _ModuleThumbnailPlaceholder(title: module.title),
-                  // Gradient
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -1735,13 +1748,12 @@ class _ModuleCardState extends State<_ModuleCard>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.75),
+                          Colors.black.withOpacity(0.80),
                         ],
                         stops: const [0.3, 1.0],
                       ),
                     ),
                   ),
-                  // Progress overlay
                   if (module.showProgress)
                     Positioned(
                       left: 12,
@@ -1754,9 +1766,11 @@ class _ModuleCardState extends State<_ModuleCard>
                             borderRadius: BorderRadius.circular(2),
                             child: LinearProgressIndicator(
                               value: module.progressPercentage / 100,
-                              backgroundColor: Colors.white.withOpacity(0.15),
+                              backgroundColor:
+                              Colors.white.withOpacity(0.12),
                               valueColor:
-                              const AlwaysStoppedAnimation<Color>(_kRed),
+                              const AlwaysStoppedAnimation<Color>(
+                                  _DS.primary),
                               minHeight: 2.5,
                             ),
                           ),
@@ -1766,7 +1780,7 @@ class _ModuleCardState extends State<_ModuleCard>
                             style: const TextStyle(
                               color: Colors.white60,
                               fontSize: 9,
-                              fontFamily: 'Montserrat',
+                              fontFamily: _DS.fontFamily,
                             ),
                           ),
                         ],
@@ -1775,7 +1789,6 @@ class _ModuleCardState extends State<_ModuleCard>
                 ],
               ),
             ),
-            // Info
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
               child: Column(
@@ -1784,10 +1797,10 @@ class _ModuleCardState extends State<_ModuleCard>
                   Text(
                     module.title,
                     style: const TextStyle(
-                      color: _kTextPrimary,
+                      color: _DS.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
+                      fontFamily: _DS.fontFamily,
                       height: 1.3,
                     ),
                     maxLines: 2,
@@ -1797,23 +1810,23 @@ class _ModuleCardState extends State<_ModuleCard>
                   Text(
                     module.statusLabel,
                     style: const TextStyle(
-                      color: _kTextSecondary,
+                      color: _DS.textSec,
                       fontSize: 11,
-                      fontFamily: 'Montserrat',
+                      fontFamily: _DS.fontFamily,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
                       const Icon(Icons.play_circle_outline_rounded,
-                          color: _kTextMuted, size: 12),
+                          color: _DS.textMuted, size: 12),
                       const SizedBox(width: 4),
                       Text(
                         '${module.lessonCount} lessons',
                         style: const TextStyle(
-                          color: _kTextMuted,
+                          color: _DS.textMuted,
                           fontSize: 10,
-                          fontFamily: 'Montserrat',
+                          fontFamily: _DS.fontFamily,
                         ),
                       ),
                     ],
@@ -1835,20 +1848,23 @@ class _ModuleThumbnailPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _kSurfaceHigh,
+      // DS: bgHigh #281D16 untuk placeholder warm
+      color: _DS.bgHigh,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.play_circle_outline_rounded,
-                color: _kTextMuted.withOpacity(0.6), size: 24),
+                color: _DS.textMuted.withOpacity(0.5), size: 24),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 title,
                 style: const TextStyle(
-                    color: _kTextMuted, fontSize: 10, fontFamily: 'Montserrat'),
+                    color: _DS.textMuted,
+                    fontSize: 10,
+                    fontFamily: _DS.fontFamily),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -1881,9 +1897,9 @@ class _AccessTimeSection extends ConsumerWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: _kSurfaceElevated,
+          color: _DS.bgCard,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _kDivider, width: 0.8),
+          border: Border.all(color: _DS.border, width: 0.8),
         ),
         child: Row(
           children: [
@@ -1891,10 +1907,11 @@ class _AccessTimeSection extends ConsumerWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.12),
+                color: _DS.primary.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.timer_rounded, color: _kRed, size: 18),
+              child: const Icon(Icons.timer_rounded,
+                  color: _DS.primary, size: 18),
             ),
             const SizedBox(width: 16),
             Column(
@@ -1903,10 +1920,10 @@ class _AccessTimeSection extends ConsumerWidget {
                 const Text(
                   'TOTAL WAKTU BELAJAR',
                   style: TextStyle(
-                    color: _kTextMuted,
+                    color: _DS.textMuted,
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'Montserrat',
+                    fontFamily: _DS.fontFamily,
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -1914,10 +1931,10 @@ class _AccessTimeSection extends ConsumerWidget {
                 Text(
                   formatAccessDuration(displayedAccessDuration),
                   style: const TextStyle(
-                    color: _kTextPrimary,
+                    color: _DS.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
+                    fontFamily: _DS.fontFamily,
                   ),
                 ),
               ],
@@ -1943,7 +1960,7 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 12,
           decoration: BoxDecoration(
-            color: _kRed,
+            color: _DS.primary,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -1951,10 +1968,10 @@ class _SectionLabel extends StatelessWidget {
         Text(
           text.toUpperCase(),
           style: const TextStyle(
-            color: _kTextSecondary,
+            color: _DS.textSec,
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            fontFamily: 'Montserrat',
+            fontFamily: _DS.fontFamily,
             letterSpacing: 2,
           ),
         ),
@@ -1967,6 +1984,7 @@ class _RedButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
+
   const _RedButton({
     required this.label,
     required this.icon,
@@ -1980,11 +1998,11 @@ class _RedButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: _kRed,
+          color: _DS.primary,
           borderRadius: BorderRadius.circular(4),
           boxShadow: [
             BoxShadow(
-              color: _kRed.withOpacity(0.35),
+              color: _DS.primary.withOpacity(0.30),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1993,15 +2011,15 @@ class _RedButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: _kWhite, size: 15),
+            Icon(icon, color: _DS.white, size: 15),
             const SizedBox(width: 5),
             Text(
               label,
               style: const TextStyle(
-                color: _kWhite,
+                color: _DS.white,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
               ),
             ),
           ],
@@ -2022,58 +2040,76 @@ class _DashboardSkeleton extends StatefulWidget {
 
 class _DashboardSkeletonState extends State<_DashboardSkeleton>
     with SingleTickerProviderStateMixin {
-  late AnimationController _shimmerCtrl;
-  late Animation<double> _shimmerAnim;
+  late AnimationController _shimCtrl;
+  late Animation<double> _shimAnim;
 
   @override
   void initState() {
     super.initState();
-    _shimmerCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-    _shimmerAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _shimmerCtrl, curve: Curves.easeInOut),
+    _shimCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat(reverse: true);
+    _shimAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _shimCtrl, curve: Curves.easeInOut),
     );
   }
 
   @override
   void dispose() {
-    _shimmerCtrl.dispose();
+    _shimCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _shimmerAnim,
+      animation: _shimAnim,
       builder: (context, _) {
-        final shimmerColor =
-        Color.lerp(_kSurface, _kSurfaceHigh, _shimmerAnim.value)!;
+        final shimColor = Color.lerp(
+          _DS.bgCard,
+          _DS.bgHigh, // warm shimmer sesuai DS palette
+          _shimAnim.value,
+        )!;
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 90, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Bone(width: 80, height: 10, color: shimmerColor),
+              _Bone(width: 80, height: 10, color: shimColor),
               const SizedBox(height: 10),
-              _Bone(width: 200, height: 36, color: shimmerColor),
+              _Bone(width: 200, height: 36, color: shimColor),
               const SizedBox(height: 6),
-              _Bone(width: 48, height: 3, color: _kRed.withOpacity(0.3)),
+              _Bone(
+                  width: 48,
+                  height: 3,
+                  color: _DS.primary.withOpacity(0.25)),
               const SizedBox(height: 32),
-              _Bone(width: double.infinity, height: 220, color: shimmerColor),
+              _Bone(
+                  width: double.infinity, height: 220, color: shimColor),
               const SizedBox(height: 32),
               Row(
                 children: [
-                  Expanded(child: _Bone(width: double.infinity, height: 90, color: shimmerColor)),
+                  Expanded(
+                      child: _Bone(
+                          width: double.infinity,
+                          height: 90,
+                          color: shimColor)),
                   const SizedBox(width: 10),
-                  Expanded(child: _Bone(width: double.infinity, height: 90, color: shimmerColor)),
+                  Expanded(
+                      child: _Bone(
+                          width: double.infinity,
+                          height: 90,
+                          color: shimColor)),
                   const SizedBox(width: 10),
-                  Expanded(child: _Bone(width: double.infinity, height: 90, color: shimmerColor)),
+                  Expanded(
+                      child: _Bone(
+                          width: double.infinity,
+                          height: 90,
+                          color: shimColor)),
                 ],
               ),
               const SizedBox(height: 32),
-              _Bone(width: 100, height: 10, color: shimmerColor),
+              _Bone(width: 100, height: 10, color: shimColor),
               const SizedBox(height: 14),
               SizedBox(
                 height: 270,
@@ -2081,11 +2117,8 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                   scrollDirection: Axis.horizontal,
                   itemCount: 3,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (_, __) => _Bone(
-                    width: 200,
-                    height: 270,
-                    color: shimmerColor,
-                  ),
+                  itemBuilder: (_, __) =>
+                      _Bone(width: 200, height: 270, color: shimColor),
                 ),
               ),
             ],
@@ -2100,7 +2133,8 @@ class _Bone extends StatelessWidget {
   final double width;
   final double height;
   final Color color;
-  const _Bone({required this.width, required this.height, required this.color});
+  const _Bone(
+      {required this.width, required this.height, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -2134,20 +2168,22 @@ class _DashboardError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                color: _DS.primary.withOpacity(0.08),
+                // DS: icon error container pakai borderRadius 8, bukan circle
+                borderRadius: BorderRadius.circular(8),
+                border:
+                Border.all(color: _DS.primary.withOpacity(0.20)),
               ),
               child: const Icon(Icons.wifi_off_rounded,
-                  color: _kRed, size: 28),
+                  color: _DS.primary, size: 28),
             ),
             const SizedBox(height: 20),
             Text(
               message,
               style: const TextStyle(
-                color: _kTextSecondary,
+                color: _DS.textSec,
                 fontSize: 13,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,

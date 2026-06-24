@@ -5,16 +5,18 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/dialog_provider.dart';
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
+// ─── Design Tokens (Berdasarkan DESIGN_SYSTEM.md) ─────────────────────────────
 
-const _kRed = Color(0xFFE50914);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kDivider = Color(0xFF252525);
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
+const _kRed = Color(0xFFDB202C); // Primary / Red
+const _kRedHover = Color(0xFFF6121D);
+const _kBg = Color(0xFF060908); // Neutral / Black (Background Utama)
+const _kHeaderBg = Color(0xFF141110); // Neutral / Black (Header)
+const _kSurface = Color(0xFF120F0E); // Neutral / Black (Card/Panel)
+const _kSurfaceElevated = Color(0xFF281D16); // Neutral / Brown (Elevated/Hover)
+const _kDivider = Color(0x4DFFFFFF); // rgba(255,255,255,0.3)
+const _kTextPrimary = Color(0xFFFFFFFF); // Neutral / White
+const _kTextSecondary = Color(0xA6FFFFFF); // Transparent White 65% (Metadata)
+const _kTextMuted = Color(0x73FFFFFF); // Transparent White 45% (Placeholder/Disabled)
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -90,42 +92,25 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
       slivers: [
         // ── App Bar ──
         SliverAppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: _kHeaderBg.withOpacity(0.9),
           expandedHeight: 0,
           floating: true,
           snap: true,
           elevation: 0,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xD0000000), Colors.transparent],
-              ),
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back, // Menggunakan outline tipis monokrom putih
+              color: _kTextPrimary,
+              size: 24,
             ),
-          ),
-          leading: GestureDetector(
-            onTap: () => context.pop(),
-            child: Container(
-              margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-              decoration: BoxDecoration(
-                color: _kSurfaceElevated,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: _kDivider, width: 0.8),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: _kTextPrimary,
-                size: 15,
-              ),
-            ),
+            onPressed: () => context.pop(),
           ),
           title: Text(
             dialog.title,
             style: const TextStyle(
               color: _kTextPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+              fontSize: 24, // Semi Bold / Title 2
+              fontWeight: FontWeight.w600,
               fontFamily: 'Montserrat',
             ),
           ),
@@ -138,38 +123,39 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
             child: SlideTransition(
               position: _slideAnim,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Section label
-                    Row(
-                      children: [
-                        Container(
-                          width: 3,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: _kRed,
-                            borderRadius: BorderRadius.circular(2),
+                padding: const EdgeInsets.fromLTRB(4.0, 24, 4.0, 48), // Padding horizontal direkomendasikan 4% (bisa disesuaikan dengan media query, di sini disederhanakan)
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section label
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: _kRed,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'MESSAGE CONTENT',
-                          style: TextStyle(
-                            color: _kTextMuted,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Montserrat',
-                            letterSpacing: 2,
+                          const SizedBox(width: 8),
+                          const Text(
+                            'MESSAGE CONTENT',
+                            style: TextStyle(
+                              color: _kTextSecondary,
+                              fontSize: 14, // Semi Bold / Headline 2
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Montserrat',
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
 
-                    content.isEmpty
-                        ? Row(
+                      content.isEmpty
+                          ? Row(
                         children: const [
                           Icon(Icons.info_outline_rounded,
                               color: _kTextMuted, size: 16),
@@ -178,14 +164,14 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                             'No content available yet.',
                             style: TextStyle(
                               color: _kTextMuted,
-                              fontSize: 13,
+                              fontSize: 14, // Regular / Body
                               fontFamily: 'Montserrat',
-                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
                       )
-                        : Html(
+                          : Html(
                         data: content,
                         style: {
                           'html': Style(
@@ -193,8 +179,9 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                             padding: HtmlPaddings.zero,
                             color: _kTextSecondary,
                             fontFamily: 'Montserrat',
-                            fontSize: FontSize(13),
-                            lineHeight: const LineHeight(1.75),
+                            fontSize: FontSize(14), // Regular / Body
+                            fontWeight: FontWeight.w400,
+                            lineHeight: const LineHeight(1.5),
                           ),
                           'body': Style(
                             margin: Margins.zero,
@@ -208,53 +195,35 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           'div': Style(
                             margin: Margins.only(bottom: 14),
                           ),
-                          'br': Style(
-                            lineHeight: const LineHeight(1.75),
-                          ),
                           'strong': Style(
                             fontWeight: FontWeight.w700,
+                            color: _kTextPrimary,
                           ),
                           'b': Style(
                             fontWeight: FontWeight.w700,
-                          ),
-                          'em': Style(
-                            fontStyle: FontStyle.italic,
-                          ),
-                          'i': Style(
-                            fontStyle: FontStyle.italic,
-                          ),
-                          'u': Style(
-                            textDecoration: TextDecoration.underline,
+                            color: _kTextPrimary,
                           ),
                           'h1': Style(
                             margin: Margins.only(bottom: 16),
                             fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.35),
+                            fontSize: FontSize(36), // Semi Bold / Header
+                            fontWeight: FontWeight.w600,
+                            color: _kTextPrimary,
+                            letterSpacing: -0.5,
                           ),
                           'h2': Style(
                             margin: Margins.only(bottom: 14),
                             fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.35),
+                            fontSize: FontSize(28), // Semi Bold / Title 1
+                            fontWeight: FontWeight.w600,
+                            color: _kTextPrimary,
                           ),
                           'h3': Style(
                             margin: Margins.only(bottom: 12),
                             fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.4),
-                          ),
-                          'h4': Style(
-                            margin: Margins.only(bottom: 10),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.45),
-                          ),
-                          'h5': Style(
-                            margin: Margins.only(bottom: 10),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.5),
-                          ),
-                          'h6': Style(
-                            margin: Margins.only(bottom: 8),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.5),
+                            fontSize: FontSize(24), // Semi Bold / Title 2
+                            fontWeight: FontWeight.w600,
+                            color: _kTextPrimary,
                           ),
                           'ul': Style(
                             margin: Margins.only(bottom: 14, left: 14),
@@ -268,11 +237,11 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                             margin: Margins.only(bottom: 8),
                           ),
                           'blockquote': Style(
-                            color: _kTextPrimary,
+                            color: _kTextSecondary,
                             backgroundColor: _kSurface,
                             border: Border(
                               left: BorderSide(
-                                color: _kRed.withOpacity(0.8),
+                                color: _kRed,
                                 width: 3,
                               ),
                             ),
@@ -281,7 +250,8 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           ),
                         },
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -329,22 +299,21 @@ class _DialogDetailSkeletonState extends State<_DialogDetailSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
-        final shimmer =
-        Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
+        final shimmer = Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
         return CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: _kBg,
+              backgroundColor: _kHeaderBg,
               floating: true,
               snap: true,
               leading: Container(
-                margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                margin: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: shimmer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(4), // Border radius sesuai guideline (4px)
                 ),
               ),
-              title: _Bone(width: 140, height: 14, color: shimmer),
+              title: _Bone(width: 140, height: 24, color: shimmer),
             ),
             SliverToBoxAdapter(
               child: Padding(
@@ -352,12 +321,9 @@ class _DialogDetailSkeletonState extends State<_DialogDetailSkeleton>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Bone(width: 80, height: 9, color: shimmer),
+                    _Bone(width: 120, height: 14, color: shimmer),
                     const SizedBox(height: 16),
-                    _Bone(
-                        width: double.infinity,
-                        height: 240,
-                        color: shimmer),
+                    _Bone(width: double.infinity, height: 240, color: shimmer),
                   ],
                 ),
               ),
@@ -382,7 +348,7 @@ class _Bone extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4), // Border radius card standar (4px)
       ),
     );
   }
@@ -408,9 +374,9 @@ class _DialogDetailError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
+                color: const Color(0x1ADB202C), // Transparan merah tipis
                 shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                border: Border.all(color: const Color(0x4DDB202C)),
               ),
               child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 28),
             ),
@@ -419,39 +385,33 @@ class _DialogDetailError extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: _kTextSecondary,
-                fontSize: 13,
+                color: _kTextMuted,
+                fontSize: 14, // Regular / Body
                 fontFamily: 'Montserrat',
                 height: 1.5,
               ),
             ),
             const SizedBox(height: 28),
-            GestureDetector(
+            // Tombol Action - Small / Default
+            InkWell(
               onTap: onRetry,
+              borderRadius: BorderRadius.circular(4),
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: _kRed,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _kRed.withOpacity(0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(4), // Border radius (4px)
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.refresh_rounded, color: Colors.white, size: 15),
-                    SizedBox(width: 6),
+                    Icon(Icons.refresh_rounded, color: _kTextPrimary, size: 16),
+                    SizedBox(width: 8),
                     Text(
                       'Try again',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
+                        color: _kTextPrimary,
+                        fontSize: 14, // Small Button (14px Bold)
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
                       ),

@@ -18,18 +18,20 @@ import '../../data/models/lesson_model.dart';
 import '../providers/lesson_provider.dart';
 import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
+// ─── Design Tokens (Berdasarkan DESIGN_SYSTEM.md) ─────────────────────────────
 
-const _kRed = Color(0xFFE50914);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kSurfaceHigh = Color(0xFF262626);
-const _kDivider = Color(0xFF252525);
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
-const _kGreen = Color(0xFF46D369);
+const _kRed = Color(0xFFDB202C); // Primary / Red
+const _kGreen = Color(0xFF00B14F); // Secondary / Emerald (Sukses/Completed)
+const _kBg = Color(0xFF060908); // Neutral / Black (Background Utama)
+const _kHeaderBg = Color(0xFF141110); // Neutral / Black (Header)
+const _kSurface = Color(0xFF120F0E); // Neutral / Black (Card/Panel)
+const _kSurfaceElevated = Color(0xFF281D16); // Neutral / Brown (Elevated/Hover)
+const _kSurfaceHigh = Color(0xFF281D16); // Menggunakan palet elevated
+const _kDivider = Color(0x4DFFFFFF); // rgba(255,255,255,0.3)
+const _kTextPrimary = Color(0xFFFFFFFF); // Neutral / White
+const _kTextSecondary = Color(0xA6FFFFFF); // Transparent White 65% (Metadata)
+const _kTextMuted = Color(0x73FFFFFF); // Transparent White 45% (Placeholder/Disabled)
+
 final _lessonContentKey = GlobalKey<_LessonContentState>();
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
@@ -89,18 +91,22 @@ void _handleLessonBack(BuildContext context) {
 }
 
 void _showLockedSnackBar(
-  BuildContext context, {
-  required String fallbackMessage,
-  String? reason,
-}) {
+    BuildContext context, {
+      required String fallbackMessage,
+      String? reason,
+    }) {
   const lockedMessage =
       'This page is not available yet. Please complete the previous module first.';
 
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
-      SnackBar(
-        content: Text(lockedMessage),
+      const SnackBar(
+        content: Text(
+          lockedMessage,
+          style: TextStyle(fontFamily: 'Montserrat'),
+        ),
+        backgroundColor: _kSurfaceElevated,
       ),
     );
 }
@@ -147,7 +153,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   bool get _requiresWorkbookFirst =>
       widget.lesson.workbook.isAvailable &&
-      !widget.lesson.progress.isWorkbookDownloaded;
+          !widget.lesson.progress.isWorkbookDownloaded;
 
   bool get _isVideoUnlocked => !_requiresWorkbookFirst;
 
@@ -274,8 +280,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     final nextLesson = widget.lesson.nextLesson;
     final shouldAutoNavigate =
         nextLesson != null &&
-        nextLesson.isUnlocked &&
-        widget.lesson.assessment == null;
+            nextLesson.isUnlocked &&
+            widget.lesson.assessment == null;
 
     if (!shouldAutoNavigate) {
       if (_autoNextRemainingSeconds != null && mounted) {
@@ -339,7 +345,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       if (!canReachAudioHost) {
         if (mounted) {
           setState(() => _audioError =
-              'No internet connection. Audio could not be loaded.');
+          'No internet connection. Audio could not be loaded.');
         }
         return;
       }
@@ -417,10 +423,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   Future<void> _navigateToLesson(
-    BuildContext context,
-    int lessonId, {
-    bool autoPlayVideo = false,
-  }) async {
+      BuildContext context,
+      int lessonId, {
+        bool autoPlayVideo = false,
+      }) async {
     await prepareForNavigation(context);
     if (!mounted) return;
     final suffix = autoPlayVideo ? '?autoplay=1' : '';
@@ -504,13 +510,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     return RefreshIndicator(
       color: _kRed,
+      backgroundColor: _kSurface,
       onRefresh: _refreshLesson,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
         slivers: [
-        // Video
+          // Video
           SliverToBoxAdapter(
             child: _VideoSection(
               lesson: lesson,
@@ -521,12 +528,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
               videoUnlocked: _isVideoUnlocked,
               onRetry: _initVideo,
               onBack: () => _handleBack(context),
-              onOpenWorkbook: () { // BARU
+              onOpenWorkbook: () {
                 showModalBottomSheet(
                   context: context,
                   backgroundColor: _kSurface,
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(8)), // Desain sistem: modal 8px
                   ),
                   builder: (_) => _WorkbookSheet(workbook: lesson.workbook),
                 ).whenComplete(_refreshLesson);
@@ -537,102 +544,102 @@ class _LessonContentState extends ConsumerState<_LessonContent>
               onOpenFullscreen: _openFullscreen,
             ),
           ),
-        // Body
-        SliverToBoxAdapter(
-          child: FadeTransition(
-            opacity: _fadeAnim,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Breadcrumb
-                  _ModuleBreadcrumb(module: lesson.module),
-                  const SizedBox(height: 10),
+          // Body
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 48), // Horizontal margin 4% (~16px)
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Breadcrumb
+                    _ModuleBreadcrumb(module: lesson.module),
+                    const SizedBox(height: 12),
 
-                  // Title
-                  Text(
-                    lesson.title,
-                    style: const TextStyle(
-                      color: _kTextPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Montserrat',
-                      height: 1.2,
+                    // Title
+                    Text(
+                      lesson.title,
+                      style: const TextStyle(
+                        color: _kTextPrimary,
+                        fontSize: 24, // Title 2 / Semi Bold
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                        height: 1.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Progress
-                  _LessonProgressBar(
-                    progress: lesson.progress,
-                    animation: _progressAnim,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Action chips
-                  _ActionRow(
-                    lesson: lesson,
-                    isAssessmentUnlocked: _isAssessmentUnlocked,
-                    onWorkbookDismissed: _refreshLesson,
-                    audioLoading: _audioLoading,
-                    audioReady: _audioReady,
-                    audioError: _audioError,
-                    audioPlayer: _audioPlayer,
-                    onRetryAudio: _initAudio,
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Content
-                  if (lesson.content != null && lesson.content!.isNotEmpty) ...[
-                    _ContentSection(content: lesson.content!),
-                    const SizedBox(height: 28),
-                  ],
-
-                  // Workbook
-                  if (lesson.workbook.isAvailable) ...[
-                    _WorkbookSection(
-                      workbook: lesson.workbook,
-                      onDismissed: _refreshLesson,
+                    // Progress
+                    _LessonProgressBar(
+                      progress: lesson.progress,
+                      animation: _progressAnim,
                     ),
-                    const SizedBox(height: 28),
-                  ],
+                    const SizedBox(height: 24),
 
-                  // Assessment
-                  if (lesson.assessment != null) ...[
-                    _AssessmentBanner(
+                    // Action chips
+                    _ActionRow(
                       lesson: lesson,
-                      isUnlocked: _isAssessmentUnlocked,
+                      isAssessmentUnlocked: _isAssessmentUnlocked,
+                      onWorkbookDismissed: _refreshLesson,
+                      audioLoading: _audioLoading,
+                      audioReady: _audioReady,
+                      audioError: _audioError,
+                      audioPlayer: _audioPlayer,
+                      onRetryAudio: _initAudio,
                     ),
                     const SizedBox(height: 28),
-                  ],
 
-                  // Navigation
-                  if (lesson.navigation.isNotEmpty) ...[
-                    _NavigationSection(
-                      navigation: lesson.navigation,
-                      currentLessonId: lesson.id,
-                      onNavigate: (lessonId) =>
-                          _navigateToLesson(context, lessonId),
-                    ),
-                    const SizedBox(height: 28),
-                  ],
+                    // Content
+                    if (lesson.content != null && lesson.content!.isNotEmpty) ...[
+                      _ContentSection(content: lesson.content!),
+                      const SizedBox(height: 28),
+                    ],
 
-                  // Next lesson
-                  if (lesson.nextLesson != null)
-                    _NextLessonBanner(
-                      nextLesson: lesson.nextLesson!,
-                      countdownSeconds: lesson.assessment == null
-                          ? _autoNextRemainingSeconds
-                          : null,
-                      onNavigate: (lessonId) =>
-                          _navigateToLesson(context, lessonId),
-                    ),
-                ],
+                    // Workbook
+                    if (lesson.workbook.isAvailable) ...[
+                      _WorkbookSection(
+                        workbook: lesson.workbook,
+                        onDismissed: _refreshLesson,
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+
+                    // Assessment
+                    if (lesson.assessment != null) ...[
+                      _AssessmentBanner(
+                        lesson: lesson,
+                        isUnlocked: _isAssessmentUnlocked,
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+
+                    // Navigation
+                    if (lesson.navigation.isNotEmpty) ...[
+                      _NavigationSection(
+                        navigation: lesson.navigation,
+                        currentLessonId: lesson.id,
+                        onNavigate: (lessonId) =>
+                            _navigateToLesson(context, lessonId),
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+
+                    // Next lesson
+                    if (lesson.nextLesson != null)
+                      _NextLessonBanner(
+                        nextLesson: lesson.nextLesson!,
+                        countdownSeconds: lesson.assessment == null
+                            ? _autoNextRemainingSeconds
+                            : null,
+                        onNavigate: (lessonId) =>
+                            _navigateToLesson(context, lessonId),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
         ],
       ),
     );
@@ -665,7 +672,7 @@ class _VideoSection extends StatelessWidget {
     required this.videoUnlocked,
     required this.onRetry,
     required this.onBack,
-    required this.onOpenWorkbook, // BARU
+    required this.onOpenWorkbook,
     required this.onTogglePlayback,
     required this.onSeek,
     required this.onToggleMute,
@@ -690,11 +697,11 @@ class _VideoSection extends StatelessWidget {
           child: GestureDetector(
             onTap: onBack,
             child: Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(4), // Border radius desain: 4px
                 border: Border.all(
                   color: Colors.white.withOpacity(0.12),
                   width: 0.8,
@@ -703,7 +710,7 @@ class _VideoSection extends StatelessWidget {
               child: const Icon(
                 Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
-                size: 14,
+                size: 16,
               ),
             ),
           ),
@@ -717,7 +724,7 @@ class _VideoSection extends StatelessWidget {
       return _VideoPlaceholder(
         thumbnailUrl: lesson.thumbnailUrl,
         message: 'Open or download the workbook first to unlock the video.',
-        onTapOverride: onOpenWorkbook, // BARU
+        onTapOverride: onOpenWorkbook,
       );
     }
     if (lesson.video == null || !lesson.video!.isReady) {
@@ -898,7 +905,7 @@ class _VideoControlsBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.58),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8), // Mengikuti pola design
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -906,8 +913,8 @@ class _VideoControlsBar extends StatelessWidget {
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 2.5,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
               activeTrackColor: _kRed,
               inactiveTrackColor: Colors.white24,
               thumbColor: _kRed,
@@ -934,7 +941,7 @@ class _VideoControlsBar extends StatelessWidget {
                   '${_formatVideoDuration(position)} / ${_formatVideoDuration(duration)}',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
+                    fontSize: 12, // Minimal 12px untuk keterbacaan
                     fontWeight: FontWeight.w600,
                     fontFamily: 'Montserrat',
                   ),
@@ -1046,7 +1053,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                     height: 40,
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.55),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Icon(
                       Icons.arrow_back_ios_new_rounded,
@@ -1085,14 +1092,14 @@ class _VideoPlaceholder extends StatelessWidget {
   final String message;
   final bool showRetry;
   final VoidCallback? onRetry;
-  final VoidCallback? onTapOverride; // BARU
+  final VoidCallback? onTapOverride;
 
   const _VideoPlaceholder({
     this.thumbnailUrl,
     required this.message,
     this.showRetry = false,
     this.onRetry,
-    this.onTapOverride, // BARU
+    this.onTapOverride,
   });
 
   @override
@@ -1114,21 +1121,24 @@ class _VideoPlaceholder extends StatelessWidget {
             children: [
               const Icon(Icons.play_circle_outline_rounded, color: _kTextMuted, size: 48),
               const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: _kTextSecondary,
-                  fontSize: 13,
-                  fontFamily: 'Montserrat',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: _kTextSecondary,
+                    fontSize: 14,
+                    fontFamily: 'Montserrat',
+                  ),
                 ),
               ),
               if (showRetry && onRetry != null) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 GestureDetector(
                   onTap: onRetry,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       color: _kRed,
                       borderRadius: BorderRadius.circular(4),
@@ -1138,7 +1148,7 @@ class _VideoPlaceholder extends StatelessWidget {
                     ),
                     child: const Text(
                       'Try again',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'Montserrat'),
+                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'Montserrat'),
                     ),
                   ),
                 ),
@@ -1166,31 +1176,33 @@ class _ModuleBreadcrumb extends StatelessWidget {
       onTap: () => _handleLessonBack(context),
       child: Row(
         children: [
-          const Icon(Icons.layers_rounded, color: _kTextMuted, size: 12),
-          const SizedBox(width: 6),
+          const Icon(Icons.layers_rounded, color: _kTextMuted, size: 14),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               module.title,
               style: const TextStyle(
                 color: _kTextMuted,
-                fontSize: 11,
+                fontSize: 12,
                 fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: _kSurfaceHigh,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(2), // Badge/label kecil = 2px
             ),
             child: Text(
               '${module.completedLessons}/${module.lessonCount}',
               style: const TextStyle(
                 color: _kTextMuted,
                 fontSize: 10,
+                fontWeight: FontWeight.w600,
                 fontFamily: 'Montserrat',
               ),
             ),
@@ -1225,7 +1237,7 @@ class _LessonProgressBar extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation<Color>(
                 isDone ? _kGreen : _kRed,
               ),
-              minHeight: 2.5,
+              minHeight: 4.0, // Agak lebih tebal
             ),
           ),
         ),
@@ -1234,13 +1246,13 @@ class _LessonProgressBar extends StatelessWidget {
           children: [
             if (isDone) ...[
               const Icon(Icons.check_circle_rounded,
-                  color: _kGreen, size: 13),
-              const SizedBox(width: 5),
+                  color: _kGreen, size: 14),
+              const SizedBox(width: 6),
               const Text(
                 'Completed',
                 style: TextStyle(
                   color: _kGreen,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w600,
                 ),
@@ -1250,7 +1262,7 @@ class _LessonProgressBar extends StatelessWidget {
                 '${progress.watchProgress}% watched',
                 style: const TextStyle(
                   color: _kTextMuted,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: 'Montserrat',
                 ),
               ),
@@ -1290,7 +1302,7 @@ class _ActionRow extends StatelessWidget {
       context: context,
       backgroundColor: _kSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       builder: (_) => _WorkbookSheet(workbook: lesson.workbook),
     ).whenComplete(onWorkbookDismissed);
@@ -1301,7 +1313,7 @@ class _ActionRow extends StatelessWidget {
       context: context,
       backgroundColor: _kSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       builder: (_) => _AudioSheet(
         audio: lesson.audio,
@@ -1395,10 +1407,10 @@ class _ActionChipState extends State<_ActionChip>
       child: ScaleTransition(
         scale: _scale,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(4), // Radius tombol 4px
             border: Border.all(color: _kDivider, width: 0.8),
           ),
           child: Row(
@@ -1407,16 +1419,16 @@ class _ActionChipState extends State<_ActionChip>
               Icon(
                 widget.icon,
                 color: enabled ? _kTextSecondary : _kTextMuted,
-                size: 14,
+                size: 16,
               ),
-              const SizedBox(width: 7),
+              const SizedBox(width: 8),
               Text(
                 widget.label,
                 style: TextStyle(
                   color: enabled ? _kTextSecondary : _kTextMuted,
-                  fontSize: 12,
+                  fontSize: 14,
                   fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -1439,14 +1451,14 @@ class _ContentSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionLabel(text: 'About This Lesson'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Text(
           content,
           style: const TextStyle(
             color: _kTextSecondary,
-            fontSize: 13,
+            fontSize: 14,
             fontFamily: 'Montserrat',
-            height: 1.75,
+            height: 1.6,
           ),
         ),
       ],
@@ -1471,13 +1483,13 @@ class _WorkbookSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionLabel(text: 'Workbook'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         GestureDetector(
           onTap: () => showModalBottomSheet(
             context: context,
             backgroundColor: _kSurface,
             shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
             ),
             builder: (_) => _WorkbookSheet(workbook: workbook),
           ).whenComplete(onDismissed),
@@ -1485,24 +1497,31 @@ class _WorkbookSection extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: _kSurfaceElevated,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4), // Radius standar 4px
               border: Border.all(color: _kDivider, width: 0.8),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: _kRed.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0x1ADB202C),
+                    borderRadius: BorderRadius.circular(4), // Avatar badge size rule equivalent
                     border: Border.all(
-                        color: _kRed.withOpacity(0.22), width: 0.8),
+                        color: const Color(0x4DDB202C), width: 0.8),
                   ),
                   child: const Icon(Icons.description_rounded,
-                      color: _kRed, size: 18),
+                      color: _kRed, size: 24),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 16),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1511,17 +1530,17 @@ class _WorkbookSection extends StatelessWidget {
                         'Lesson Workbook',
                         style: TextStyle(
                           color: _kTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                           fontFamily: 'Montserrat',
                         ),
                       ),
-                      SizedBox(height: 3),
+                      SizedBox(height: 4),
                       Text(
                         'Open or download the workbook',
                         style: TextStyle(
                           color: _kTextMuted,
-                          fontSize: 11,
+                          fontSize: 12,
                           fontFamily: 'Montserrat',
                         ),
                       ),
@@ -1529,7 +1548,7 @@ class _WorkbookSection extends StatelessWidget {
                   ),
                 ),
                 const Icon(Icons.chevron_right_rounded,
-                    color: _kTextMuted, size: 18),
+                    color: _kTextMuted, size: 20),
               ],
             ),
           ),
@@ -1591,7 +1610,7 @@ class _WorkbookSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1599,21 +1618,21 @@ class _WorkbookSheet extends StatelessWidget {
           // Handle
           Center(
             child: Container(
-              width: 36,
-              height: 3,
+              width: 48,
+              height: 4,
               decoration: BoxDecoration(
                 color: _kDivider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const Text(
             'Workbook',
             style: TextStyle(
               color: _kTextPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontSize: 20, // Title 3
+              fontWeight: FontWeight.w600,
               fontFamily: 'Montserrat',
             ),
           ),
@@ -1622,7 +1641,7 @@ class _WorkbookSheet extends StatelessWidget {
             workbook.fileName ?? 'Lesson file',
             style: const TextStyle(
               color: _kTextMuted,
-              fontSize: 12,
+              fontSize: 14,
               fontFamily: 'Montserrat',
             ),
           ),
@@ -1645,7 +1664,7 @@ class _WorkbookSheet extends StatelessWidget {
               },
             ),
           if (workbook.downloadUrl != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             _SheetButton(
               label: 'Download',
               icon: Icons.download_rounded,
@@ -1681,51 +1700,51 @@ class _AudioSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Container(
-              width: 36,
-              height: 3,
+              width: 48,
+              height: 4,
               decoration: BoxDecoration(
                 color: _kDivider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const Text(
             'Audio',
             style: TextStyle(
               color: _kTextPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontSize: 20, // Title 3
+              fontWeight: FontWeight.w600,
               fontFamily: 'Montserrat',
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           if (audioLoading)
             const Text(
               'Loading audio...',
               style: TextStyle(
-                  color: _kTextMuted, fontSize: 12, fontFamily: 'Montserrat'),
+                  color: _kTextMuted, fontSize: 14, fontFamily: 'Montserrat'),
             )
           else if (audioError != null)
             Text(
               audioError!,
               style: const TextStyle(
                   color: Color(0xFFE57373),
-                  fontSize: 12,
+                  fontSize: 14,
                   fontFamily: 'Montserrat'),
             )
           else
             const Text(
               'Play the audio for this lesson',
               style: TextStyle(
-                  color: _kTextMuted, fontSize: 12, fontFamily: 'Montserrat'),
+                  color: _kTextMuted, fontSize: 14, fontFamily: 'Montserrat'),
             ),
           const SizedBox(height: 24),
           if (audioReady && audioPlayer != null)
@@ -1786,10 +1805,10 @@ class _SheetButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: isPrimary ? _kRed : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(4), // Border radius 4px
           border: Border.all(
             color: isPrimary ? _kRed : _kDivider,
-            width: 0.8,
+            width: 1.2,
           ),
           boxShadow: isPrimary
               ? [
@@ -1805,14 +1824,14 @@ class _SheetButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                color: isPrimary ? Colors.white : _kTextSecondary, size: 16),
+                color: isPrimary ? Colors.white : _kTextSecondary, size: 18),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
                 color: isPrimary ? Colors.white : _kTextSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
                 fontFamily: 'Montserrat',
               ),
             ),
@@ -1863,15 +1882,15 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
   Widget build(BuildContext context) {
     final hasWorkbookGate =
         widget.lesson.workbook.isAvailable &&
-        !widget.lesson.progress.isWorkbookDownloaded;
+            !widget.lesson.progress.isWorkbookDownloaded;
     final hasPlayableVideo =
         widget.lesson.video != null && widget.lesson.video!.isReady;
     final isUnlocked = widget.isUnlocked;
     final lockMessage = hasWorkbookGate
         ? 'Open or download the workbook first to unlock the video and assessment.'
         : hasPlayableVideo
-            ? 'Watch at least 95% of the video to unlock it.'
-            : 'Complete the lesson materials to unlock it.';
+        ? 'Watch at least 95% of the video to unlock it.'
+        : 'Complete the lesson materials to unlock it.';
 
     return AnimatedBuilder(
       animation: _pulseAnim,
@@ -1884,14 +1903,14 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
           _showLockedSnackBar(
             context,
             fallbackMessage:
-                'You need to complete this lesson before accessing the assessment.',
+            'You need to complete this lesson before accessing the assessment.',
           );
         },
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isUnlocked ? const Color(0xFF1A0A0A) : _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(8),
+            color: isUnlocked ? const Color(0x1ADB202C) : _kSurfaceElevated, // Transparansi dark red bila unlock
+            borderRadius: BorderRadius.circular(4), // Radius 4px
             border: Border.all(
               color: isUnlocked
                   ? _kRed.withOpacity(0.25 + _pulseAnim.value * 0.2)
@@ -1907,26 +1926,32 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                 offset: const Offset(0, 4),
               )
             ]
-                : [],
+                : const [
+              BoxShadow(
+                color: Color(0x66000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              )
+            ],
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: isUnlocked
                       ? _kRed.withOpacity(0.12)
                       : _kSurfaceHigh,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(
                   isUnlocked ? Icons.quiz_rounded : Icons.lock_rounded,
                   color: isUnlocked ? _kRed : _kTextMuted,
-                  size: 18,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1935,20 +1960,21 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                       isUnlocked ? 'Assessment Available' : 'Assessment Locked',
                       style: TextStyle(
                         color: isUnlocked ? _kTextPrimary : _kTextMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       isUnlocked
                           ? 'Start the assessment now'
                           : lockMessage,
                       style: const TextStyle(
                         color: _kTextMuted,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontFamily: 'Montserrat',
+                        height: 1.4,
                       ),
                     ),
                   ],
@@ -1958,7 +1984,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                 Icon(
                   Icons.chevron_right_rounded,
                   color: _kRed.withOpacity(0.7),
-                  size: 20,
+                  size: 24,
                 ),
             ],
           ),
@@ -1987,10 +2013,10 @@ class _NavigationSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionLabel(text: 'All Lessons'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         ...navigation.map(
               (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: 8), // Gutter antar card (8px)
             child: _NavLessonRow(
               item: item,
               isCurrent: item.id == currentLessonId,
@@ -2032,10 +2058,10 @@ class _NavLessonRow extends StatelessWidget {
         onNavigate(item.id);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isCurrent ? const Color(0xFF1A0A0A) : _kSurfaceElevated,
-          borderRadius: BorderRadius.circular(6),
+          color: isCurrent ? const Color(0x1ADB202C) : _kSurfaceElevated,
+          borderRadius: BorderRadius.circular(4), // Radius 4px
           border: Border.all(
             color: isCurrent ? _kRed.withOpacity(0.3) : _kDivider,
             width: 0.8,
@@ -2048,21 +2074,21 @@ class _NavLessonRow extends StatelessWidget {
               width: 24,
               child: item.isLocked
                   ? const Icon(Icons.lock_rounded,
-                  color: _kTextMuted, size: 13)
+                  color: _kTextMuted, size: 16)
                   : item.status == 'completed'
                   ? const Icon(Icons.check_circle_rounded,
-                  color: _kGreen, size: 15)
+                  color: _kGreen, size: 18)
                   : Text(
                 '${item.sortOrder}',
                 style: TextStyle(
                   color: isCurrent ? _kRed : _kTextMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   fontFamily: 'Montserrat',
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 item.title,
@@ -2072,9 +2098,9 @@ class _NavLessonRow extends StatelessWidget {
                       : isCurrent
                       ? _kTextPrimary
                       : _kTextSecondary,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight:
-                  isCurrent ? FontWeight.w700 : FontWeight.w400,
+                  isCurrent ? FontWeight.w600 : FontWeight.w400,
                   fontFamily: 'Montserrat',
                 ),
                 maxLines: 1,
@@ -2087,7 +2113,7 @@ class _NavLessonRow extends StatelessWidget {
                 '${item.progressPercentage}%',
                 style: const TextStyle(
                   color: _kTextMuted,
-                  fontSize: 10,
+                  fontSize: 12,
                   fontFamily: 'Montserrat',
                 ),
               ),
@@ -2096,17 +2122,17 @@ class _NavLessonRow extends StatelessWidget {
               const SizedBox(width: 8),
               Container(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: _kRed,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(2), // Badge 2px
                 ),
                 child: const Text(
                   'NOW',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
                     fontFamily: 'Montserrat',
                     letterSpacing: 0.5,
                   ),
@@ -2185,13 +2211,13 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
         child: Container(
           decoration: BoxDecoration(
             color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(4), // Radius 4px
             border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Color(0x66000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -2200,8 +2226,8 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
             children: [
               // Thumbnail
               SizedBox(
-                width: 100,
-                height: 70,
+                width: 120, // Agak dilebarkan agar seimbang di aspect ratio 16:9
+                height: 80,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -2218,14 +2244,14 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                       Container(color: _kSurfaceHigh),
                     if (!isUnlocked)
                       Container(
-                        color: Colors.black.withOpacity(0.55),
+                        color: Colors.black.withOpacity(0.65),
                         child: const Icon(Icons.lock_rounded,
-                            color: _kTextMuted, size: 18),
+                            color: _kTextMuted, size: 20),
                       ),
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2233,20 +2259,20 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                     const Text(
                       'NEXT LESSON',
                       style: TextStyle(
-                        color: _kTextMuted,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
+                        color: _kTextSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                         letterSpacing: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 6),
                     Text(
                       widget.nextLesson.title,
                       style: TextStyle(
                         color: isUnlocked ? _kTextPrimary : _kTextMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
                       maxLines: 2,
@@ -2258,7 +2284,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                         'Auto next in ${countdownSeconds}s',
                         style: const TextStyle(
                           color: _kRed,
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'Montserrat',
                         ),
@@ -2268,13 +2294,13 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(right: 14),
+                padding: const EdgeInsets.only(right: 16),
                 child: Icon(
                   isUnlocked
                       ? Icons.play_arrow_rounded
                       : Icons.lock_rounded,
                   color: isUnlocked ? _kRed : _kTextMuted,
-                  size: 22,
+                  size: 24,
                 ),
               ),
             ],
@@ -2296,8 +2322,8 @@ class _SectionLabel extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 3,
-          height: 12,
+          width: 4,
+          height: 14,
           decoration: BoxDecoration(
             color: _kRed,
             borderRadius: BorderRadius.circular(2),
@@ -2307,11 +2333,11 @@ class _SectionLabel extends StatelessWidget {
         Text(
           text.toUpperCase(),
           style: const TextStyle(
-            color: _kTextMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
+            color: _kTextSecondary,
+            fontSize: 12, // Sub-headline
+            fontWeight: FontWeight.w600,
             fontFamily: 'Montserrat',
-            letterSpacing: 2,
+            letterSpacing: 1.5,
           ),
         ),
       ],
@@ -2356,7 +2382,7 @@ class _LessonSkeletonState extends State<_LessonSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
-        final shimmer = Color.lerp(_kSurface, _kSurfaceHigh, _anim.value)!;
+        final shimmer = Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
         return Column(
           children: [
             AspectRatio(
@@ -2364,30 +2390,30 @@ class _LessonSkeletonState extends State<_LessonSkeleton>
               child: Container(color: Colors.black),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Bone(width: 100, height: 10, color: shimmer),
-                  const SizedBox(height: 12),
-                  _Bone(width: 260, height: 26, color: shimmer),
-                  const SizedBox(height: 18),
+                  _Bone(width: 120, height: 12, color: shimmer),
+                  const SizedBox(height: 16),
+                  _Bone(width: 260, height: 28, color: shimmer),
+                  const SizedBox(height: 24),
                   _Bone(
-                      width: double.infinity, height: 2.5, color: shimmer),
+                      width: double.infinity, height: 4.0, color: shimmer),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      _Bone(width: 90, height: 36, color: shimmer),
+                      _Bone(width: 100, height: 40, color: shimmer),
                       const SizedBox(width: 8),
-                      _Bone(width: 70, height: 36, color: shimmer),
+                      _Bone(width: 80, height: 40, color: shimmer),
                     ],
                   ),
                   const SizedBox(height: 28),
                   _Bone(
-                      width: double.infinity, height: 80, color: shimmer),
-                  const SizedBox(height: 14),
+                      width: double.infinity, height: 90, color: shimmer),
+                  const SizedBox(height: 16),
                   _Bone(
-                      width: double.infinity, height: 80, color: shimmer),
+                      width: double.infinity, height: 90, color: shimmer),
                 ],
               ),
             ),
@@ -2412,7 +2438,7 @@ class _Bone extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4), // Skeleton radius 4px
       ),
     );
   }
@@ -2439,19 +2465,19 @@ class _LessonError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
+                color: const Color(0x1ADB202C),
                 shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                border: Border.all(color: const Color(0x4DDB202C)),
               ),
               child: const Icon(Icons.wifi_off_rounded,
                   color: _kRed, size: 28),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
               message,
               style: const TextStyle(
                 color: _kTextSecondary,
-                fontSize: 13,
+                fontSize: 14,
                 fontFamily: 'Montserrat',
                 height: 1.5,
               ),
@@ -2465,17 +2491,17 @@ class _LessonError extends StatelessWidget {
                   onTap: onBack,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                        horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(4), // Button radius 4px
                       border: Border.all(color: _kDivider, width: 0.8),
                     ),
                     child: const Text(
                       'Back',
                       style: TextStyle(
                         color: _kTextSecondary,
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
@@ -2487,15 +2513,15 @@ class _LessonError extends StatelessWidget {
                   onTap: onRetry,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                        horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
                       color: _kRed,
                       borderRadius: BorderRadius.circular(4),
-                      boxShadow: [
+                      boxShadow: const [
                         BoxShadow(
-                          color: _kRed.withOpacity(0.35),
+                          color: Color(0x4DDB202C),
                           blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
@@ -2503,8 +2529,8 @@ class _LessonError extends StatelessWidget {
                       'Try again',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
                     ),

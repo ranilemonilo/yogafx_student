@@ -8,17 +8,19 @@ import '../../../../core/widgets/running_login_time_card.dart';
 import '../../data/models/module_model.dart';
 import '../providers/module_provider.dart';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Design Tokens (Berdasarkan DESIGN_SYSTEM.md) ─────────────────────────────
 
-const _kNetflixRed = Color(0xFFE50914);
-const _kBg = Color(0xFF141414);
-const _kSurface = Color(0xFF1F1F1F);
-const _kSurfaceElevated = Color(0xFF2A2A2A);
-const _kDivider = Color(0xFF2E2E2E);
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF737373);
-const _kGreenCheck = Color(0xFF46D369);
+const _kRed = Color(0xFFDB202C); // Primary / Red
+const _kGreen = Color(0xFF00B14F); // Secondary / Emerald (Sukses/Completed)
+const _kBg = Color(0xFF060908); // Neutral / Black (Background Utama)
+const _kHeaderBg = Color(0xFF141110); // Neutral / Black (Header)
+const _kSurface = Color(0xFF120F0E); // Neutral / Black (Card/Panel)
+const _kSurfaceElevated = Color(0xFF281D16); // Neutral / Brown (Elevated/Hover)
+const _kDivider = Color(0x4DFFFFFF); // rgba(255,255,255,0.3)
+const _kTextPrimary = Color(0xFFFFFFFF); // Neutral / White
+const _kTextSecondary = Color(0xA6FFFFFF); // Transparent White 65% (Metadata)
+const _kTextMuted = Color(0x73FFFFFF); // Transparent White 45% (Placeholder/Disabled)
+
 const _kLockedModuleMessage =
     'This page is not available yet. Please complete the previous module first.';
 
@@ -26,8 +28,16 @@ void _showLockedModuleSnackBar(BuildContext context) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
-      const SnackBar(
-        content: Text(_kLockedModuleMessage),
+      SnackBar(
+        content: const Text(
+          _kLockedModuleMessage,
+          style: TextStyle(fontFamily: 'Montserrat'),
+        ),
+        backgroundColor: _kSurfaceElevated,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+        ),
       ),
     );
 }
@@ -51,7 +61,8 @@ class ModuleListScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: _kBg,
       body: RefreshIndicator(
-        color: _kNetflixRed,
+        color: _kRed,
+        backgroundColor: _kSurface,
         onRefresh: () async {
           ref.invalidate(moduleListProvider);
           await ref.read(moduleListProvider.future);
@@ -93,22 +104,21 @@ class _NetflixAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverAppBar(
-      backgroundColor: _kBg,
+      backgroundColor: _kHeaderBg.withOpacity(0.95),
       floating: true,
       snap: true,
       elevation: 0,
-      titleSpacing: 20,
+      titleSpacing: 8,
       leading: IconButton(
         onPressed: () => _handleModuleBack(context),
-        icon: const Icon(Icons.arrow_back_ios_new,
-            color: _kTextPrimary, size: 18),
+        icon: const Icon(Icons.arrow_back, color: _kTextPrimary, size: 24),
       ),
       title: const Text(
         'Modules',
         style: TextStyle(
           color: _kTextPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
+          fontSize: 24, // Title 2
+          fontWeight: FontWeight.w600,
           fontFamily: 'Montserrat',
         ),
       ),
@@ -180,21 +190,21 @@ class _ModuleListContentState extends State<_ModuleListContent>
   @override
   Widget build(BuildContext context) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 48),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 48), // Horizontal margin 4% (~16px)
       sliver: SliverList(
         delegate: SliverChildListDelegate([
           const Align(
             alignment: Alignment.centerRight,
             child: RunningLoginTimeCard(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _animated(0, _SummaryBar(summary: widget.data.summary)),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           ...widget.data.items.asMap().entries.map(
                 (entry) => _animated(
               entry.key + 1,
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: 16), // Gutter kelipatan 8
                 child: _ModuleCard(module: entry.value),
               ),
             ),
@@ -216,22 +226,23 @@ class _SummaryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
       child: Row(
         children: [
           _SummaryChip(
             label: '${summary.total} modules',
-            icon: Icons.layers_outlined,
+            icon: Icons.layers_rounded,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 8), // Gutter
           _SummaryChip(
             label: '${summary.completed} completed',
-            icon: Icons.check_circle_outline,
+            icon: Icons.check_circle_rounded,
             highlight: true,
           ),
           const SizedBox(width: 8),
           _SummaryChip(
             label: '${summary.active} active',
-            icon: Icons.play_circle_outline,
+            icon: Icons.play_circle_outline_rounded,
           ),
         ],
       ),
@@ -253,15 +264,15 @@ class _SummaryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: highlight
-            ? _kNetflixRed.withOpacity(0.12)
+            ? const Color(0x1ADB202C) // Transparan Red
             : _kSurfaceElevated,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4), // Radius tombol/chip 4px
         border: Border.all(
-          color: highlight ? _kNetflixRed.withOpacity(0.35) : _kDivider,
-          width: 0.5,
+          color: highlight ? const Color(0x4DDB202C) : _kDivider,
+          width: 0.8,
         ),
       ),
       child: Row(
@@ -269,16 +280,16 @@ class _SummaryChip extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 13,
-            color: highlight ? _kNetflixRed : _kTextMuted,
+            size: 16,
+            color: highlight ? _kRed : _kTextMuted,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              color: highlight ? _kNetflixRed : _kTextSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
+              color: highlight ? _kRed : _kTextSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
               fontFamily: 'Montserrat',
             ),
           ),
@@ -311,7 +322,7 @@ class _ModuleCardState extends State<_ModuleCard>
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.985).animate(
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.98).animate(
       CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
     );
   }
@@ -343,7 +354,15 @@ class _ModuleCardState extends State<_ModuleCard>
         child: Container(
           decoration: BoxDecoration(
             color: _kSurface,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(4), // Radius Card 4px
+            border: Border.all(color: _kDivider, width: 0.8),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x66000000), // Shadow Depth
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
           clipBehavior: Clip.hardEdge,
           child: Column(
@@ -351,20 +370,20 @@ class _ModuleCardState extends State<_ModuleCard>
             children: [
               // ── Thumbnail ──
               AspectRatio(
-                aspectRatio: 16 / 7,
+                aspectRatio: 16 / 9, // Sesuai design system (16:9)
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     // Image
                     module.thumbnailUrl != null
                         ? AuthNetworkImage(
-                            imageUrl: module.thumbnailUrl!,
-                            fit: BoxFit.cover,
-                            placeholderBuilder: (_) =>
-                                _ThumbnailPlaceholder(title: module.title),
-                            errorBuilderWidget: (_, __) =>
-                                _ThumbnailPlaceholder(title: module.title),
-                          )
+                      imageUrl: module.thumbnailUrl!,
+                      fit: BoxFit.cover,
+                      placeholderBuilder: (_) =>
+                          _ThumbnailPlaceholder(title: module.title),
+                      errorBuilderWidget: (_, __) =>
+                          _ThumbnailPlaceholder(title: module.title),
+                    )
                         : _ThumbnailPlaceholder(title: module.title),
 
                     // Bottom gradient
@@ -375,44 +394,44 @@ class _ModuleCardState extends State<_ModuleCard>
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.7),
+                            Colors.black.withOpacity(0.8),
                           ],
-                          stops: const [0.4, 1.0],
+                          stops: const [0.5, 1.0],
                         ),
                       ),
                     ),
 
                     // Status badge — top right
                     Positioned(
-                      top: 10,
-                      right: 10,
+                      top: 12,
+                      right: 12,
                       child: _StatusBadge(status: module.status),
                     ),
 
                     // Completed badge — top left
                     if (module.isComplete)
                       Positioned(
-                        top: 10,
-                        left: 10,
+                        top: 12,
+                        left: 12,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _kGreenCheck.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(4),
+                            color: _kGreen.withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(2), // Badge Radius 2px
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.check,
-                                  color: Colors.white, size: 11),
+                              Icon(Icons.check_rounded,
+                                  color: Colors.white, size: 14),
                               SizedBox(width: 4),
                               Text(
                                 'Completed',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   fontFamily: 'Montserrat',
                                 ),
                               ),
@@ -422,31 +441,32 @@ class _ModuleCardState extends State<_ModuleCard>
                       ),
 
                     // Play button center
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: Colors.white.withOpacity(0.6),
-                              width: 1.5),
-                        ),
-                        child: const Icon(
-                          Icons.play_arrow,
-                          color: Colors.white,
-                          size: 22,
+                    if (canOpen)
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: Colors.white.withOpacity(0.8),
+                                width: 1.5),
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
 
               // ── Info ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                padding: const EdgeInsets.all(16), // Padding 16px
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -455,81 +475,78 @@ class _ModuleCardState extends State<_ModuleCard>
                       module.title,
                       style: const TextStyle(
                         color: _kTextPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 18, // Title 3 Equivalent
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
                     ),
 
                     // Description
                     if (module.description != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text(
                         module.description!,
                         style: const TextStyle(
                           color: _kTextSecondary,
-                          fontSize: 13,
+                          fontSize: 14,
                           fontFamily: 'Montserrat',
-                          height: 1.4,
+                          height: 1.5,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
                     // Meta row
-                    Row(
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
                       children: [
                         _MetaChip(
-                          icon: Icons.play_circle_outline,
+                          icon: Icons.play_circle_outline_rounded,
                           label: '${module.lessonCount} lessons',
                         ),
-                        if (module.assignmentsCount > 0) ...[
-                          const SizedBox(width: 12),
+                        if (module.assignmentsCount > 0)
                           _MetaChip(
                             icon: Icons.assignment_outlined,
                             label: '${module.assignmentsCount} assignments',
                           ),
-                        ],
-                        if (module.certificateEnabled) ...[
-                          const SizedBox(width: 12),
+                        if (module.certificateEnabled)
                           const _MetaChip(
                             icon: Icons.workspace_premium_outlined,
                             label: 'Certificate',
                             accent: true,
                           ),
-                        ],
                       ],
                     ),
 
                     // Progress bar
                     if (module.showProgress) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
+                              borderRadius: BorderRadius.circular(2), // Bar radius 2px
                               child: LinearProgressIndicator(
                                 value: module.progressPercentage / 100,
                                 backgroundColor: _kDivider,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  module.isComplete
-                                      ? _kGreenCheck
-                                      : _kNetflixRed,
+                                  module.isComplete ? _kGreen : _kRed,
                                 ),
-                                minHeight: 3,
+                                minHeight: 4, // Sedikit ditebalkan
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Text(
                             '${module.completedLessons}/${module.lessonCount}',
                             style: const TextStyle(
                               color: _kTextMuted,
-                              fontSize: 11,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                               fontFamily: 'Montserrat',
                             ),
                           ),
@@ -567,15 +584,16 @@ class _MetaChip extends StatelessWidget {
       children: [
         Icon(
           icon,
-          color: accent ? _kNetflixRed : _kTextMuted,
-          size: 14,
+          color: accent ? _kRed : _kTextMuted,
+          size: 16,
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
-            color: accent ? _kNetflixRed : _kTextMuted,
+            color: accent ? _kRed : _kTextSecondary,
             fontSize: 12,
+            fontWeight: FontWeight.w500,
             fontFamily: 'Montserrat',
           ),
         ),
@@ -599,17 +617,18 @@ class _ThumbnailPlaceholder extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.play_circle_outline,
-                color: _kTextMuted, size: 36),
-            const SizedBox(height: 8),
+            const Icon(Icons.movie_creation_outlined,
+                color: _kTextMuted, size: 40),
+            const SizedBox(height: 12),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 title,
                 style: const TextStyle(
                   color: _kTextMuted,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -635,9 +654,9 @@ class _StatusBadge extends StatelessWidget {
     Color color;
     switch (status.toLowerCase()) {
       case 'active':
-        color = _kNetflixRed;
+        color = _kRed;
       case 'completed':
-        color = _kGreenCheck;
+        color = _kGreen;
       default:
         color = _kTextMuted;
     }
@@ -646,14 +665,14 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.65),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.5), width: 0.5),
+        borderRadius: BorderRadius.circular(2), // Badge radius 2px
+        border: Border.all(color: color.withOpacity(0.5), width: 0.8),
       ),
       child: Text(
         status.toUpperCase(),
         style: TextStyle(
           color: color,
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
           fontFamily: 'Montserrat',
           letterSpacing: 1,
@@ -702,40 +721,40 @@ class _ModuleListSkeletonState extends State<_ModuleListSkeleton>
       builder: (context, _) {
         final c = Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Summary chips skeleton
               Row(
                 children: [
-                  _Bone(width: 90, height: 28, color: c),
+                  _Bone(width: 100, height: 32, color: c),
                   const SizedBox(width: 8),
-                  _Bone(width: 110, height: 28, color: c),
+                  _Bone(width: 120, height: 32, color: c),
                   const SizedBox(width: 8),
-                  _Bone(width: 80, height: 28, color: c),
+                  _Bone(width: 90, height: 32, color: c),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               ...List.generate(
                 3,
-                (_) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                    (_) => Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _Bone(
                         width: double.infinity,
-                        height: 180,
+                        height: 200,
                         color: c,
-                        radius: 6,
+                        radius: 4, // Radius card 4px
                       ),
+                      const SizedBox(height: 16),
+                      _Bone(width: 220, height: 16, color: c),
                       const SizedBox(height: 12),
-                      _Bone(width: 200, height: 14, color: c),
+                      _Bone(width: double.infinity, height: 12, color: c),
                       const SizedBox(height: 8),
-                      _Bone(width: double.infinity, height: 10, color: c),
-                      const SizedBox(height: 6),
-                      _Bone(width: 260, height: 10, color: c),
+                      _Bone(width: 280, height: 12, color: c),
                     ],
                   ),
                 ),
@@ -790,9 +809,17 @@ class _ModuleListError extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off_outlined,
-                color: _kTextMuted, size: 48),
-            const SizedBox(height: 16),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0x1ADB202C),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0x4DDB202C)),
+              ),
+              child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 28),
+            ),
+            const SizedBox(height: 20),
             Text(
               message,
               style: const TextStyle(
@@ -802,22 +829,31 @@ class _ModuleListError extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 140,
-              child: ElevatedButton(
-                onPressed: onRetry,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kNetflixRed,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  elevation: 0,
+            const SizedBox(height: 28),
+            InkWell(
+              onTap: onRetry,
+              borderRadius: BorderRadius.circular(4), // Button radius 4px
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: _kRed,
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x4DDB202C),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Text(
                   'Try again',
-                  style: TextStyle(fontFamily: 'Montserrat'),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Montserrat',
+                  ),
                 ),
               ),
             ),

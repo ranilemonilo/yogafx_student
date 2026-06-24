@@ -6,20 +6,110 @@ import '../../../lesson/data/models/lesson_model.dart';
 import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
 
-/// Netflix-inspired palette, scoped to this screen only so the rest of the
-/// app's shared theme (AppColors) stays untouched. Kept in sync with the
-/// palette used in assessment_intro_screen.dart.
-abstract class _NetflixPalette {
-  static const Color background = Color(0xFF141414);
-  static const Color surface = Color(0xFF1F1F1F);
-  static const Color surfaceRaised = Color(0xFF2A2A2A);
-  static const Color red = Color(0xFFE50914);
-  static const Color green = Color(0xFF46D369); // BARU
-  static const Color grey = Color(0xFFB3B3B3);
-  static const Color greyMuted = Color(0xFF808080);
-  static const Color divider = Color(0xFF3A3A3A);
+// ─────────────────────────────────────────────────────────────────────────────
+// Design Tokens — identik dengan assessment_intro_screen.dart
+// Disinkronkan penuh dengan design system Netflix
+// ─────────────────────────────────────────────────────────────────────────────
+abstract class _DS {
+  // Colors
+  static const Color background    = Color(0xFF141110);
+  static const Color surface       = Color(0xFF1F1D1C);
+  static const Color surfaceRaised = Color(0xFF2A2826);
+  static const Color red           = Color(0xFFDB202C);
+  static const Color emerald       = Color(0xFF00B14F); // Secondary/Emerald dari DS
+  static const Color white         = Color(0xFFFFFFFF);
+  static const Color textPrimary   = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFA8A8A8); // ~65% white
+  static const Color textMuted     = Color(0xFF737373); // ~45% white
+  static const Color divider       = Color(0xFF3A3836);
+
+  // Border-radius
+  static const double radiusButton = 4;
+  static const double radiusBadge  = 2;
+  static const double radiusCard   = 4;
+
+  // Spacing (8px grid)
+  static const double sp4  = 4;
+  static const double sp6  = 6;
+  static const double sp8  = 8;
+  static const double sp10 = 10;
+  static const double sp12 = 12;
+  static const double sp16 = 16;
+  static const double sp20 = 20;
+  static const double sp24 = 24;
+  static const double sp28 = 28;
+  static const double sp32 = 32;
+  static const double sp40 = 40;
+  static const double sp48 = 48;
+
+  // Type scale — Montserrat
+  static TextStyle caption({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: color ?? textMuted,
+    height: 1.5,
+  );
+
+  static TextStyle body({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: color ?? textSecondary,
+    height: 1.6,
+  );
+
+  static TextStyle label({Color? color, double? letterSpacing}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: color ?? textPrimary,
+    letterSpacing: letterSpacing,
+  );
+
+  static TextStyle labelSmall({Color? color, double? letterSpacing}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: color ?? textMuted,
+    letterSpacing: letterSpacing ?? 1.4,
+  );
+
+  static TextStyle title({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 24,
+    fontWeight: FontWeight.w800,
+    color: color ?? textPrimary,
+    height: 1.2,
+  );
+
+  static TextStyle display({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 48,
+    fontWeight: FontWeight.w800,
+    color: color ?? red,
+    height: 1.0,
+  );
+
+  static TextStyle displaySub({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 24,
+    fontWeight: FontWeight.w600,
+    color: color ?? textMuted,
+    height: 1.0,
+  );
+
+  static TextStyle buttonLabel({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: color ?? Colors.black,
+  );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Root Screen — LOGIKA TIDAK DIUBAH
+// ─────────────────────────────────────────────────────────────────────────────
 class AssessmentResultScreen extends ConsumerWidget {
   final int lessonId;
   final int attemptId;
@@ -39,7 +129,7 @@ class AssessmentResultScreen extends ConsumerWidget {
     final nextLesson = lessonAsync.valueOrNull?.nextLesson;
 
     return Scaffold(
-      backgroundColor: _NetflixPalette.background,
+      backgroundColor: _DS.background,
       body: SafeArea(
         child: resultAsync.when(
           loading: () => const _ResultLoadingState(),
@@ -62,6 +152,9 @@ class AssessmentResultScreen extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Result Content — animasi TIDAK DIUBAH, hanya desain
+// ─────────────────────────────────────────────────────────────────────────────
 class _ResultContent extends StatefulWidget {
   final int lessonId;
   final int attemptId;
@@ -151,24 +244,27 @@ class _ResultContentState extends State<_ResultContent>
 
   @override
   Widget build(BuildContext context) {
-    final isCompleted = widget.status == 'completed' || widget.status == 'result';
+    final isCompleted =
+        widget.status == 'completed' || widget.status == 'result';
     final score = widget.scorePercentage;
-    
-    // Format skor untuk UI baru (hanya angka tanpa tanda %)
     final scoreValue = score == null ? '--' : score.toStringAsFixed(0);
-    
     final correctnessLabel = score == null
         ? null
         : '${score.toStringAsFixed(0)}% correct';
-    final summary = widget.correctAnswers != null && widget.totalQuestions != null
+    final summary =
+    widget.correctAnswers != null && widget.totalQuestions != null
         ? '${widget.correctAnswers} of ${widget.totalQuestions} answers correct'
         : 'Your answers have been processed successfully.';
 
-    return Padding(
-      padding: const EdgeInsets.all(32),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _DS.sp24,
+        vertical: _DS.sp40,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // ── Badge animasi (logika TIDAK DIUBAH)
           FadeTransition(
             opacity: _iconFade,
             child: ScaleTransition(
@@ -176,146 +272,68 @@ class _ResultContentState extends State<_ResultContent>
               child: _ResultBadge(isCompleted: isCompleted),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: _DS.sp28),
+
+          // ── Teks status + skor
           FadeTransition(
             opacity: _textFade,
             child: SlideTransition(
               position: _textSlide,
               child: Column(
                 children: [
+                  // Status title
                   Text(
                     isCompleted
                         ? 'Assessment Complete'
                         : 'Assessment In Progress',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Montserrat',
-                    ),
+                    style: _DS.title(),
                     textAlign: TextAlign.center,
                   ),
+
+                  // Eyebrow label skor (% correct) — pola label merah dari DS
                   if (isCompleted && correctnessLabel != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: _DS.sp8),
                     Text(
                       correctnessLabel,
-                      style: const TextStyle(
-                        color: _NetflixPalette.red,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
-                        letterSpacing: 0.3,
+                      style: _DS.labelSmall(
+                        color: _DS.red,
+                        letterSpacing: 0.8,
                       ),
                       textAlign: TextAlign.center,
                     ),
                   ],
-                  
-                  // PERUBAHAN: Desain UI Kotak Skor Baru
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: _NetflixPalette.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _NetflixPalette.red.withOpacity(0.3),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _NetflixPalette.red.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'TOTAL SCORE',
-                          style: TextStyle(
-                            color: _NetflixPalette.grey,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Montserrat',
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              scoreValue,
-                              style: const TextStyle(
-                                color: _NetflixPalette.red,
-                                fontSize: 48,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Montserrat',
-                              ),
-                            ),
-                            const Text(
-                              ' / 100',
-                              style: TextStyle(
-                                color: _NetflixPalette.greyMuted,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Montserrat',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+
+                  const SizedBox(height: _DS.sp24),
+
+                  // ── Score Card — mengikuti DS surface card dengan border
+                  _ScoreCard(
+                    scoreValue: scoreValue,
+                    isCompleted: isCompleted,
                   ),
 
+                  const SizedBox(height: _DS.sp20),
+
+                  // ── Summary text
                   Text(
                     summary,
-                    style: const TextStyle(
-                      color: _NetflixPalette.grey,
-                      fontSize: 14,
-                      fontFamily: 'Montserrat',
-                      height: 1.6,
-                    ),
+                    style: _DS.body(),
                     textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 48),
+
+          const SizedBox(height: _DS.sp40),
+
+          // ── Buttons (logika TIDAK DIUBAH)
           FadeTransition(
             opacity: _buttonsFade,
             child: SlideTransition(
               position: _buttonsSlide,
-              child: Column(
-                children: [
-                  _ResultButton(
-                    label: 'Back to Lesson',
-                    icon: Icons.arrow_back_rounded,
-                    filled: true,
-                    onTap: () => context.go('/lessons/${widget.lessonId}'),
-                  ),
-                  if (widget.nextLesson != null && widget.nextLesson!.isUnlocked) ...[
-                    const SizedBox(height: 12),
-                    _ResultButton(
-                      label: 'Next Lesson',
-                      icon: Icons.play_arrow_rounded,
-                      filled: true,
-                      onTap: () => context.go('/lessons/${widget.nextLesson!.id}'),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  _ResultButton(
-                    label: 'Browse Modules',
-                    icon: Icons.apps_rounded,
-                    filled: false,
-                    onTap: () => context.go('/modules'),
-                  ),
-                ],
+              child: _ActionButtons(
+                lessonId: widget.lessonId,
+                nextLesson: widget.nextLesson,
               ),
             ),
           ),
@@ -325,59 +343,125 @@ class _ResultContentState extends State<_ResultContent>
   }
 }
 
-class _ResultLoadingState extends StatelessWidget {
-  const _ResultLoadingState();
+// ─────────────────────────────────────────────────────────────────────────────
+// Score Card — card surface dengan border tipis
+// Mengikuti card pattern dari design system (surface + border red @35%)
+// ─────────────────────────────────────────────────────────────────────────────
+class _ScoreCard extends StatelessWidget {
+  final String scoreValue;
+  final bool isCompleted;
 
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: _NetflixPalette.red),
-    );
-  }
-}
-
-class _ResultErrorState extends StatelessWidget {
-  final int lessonId;
-  final String message;
-
-  const _ResultErrorState({
-    required this.lessonId,
-    required this.message,
+  const _ScoreCard({
+    required this.scoreValue,
+    required this.isCompleted,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline_rounded,
-                color: _NetflixPalette.red, size: 42),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-            const SizedBox(height: 20),
-            _ResultButton(
-              label: 'Back to Lesson',
-              icon: Icons.arrow_back_rounded,
-              filled: true,
-              onTap: () => context.go('/lessons/$lessonId'),
-            ),
-          ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        vertical: _DS.sp24,
+        horizontal: _DS.sp24,
+      ),
+      decoration: BoxDecoration(
+        color: _DS.surface,
+        borderRadius: BorderRadius.circular(_DS.radiusCard),
+        border: Border.all(
+          color: isCompleted
+              ? _DS.red.withOpacity(0.35)
+              : _DS.divider,
         ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Label "TOTAL SCORE" — uppercase label kecil dari DS
+          Text(
+            'TOTAL SCORE',
+            style: _DS.labelSmall(
+              color: _DS.textMuted,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: _DS.sp12),
+
+          // Angka skor — Bold/Display 48px dari DS
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(scoreValue, style: _DS.display()),
+              Text(' / 100', style: _DS.displaySub()),
+            ],
+          ),
+
+          // Divider tipis
+          const SizedBox(height: _DS.sp16),
+          Container(height: 1, color: _DS.divider),
+          const SizedBox(height: _DS.sp16),
+
+          // Status badge di dalam card
+          _StatusBadge(isCompleted: isCompleted),
+        ],
       ),
     );
   }
 }
 
+/// Badge status kecil di dalam score card — mirip maturity/quality badge di DS
+class _StatusBadge extends StatelessWidget {
+  final bool isCompleted;
+
+  const _StatusBadge({required this.isCompleted});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _DS.sp10,
+        vertical: _DS.sp4,
+      ),
+      decoration: BoxDecoration(
+        color: isCompleted
+            ? _DS.emerald.withOpacity(0.12)
+            : _DS.surfaceRaised,
+        borderRadius: BorderRadius.circular(_DS.radiusBadge),
+        border: Border.all(
+          color: isCompleted
+              ? _DS.emerald.withOpacity(0.4)
+              : _DS.divider,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isCompleted
+                ? Icons.check_circle_outline
+                : Icons.hourglass_top_rounded,
+            size: 12,
+            color: isCompleted ? _DS.emerald : _DS.textMuted,
+          ),
+          const SizedBox(width: _DS.sp6),
+          Text(
+            isCompleted ? 'Completed' : 'In Progress',
+            style: _DS.caption(
+              color: isCompleted ? _DS.emerald : _DS.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Result Badge — icon bulat besar (animasi dari parent TIDAK DIUBAH)
+// Completed : emerald (Secondary/Emerald dari DS)
+// In Progress : surfaceRaised + border divider
+// ─────────────────────────────────────────────────────────────────────────────
 class _ResultBadge extends StatelessWidget {
   final bool isCompleted;
 
@@ -386,34 +470,93 @@ class _ResultBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 104,
-      height: 104,
+      width: 96,
+      height: 96,
       decoration: BoxDecoration(
-        color: isCompleted ? _NetflixPalette.green : _NetflixPalette.surfaceRaised, // diubah dari .red
+        color: isCompleted
+            ? _DS.emerald.withOpacity(0.15)
+            : _DS.surfaceRaised,
         shape: BoxShape.circle,
-        border: isCompleted
-            ? null
-            : Border.all(color: _NetflixPalette.divider, width: 1.5),
+        border: Border.all(
+          color: isCompleted ? _DS.emerald : _DS.divider,
+          width: 1.5,
+        ),
       ),
       child: Icon(
         isCompleted ? Icons.check_rounded : Icons.hourglass_top_rounded,
-        color: isCompleted ? Colors.white : _NetflixPalette.grey,
-        size: 50,
+        color: isCompleted ? _DS.emerald : _DS.textMuted,
+        size: 44,
       ),
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Action Buttons — logika navigasi TIDAK DIUBAH, hanya desain
+// ─────────────────────────────────────────────────────────────────────────────
+class _ActionButtons extends StatelessWidget {
+  final int lessonId;
+  final NextLesson? nextLesson;
+
+  const _ActionButtons({
+    required this.lessonId,
+    required this.nextLesson,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Tombol primer putih — "Back to Lesson"
+        _ResultButton(
+          label: 'Back to Lesson',
+          icon: Icons.arrow_back_rounded,
+          style: _ButtonStyle.primary,
+          onTap: () => context.go('/lessons/$lessonId'),
+        ),
+
+        // Tombol "Next Lesson" — tampil hanya jika nextLesson unlocked (logika TIDAK DIUBAH)
+        if (nextLesson != null && nextLesson!.isUnlocked) ...[
+          const SizedBox(height: _DS.sp12),
+          _ResultButton(
+            label: 'Next Lesson',
+            icon: Icons.play_arrow_rounded,
+            style: _ButtonStyle.primary,
+            onTap: () => context.go('/lessons/${nextLesson!.id}'),
+          ),
+        ],
+
+        const SizedBox(height: _DS.sp12),
+
+        // Tombol sekunder outline — "Browse Modules"
+        _ResultButton(
+          label: 'Browse Modules',
+          icon: Icons.apps_rounded,
+          style: _ButtonStyle.secondary,
+          onTap: () => context.go('/modules'),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Result Button — mengikuti action button design system
+// Primary   : background putih, teks hitam (Play button style)
+// Secondary : border tipis, background transparan (outline style)
+// ─────────────────────────────────────────────────────────────────────────────
+enum _ButtonStyle { primary, secondary }
+
 class _ResultButton extends StatefulWidget {
   final String label;
   final IconData icon;
-  final bool filled;
+  final _ButtonStyle style;
   final VoidCallback onTap;
 
   const _ResultButton({
     required this.label,
     required this.icon,
-    required this.filled,
+    required this.style,
     required this.onTap,
   });
 
@@ -430,7 +573,7 @@ class _ResultButtonState extends State<_ResultButton> {
 
   @override
   Widget build(BuildContext context) {
-    final filled = widget.filled;
+    final isPrimary = widget.style == _ButtonStyle.primary;
 
     return GestureDetector(
       onTapDown: (_) => _setPressed(true),
@@ -441,16 +584,19 @@ class _ResultButtonState extends State<_ResultButton> {
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
           width: double.infinity,
           height: 52,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: filled ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-            border: filled
+            color: isPrimary
+                ? (_pressed ? const Color(0xFFE0E0E0) : _DS.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(_DS.radiusButton),
+            border: isPrimary
                 ? null
-                : Border.all(color: _NetflixPalette.divider, width: 1),
+                : Border.all(color: _DS.divider),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -458,17 +604,98 @@ class _ResultButtonState extends State<_ResultButton> {
               Icon(
                 widget.icon,
                 size: 20,
-                color: filled ? Colors.black : Colors.white,
+                color: isPrimary ? Colors.black : _DS.textPrimary,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: _DS.sp8),
               Text(
                 widget.label,
-                style: TextStyle(
-                  color: filled ? Colors.black : Colors.white,
-                  fontSize: 15,
-                  fontWeight: filled ? FontWeight.w700 : FontWeight.w600,
-                  fontFamily: 'Montserrat',
+                style: isPrimary
+                    ? _DS.buttonLabel(color: Colors.black)
+                    : _DS.buttonLabel(color: _DS.textPrimary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading State — spinner merah dari DS (TIDAK DIUBAH)
+// ─────────────────────────────────────────────────────────────────────────────
+class _ResultLoadingState extends StatelessWidget {
+  const _ResultLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: CircularProgressIndicator(
+        color: _DS.red,
+        strokeWidth: 2,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Error State — mengikuti error state pattern dari intro screen
+// ─────────────────────────────────────────────────────────────────────────────
+class _ResultErrorState extends StatelessWidget {
+  final int lessonId;
+  final String message;
+
+  const _ResultErrorState({
+    required this.lessonId,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(_DS.sp32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Error icon container — konsisten dengan intro screen
+              Container(
+                padding: const EdgeInsets.all(_DS.sp20),
+                decoration: BoxDecoration(
+                  color: _DS.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _DS.divider),
                 ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: _DS.textSecondary,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: _DS.sp20),
+
+              Text(
+                'Something went wrong',
+                style: _DS.label(color: _DS.textPrimary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: _DS.sp8),
+
+              Text(
+                message,
+                style: _DS.body(),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: _DS.sp32),
+
+              // Tombol kembali
+              _ResultButton(
+                label: 'Back to Lesson',
+                icon: Icons.arrow_back_rounded,
+                style: _ButtonStyle.primary,
+                onTap: () => context.go('/lessons/$lessonId'),
               ),
             ],
           ),

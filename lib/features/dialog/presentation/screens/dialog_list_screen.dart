@@ -5,17 +5,17 @@ import '../../../../core/theme/app_theme.dart';
 import '../../data/models/dialog_model.dart';
 import '../providers/dialog_provider.dart';
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
+// ─── Design Tokens (Berdasarkan DESIGN_SYSTEM.md) ─────────────────────────────
 
-const _kRed = Color(0xFFE50914);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kSurfaceHigh = Color(0xFF262626);
-const _kDivider = Color(0xFF252525);
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
+const _kRed = Color(0xFFDB202C); // Primary / Red
+const _kBg = Color(0xFF060908); // Neutral / Black (Background Utama)
+const _kHeaderBg = Color(0xFF141110); // Neutral / Black (Header)
+const _kSurface = Color(0xFF120F0E); // Neutral / Black (Card/Panel)
+const _kSurfaceElevated = Color(0xFF281D16); // Neutral / Brown (Elevated/Hover)
+const _kDivider = Color(0x4DFFFFFF); // rgba(255,255,255,0.3)
+const _kTextPrimary = Color(0xFFFFFFFF); // Neutral / White
+const _kTextSecondary = Color(0xA6FFFFFF); // Transparent White 65% (Metadata)
+const _kTextMuted = Color(0x73FFFFFF); // Transparent White 45% (Placeholder/Disabled)
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -101,8 +101,8 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: _kRed,
-      backgroundColor: _kSurfaceElevated,
+      color: _kTextPrimary,
+      backgroundColor: _kRed,
       onRefresh: () async {
         ref.invalidate(dialogListProvider);
         await ref.read(dialogListProvider.future);
@@ -114,42 +114,25 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
         slivers: [
           // ── App Bar ──
           SliverAppBar(
-            backgroundColor: Colors.transparent,
+            backgroundColor: _kHeaderBg.withOpacity(0.95),
             expandedHeight: 0,
             floating: true,
             snap: true,
             elevation: 0,
-            flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xD0000000), Colors.transparent],
-                ),
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back,
+                color: _kTextPrimary,
+                size: 24,
               ),
-            ),
-            leading: GestureDetector(
-              onTap: () => context.pop(),
-              child: Container(
-                margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-                decoration: BoxDecoration(
-                  color: _kSurfaceElevated,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: _kDivider, width: 0.8),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: _kTextPrimary,
-                  size: 15,
-                ),
-              ),
+              onPressed: () => context.pop(),
             ),
             title: const Text(
               'Dialogs',
               style: TextStyle(
                 color: _kTextPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontSize: 24, // Title 2 / Semi Bold
+                fontWeight: FontWeight.w600,
                 fontFamily: 'Montserrat',
               ),
             ),
@@ -158,7 +141,7 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
           // ── Body ──
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 48), // Padding horizontal 4% (~16px)
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -180,7 +163,7 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
                       child: SlideTransition(
                         position: _slides[i],
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.only(bottom: 8), // Grid dasar 8px
                           child: _DialogCard(item: item),
                         ),
                       ),
@@ -256,14 +239,14 @@ class _DialogCardState extends State<_DialogCard>
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(8),
+            color: _kSurface, // Sesuai dengan default card state
+            borderRadius: BorderRadius.circular(4), // Radius 4px sesuai desain sistem
             border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Color(0x66000000), // Shadow subtle untuk non-hover
                 blurRadius: 10,
-                offset: const Offset(0, 4),
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -271,23 +254,23 @@ class _DialogCardState extends State<_DialogCard>
             children: [
               // Icon
               Container(
-                width: 46,
-                height: 46,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: _kRed.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0x1ADB202C), // Red transparan tipis
+                  borderRadius: BorderRadius.circular(4), // Radius 4px
                   border: Border.all(
-                    color: _kRed.withOpacity(0.22),
+                    color: const Color(0x4DDB202C),
                     width: 0.8,
                   ),
                 ),
                 child: const Icon(
                   Icons.auto_awesome_rounded,
                   color: _kRed,
-                  size: 20,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               // Text
               Expanded(
                 child: Column(
@@ -297,19 +280,19 @@ class _DialogCardState extends State<_DialogCard>
                       item.title,
                       style: const TextStyle(
                         color: _kTextPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 16, // Body/Sub-header (Regular/Medium)
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       preview ?? 'No content available yet.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: preview != null ? _kTextSecondary : _kTextMuted,
-                        fontSize: 12,
+                        fontSize: 14, // Body
                         fontFamily: 'Montserrat',
                         height: 1.5,
                         fontStyle: preview != null
@@ -320,12 +303,12 @@ class _DialogCardState extends State<_DialogCard>
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               // Chevron
               const Icon(
                 Icons.chevron_right_rounded,
                 color: _kTextMuted,
-                size: 20,
+                size: 24,
               ),
             ],
           ),
@@ -346,22 +329,22 @@ class _SectionLabel extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 3,
-          height: 12,
+          width: 4,
+          height: 14,
           decoration: BoxDecoration(
             color: _kRed,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(2), // Badge/label kecil = 2px
           ),
         ),
         const SizedBox(width: 8),
         Text(
           text.toUpperCase(),
           style: const TextStyle(
-            color: _kTextMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
+            color: _kTextSecondary,
+            fontSize: 14, // Headline 2
+            fontWeight: FontWeight.w600,
             fontFamily: 'Montserrat',
-            letterSpacing: 2,
+            letterSpacing: 1.5,
           ),
         ),
       ],
@@ -406,38 +389,37 @@ class _DialogListSkeletonState extends State<_DialogListSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
-        final shimmer =
-        Color.lerp(_kSurface, _kSurfaceHigh, _anim.value)!;
+        final shimmer = Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
         return CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: _kBg,
+              backgroundColor: _kHeaderBg,
               floating: true,
               snap: true,
               leading: Container(
-                margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                margin: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: shimmer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              title: _Bone(width: 80, height: 14, color: shimmer),
+              title: _Bone(width: 120, height: 24, color: shimmer),
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Bone(width: 100, height: 9, color: shimmer),
+                    _Bone(width: 140, height: 14, color: shimmer),
                     const SizedBox(height: 16),
                     ...List.generate(
                       3,
                           (_) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: 8),
                         child: _Bone(
                           width: double.infinity,
-                          height: 80,
+                          height: 96,
                           color: shimmer,
                         ),
                       ),
@@ -466,7 +448,7 @@ class _Bone extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4), // Radius 4px untuk elemen placeholder
       ),
     );
   }
@@ -491,9 +473,9 @@ class _DialogError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
+                color: const Color(0x1ADB202C),
                 shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                border: Border.all(color: const Color(0x4DDB202C)),
               ),
               child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 28),
             ),
@@ -502,39 +484,39 @@ class _DialogError extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: _kTextSecondary,
-                fontSize: 13,
+                color: _kTextMuted,
+                fontSize: 14, // Body 14px
                 fontFamily: 'Montserrat',
                 height: 1.5,
               ),
             ),
             const SizedBox(height: 28),
-            GestureDetector(
+            InkWell(
               onTap: onRetry,
+              borderRadius: BorderRadius.circular(4),
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: _kRed,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: [
+                  borderRadius: BorderRadius.circular(4), // Tombol CTA 4px
+                  boxShadow: const [
                     BoxShadow(
-                      color: _kRed.withOpacity(0.35),
+                      color: Color(0x4DDB202C),
                       blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.refresh_rounded, color: Colors.white, size: 15),
-                    SizedBox(width: 6),
+                    Icon(Icons.refresh_rounded, color: Colors.white, size: 16),
+                    SizedBox(width: 8),
                     Text(
                       'Try again',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 14, // Small Button (Bold 14)
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
                       ),

@@ -4,20 +4,127 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
 
-/// Netflix-inspired palette, scoped to this screen only so the rest of the
-/// app's shared theme (AppColors) stays untouched.
-abstract class _NetflixPalette {
-  static const Color background = Color(0xFF141414);
-  static const Color surface = Color(0xFF1F1F1F);
-  static const Color surfaceRaised = Color(0xFF2A2A2A);
-  static const Color red = Color(0xFFE50914);
-  static const Color grey = Color(0xFFB3B3B3);
-  static const Color greyMuted = Color(0xFF808080);
-  static const Color divider = Color(0xFF3A3A3A);
+// ─────────────────────────────────────────────────────────────────────────────
+// Design Tokens — sesuai design system Netflix
+// Primary Red      : #DB202C
+// Background       : #141110  (Neutral/Black)
+// Surface          : #1F1D1C
+// Surface Raised   : #2A2826
+// Divider          : #3A3836
+// Text Primary     : #FFFFFF
+// Text Secondary   : rgba(255,255,255,0.65)
+// Text Muted       : rgba(255,255,255,0.45)
+// Font             : Montserrat
+// ─────────────────────────────────────────────────────────────────────────────
+abstract class _DS {
+  // Colors
+  static const Color background    = Color(0xFF141110);
+  static const Color surface       = Color(0xFF1F1D1C);
+  static const Color surfaceRaised = Color(0xFF2A2826);
+  static const Color red           = Color(0xFFDB202C);
+  static const Color white         = Color(0xFFFFFFFF);
+  static const Color textPrimary   = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFA8A8A8); // ~65% white
+  static const Color textMuted     = Color(0xFF737373); // ~45% white
+  static const Color divider       = Color(0xFF3A3836);
+
+  // Border-radius (design system)
+  static const double radiusButton  = 4;
+  static const double radiusBadge   = 2;
+  static const double radiusCard    = 4;
+  static const double radiusCircle  = 100;
+
+  // Spacing (base 8px grid)
+  static const double sp4  = 4;
+  static const double sp6  = 6;
+  static const double sp8  = 8;
+  static const double sp10 = 10;
+  static const double sp12 = 12;
+  static const double sp16 = 16;
+  static const double sp18 = 18;
+  static const double sp20 = 20;
+  static const double sp24 = 24;
+  static const double sp28 = 28;
+  static const double sp32 = 32;
+  static const double sp40 = 40;
+  static const double sp48 = 48;
+
+  // Type scale (Montserrat)
+  // Regular/Caption  12px
+  // Regular/Body     14px
+  // Medium/Label     14px  w500
+  // Semi Bold/Title  24px  w600
+  // Semi Bold/Header 36px  w600
+  // Bold/Display     48px  w700
+  static TextStyle caption({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: color ?? textMuted,
+    height: 1.5,
+  );
+
+  static TextStyle body({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: color ?? textSecondary,
+    height: 1.6,
+  );
+
+  static TextStyle label({Color? color, double? letterSpacing}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: color ?? textPrimary,
+    letterSpacing: letterSpacing,
+  );
+
+  static TextStyle labelSmall({Color? color, double? letterSpacing}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: color ?? red,
+    letterSpacing: letterSpacing ?? 1.4,
+    height: 1.2,
+  );
+
+  static TextStyle headline({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 22,
+    fontWeight: FontWeight.w600,
+    color: color ?? textPrimary,
+    height: 1.2,
+  );
+
+  static TextStyle title({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    color: color ?? textPrimary,
+    height: 1.15,
+  );
+
+  static TextStyle buttonLabel({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: color ?? Colors.black,
+  );
+
+  static TextStyle navTitle({Color? color}) => TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: color ?? textPrimary,
+  );
 }
 
 const double _kHeroHeight = 300;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Root screen — LOGIKA TIDAK DIUBAH
+// ─────────────────────────────────────────────────────────────────────────────
 class AssessmentIntroScreen extends ConsumerWidget {
   final int lessonId;
 
@@ -28,7 +135,7 @@ class AssessmentIntroScreen extends ConsumerWidget {
     final introAsync = ref.watch(assessmentIntroProvider(lessonId));
 
     return Scaffold(
-      backgroundColor: _NetflixPalette.background,
+      backgroundColor: _DS.background,
       body: introAsync.when(
         loading: () => const _IntroSkeleton(),
         error: (e, _) => _IntroError(
@@ -66,8 +173,8 @@ class AssessmentIntroScreen extends ConsumerWidget {
             startLabel: hasActiveAttempt
                 ? 'Continue Assessment'
                 : hasCompletedAttempt
-                    ? 'View Result'
-                    : 'Start Assessment',
+                ? 'View Result'
+                : 'Start Assessment',
             onStart: () => _startAssessment(context, ref, data),
           );
         },
@@ -75,11 +182,12 @@ class AssessmentIntroScreen extends ConsumerWidget {
     );
   }
 
+  // ── LOGIKA TIDAK DIUBAH ───────────────────────────────────────────────────
   Future<void> _startAssessment(
-    BuildContext context,
-    WidgetRef ref,
-    AssessmentIntroData intro,
-  ) async {
+      BuildContext context,
+      WidgetRef ref,
+      AssessmentIntroData intro,
+      ) async {
     try {
       final activeAttemptId = _extractAttemptId(intro.attempt);
       if (activeAttemptId != null) {
@@ -112,8 +220,15 @@ class AssessmentIntroScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: _NetflixPalette.red,
+            content: Text(
+              e.toString(),
+              style: _DS.body(color: _DS.white),
+            ),
+            backgroundColor: _DS.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_DS.radiusCard),
+            ),
           ),
         );
       }
@@ -129,6 +244,9 @@ class AssessmentIntroScreen extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Detail View — StatefulWidget TIDAK DIUBAH, hanya desain
+// ─────────────────────────────────────────────────────────────────────────────
 class _AssessmentDetailView extends ConsumerStatefulWidget {
   final int lessonId;
   final String? thumbnailUrl;
@@ -216,7 +334,8 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: _NetflixPalette.red,
+      color: _DS.red,
+      backgroundColor: _DS.surfaceRaised,
       onRefresh: () async {
         ref.invalidate(assessmentIntroProvider(widget.lessonId));
         await ref.read(assessmentIntroProvider(widget.lessonId).future);
@@ -234,47 +353,50 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
                 child: SlideTransition(
                   position: _slide,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+                    padding: const EdgeInsets.fromLTRB(
+                      _DS.sp24, _DS.sp20, _DS.sp24, _DS.sp40,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── Lesson label (eyebrow)
                         _LessonTag(label: widget.lessonTitle),
-                        const SizedBox(height: 10),
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'Montserrat',
-                            height: 1.15,
-                          ),
-                        ),
+                        const SizedBox(height: _DS.sp10),
+
+                        // ── Assessment Title
+                        Text(widget.title, style: _DS.title()),
+                        const SizedBox(height: _DS.sp16),
+
+                        // ── Divider tipis
+                        const _ThinDivider(),
+                        const SizedBox(height: _DS.sp16),
+
+                        // ── Description
                         if (widget.description != null) ...[
-                          const SizedBox(height: 10),
                           Text(
                             widget.description!,
-                            style: const TextStyle(
-                              color: _NetflixPalette.grey,
-                              fontSize: 14,
-                              fontFamily: 'Montserrat',
-                              height: 1.6,
-                            ),
+                            style: _DS.body(),
                           ),
+                          const SizedBox(height: _DS.sp20),
                         ],
-                        const SizedBox(height: 18),
+
+                        // ── Meta info (duration, back nav)
                         _MetaRow(
                           durationMinutes: widget.durationMinutes,
                           allowBackNavigation: widget.allowBackNavigation,
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: _DS.sp28),
+
+                        // ── Eligibility / Progress
                         _EligibilitySection(
                           isUnlocked: widget.isUnlocked,
                           requiresWatchProgress: widget.requiresWatchProgress,
                           progressLabel: widget.watchProgressLabel,
                           progressFraction: widget.progressFraction,
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: _DS.sp32),
+
+                        // ── CTA Button
                         _StartButton(
                           isUnlocked: widget.isUnlocked,
                           label: widget.startLabel,
@@ -287,6 +409,8 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
               ),
             ],
           ),
+
+          // ── Floating Top Bar
           _TopBar(opacity: _appBarOpacity, onBack: widget.onBack),
         ],
       ),
@@ -294,6 +418,9 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hero — logika TIDAK DIUBAH
+// ─────────────────────────────────────────────────────────────────────────────
 class _Hero extends StatelessWidget {
   final String? thumbnailUrl;
 
@@ -301,12 +428,29 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Selalu kecil — cukup buat ruang status bar + back button.
-    // Thumbnail gak dipakai lagi sebagai hero besar.
     return SizedBox(height: MediaQuery.paddingOf(context).top + 46);
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Thin Divider — komponen baru sesuai design system
+// ─────────────────────────────────────────────────────────────────────────────
+class _ThinDivider extends StatelessWidget {
+  const _ThinDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      width: double.infinity,
+      color: _DS.divider,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lesson Tag / Eyebrow — warna merah, uppercase, letter-spacing
+// ─────────────────────────────────────────────────────────────────────────────
 class _LessonTag extends StatelessWidget {
   final String label;
 
@@ -314,21 +458,35 @@ class _LessonTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: _NetflixPalette.red,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        fontFamily: 'Montserrat',
-        letterSpacing: 1.4,
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Netflix "N" merah kecil sebagai eyebrow marker
+        Container(
+          width: 3,
+          height: 14,
+          decoration: BoxDecoration(
+            color: _DS.red,
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+        const SizedBox(width: _DS.sp8),
+        Flexible(
+          child: Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _DS.labelSmall(color: _DS.red),
+          ),
+        ),
+      ],
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Meta Row — durasi & navigasi info
+// ─────────────────────────────────────────────────────────────────────────────
 class _MetaRow extends StatelessWidget {
   final int? durationMinutes;
   final bool allowBackNavigation;
@@ -343,10 +501,16 @@ class _MetaRow extends StatelessWidget {
     final items = <Widget>[];
 
     if (durationMinutes != null) {
-      items.add(_item(Icons.timer_outlined, '$durationMinutes min'));
+      items.add(_MetaBadge(
+        icon: Icons.timer_outlined,
+        label: '$durationMinutes min',
+      ));
     }
     if (allowBackNavigation) {
-      items.add(_item(Icons.undo_outlined, 'Back allowed'));
+      items.add(_MetaBadge(
+        icon: Icons.undo_outlined,
+        label: 'Back allowed',
+      ));
     }
 
     if (items.isEmpty) return const SizedBox.shrink();
@@ -355,12 +519,11 @@ class _MetaRow extends StatelessWidget {
     for (var i = 0; i < items.length; i++) {
       if (i != 0) {
         children.add(
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _DS.sp8),
             child: Text(
               '•',
-              style:
-              TextStyle(color: _NetflixPalette.greyMuted, fontSize: 12),
+              style: _DS.caption(color: _DS.textMuted),
             ),
           ),
         );
@@ -370,27 +533,42 @@ class _MetaRow extends StatelessWidget {
 
     return Row(children: children);
   }
+}
 
-  Widget _item(IconData icon, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: _NetflixPalette.grey),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: _NetflixPalette.grey,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Montserrat',
-          ),
-        ),
-      ],
+/// Badge meta kecil dengan ikon + teks — mirip maturity rating badge di DS
+class _MetaBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MetaBadge({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _DS.sp8,
+        vertical: _DS.sp4,
+      ),
+      decoration: BoxDecoration(
+        border: Border.all(color: _DS.divider),
+        borderRadius: BorderRadius.circular(_DS.radiusBadge),
+        color: _DS.surfaceRaised,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: _DS.textSecondary),
+          const SizedBox(width: _DS.sp6),
+          Text(label, style: _DS.caption(color: _DS.textSecondary)),
+        ],
+      ),
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Eligibility Section — progress bar + status
+// ─────────────────────────────────────────────────────────────────────────────
 class _EligibilitySection extends StatelessWidget {
   final bool isUnlocked;
   final bool requiresWatchProgress;
@@ -406,70 +584,140 @@ class _EligibilitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = (progressLabel == null || progressLabel!.isEmpty)
-        ? '0'
-        : progressLabel!;
-    if (!requiresWatchProgress) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Container(
+      padding: const EdgeInsets.all(_DS.sp16),
+      decoration: BoxDecoration(
+        color: _DS.surface,
+        borderRadius: BorderRadius.circular(_DS.radiusCard),
+        border: Border.all(
+          color: isUnlocked
+              ? _DS.red.withOpacity(0.35)
+              : _DS.divider,
+        ),
+      ),
+      child: requiresWatchProgress
+          ? _ProgressBody(
+        isUnlocked: isUnlocked,
+        progressLabel: progressLabel,
+        progressFraction: progressFraction,
+      )
+          : _SimpleUnlockBody(isUnlocked: isUnlocked),
+    );
+  }
+}
+
+class _SimpleUnlockBody extends StatelessWidget {
+  final bool isUnlocked;
+
+  const _SimpleUnlockBody({required this.isUnlocked});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(_DS.sp8),
+          decoration: BoxDecoration(
+            color: isUnlocked
+                ? _DS.red.withOpacity(0.12)
+                : _DS.surfaceRaised,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isUnlocked ? Icons.check_circle_outline : Icons.lock_outline,
+            color: isUnlocked ? _DS.red : _DS.textMuted,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: _DS.sp12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                isUnlocked ? Icons.check_circle : Icons.lock_outline,
-                color:
-                    isUnlocked ? _NetflixPalette.red : _NetflixPalette.greyMuted,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
               Text(
-                isUnlocked ? 'Assessment unlocked' : 'Assessment locked',
-                style: TextStyle(
-                  color: isUnlocked ? Colors.white : _NetflixPalette.grey,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Montserrat',
+                isUnlocked ? 'Assessment Unlocked' : 'Assessment Locked',
+                style: _DS.label(
+                  color: isUnlocked ? _DS.textPrimary : _DS.textSecondary,
                 ),
+              ),
+              const SizedBox(height: _DS.sp4),
+              Text(
+                'This assessment is unlocked without video progress.',
+                style: _DS.caption(),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'This assessment is unlocked without video progress.',
-            style: TextStyle(
-              color: _NetflixPalette.greyMuted,
-              fontSize: 11,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
+  }
+}
+
+class _ProgressBody extends StatelessWidget {
+  final bool isUnlocked;
+  final String? progressLabel;
+  final double progressFraction;
+
+  const _ProgressBody({
+    required this.isUnlocked,
+    required this.progressLabel,
+    required this.progressFraction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = (progressLabel == null || progressLabel!.isEmpty)
+        ? '0'
+        : progressLabel!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Status row
         Row(
           children: [
-            Icon(
-              isUnlocked ? Icons.check_circle : Icons.lock_outline,
-              color:
-              isUnlocked ? _NetflixPalette.red : _NetflixPalette.greyMuted,
-              size: 16,
+            Container(
+              padding: const EdgeInsets.all(_DS.sp6),
+              decoration: BoxDecoration(
+                color: isUnlocked
+                    ? _DS.red.withOpacity(0.12)
+                    : _DS.surfaceRaised,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isUnlocked ? Icons.check_circle_outline : Icons.lock_outline,
+                color: isUnlocked ? _DS.red : _DS.textMuted,
+                size: 16,
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: _DS.sp10),
             Text(
-              isUnlocked ? 'Assessment unlocked' : 'Assessment locked',
-              style: TextStyle(
-                color: isUnlocked ? Colors.white : _NetflixPalette.grey,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Montserrat',
+              isUnlocked ? 'Assessment Unlocked' : 'Assessment Locked',
+              style: _DS.label(
+                color: isUnlocked ? _DS.textPrimary : _DS.textSecondary,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: _DS.sp16),
+
+        // Progress label row — persis seperti video progress bar di DS
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Watch Progress', style: _DS.caption()),
+            Text(
+              '$label% / 95%',
+              style: _DS.caption(
+                color: isUnlocked ? _DS.red : _DS.textMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: _DS.sp8),
+
+        // Progress bar — identik dengan Video Progress Indicator di design system
         ClipRRect(
           borderRadius: BorderRadius.circular(3),
           child: SizedBox(
@@ -477,7 +725,9 @@ class _EligibilitySection extends StatelessWidget {
             height: 4,
             child: Stack(
               children: [
-                Container(color: _NetflixPalette.surfaceRaised),
+                // Track
+                Container(color: _DS.surfaceRaised),
+                // Fill — animasi TweenAnimationBuilder TIDAK DIUBAH
                 TweenAnimationBuilder<double>(
                   tween: Tween<double>(begin: 0, end: progressFraction),
                   duration: const Duration(milliseconds: 900),
@@ -486,7 +736,7 @@ class _EligibilitySection extends StatelessWidget {
                     return FractionallySizedBox(
                       alignment: Alignment.centerLeft,
                       widthFactor: value,
-                      child: Container(color: _NetflixPalette.red),
+                      child: Container(color: _DS.red),
                     );
                   },
                 ),
@@ -494,20 +744,24 @@ class _EligibilitySection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Video progress: $progressLabel%  •  Required: 95%',
-          style: const TextStyle(
-            color: _NetflixPalette.greyMuted,
-            fontSize: 11,
-            fontFamily: 'Montserrat',
+        const SizedBox(height: _DS.sp10),
+
+        // Hint text
+        if (!isUnlocked)
+          Text(
+            'Watch at least 95% of the video to unlock this assessment.',
+            style: _DS.caption(),
           ),
-        ),
       ],
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Start Button — mengikuti action button design system
+// Unlocked  : background putih, teks hitam (Play button style)
+// Locked    : background surfaceRaised, teks muted (disabled state)
+// ─────────────────────────────────────────────────────────────────────────────
 class _StartButton extends StatefulWidget {
   final bool isUnlocked;
   final String label;
@@ -535,49 +789,68 @@ class _StartButtonState extends State<_StartButton> {
   Widget build(BuildContext context) {
     final unlocked = widget.isUnlocked;
 
-    return GestureDetector(
-      onTapDown: (_) => _setPressed(true),
-      onTapCancel: () => _setPressed(false),
-      onTapUp: (_) => _setPressed(false),
-      onTap: unlocked ? widget.onTap : null,
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        child: Container(
-          width: double.infinity,
-          height: 52,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: unlocked ? Colors.white : _NetflixPalette.surfaceRaised,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                unlocked ? Icons.play_arrow : Icons.lock_outline,
-                color: unlocked ? Colors.black : _NetflixPalette.greyMuted,
-                size: 22,
+    return Column(
+      children: [
+        GestureDetector(
+          onTapDown: (_) => _setPressed(true),
+          onTapCancel: () => _setPressed(false),
+          onTapUp: (_) => _setPressed(false),
+          onTap: unlocked ? widget.onTap : null,
+          child: AnimatedScale(
+            scale: _pressed ? 0.97 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              width: double.infinity,
+              height: 52,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                // Unlocked: putih (Play button style dari DS)
+                // Locked: abu-abu gelap (disabled style)
+                color: unlocked
+                    ? (_pressed ? const Color(0xFFE0E0E0) : _DS.white)
+                    : _DS.surfaceRaised,
+                borderRadius: BorderRadius.circular(_DS.radiusButton),
               ),
-              const SizedBox(width: 8),
-              Text(
-                unlocked ? widget.label : 'Watch more to unlock',
-                style: TextStyle(
-                  color: unlocked ? Colors.black : _NetflixPalette.greyMuted,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    unlocked ? Icons.play_arrow : Icons.lock_outline,
+                    color: unlocked ? Colors.black : _DS.textMuted,
+                    size: 22,
+                  ),
+                  const SizedBox(width: _DS.sp8),
+                  Text(
+                    unlocked ? widget.label : 'Watch more to unlock',
+                    style: _DS.buttonLabel(
+                      color: unlocked ? Colors.black : _DS.textMuted,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+
+        // Sub-label di bawah tombol saat unlocked — pola dari DS Sign In
+        if (unlocked) ...[
+          const SizedBox(height: _DS.sp12),
+          Text(
+            'You can review questions before submitting.',
+            style: _DS.caption(),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Top Bar — fade-in background saat scroll
+// ─────────────────────────────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
   final double opacity;
   final VoidCallback onBack;
@@ -592,40 +865,26 @@ class _TopBar extends StatelessWidget {
       right: 0,
       child: SafeArea(
         bottom: false,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
           height: 56,
-          color: _NetflixPalette.background.withOpacity(opacity),
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          color: _DS.background.withOpacity(opacity),
+          padding: const EdgeInsets.symmetric(horizontal: _DS.sp4),
           child: Row(
             children: [
-              IconButton(
-                onPressed: onBack,
-                icon: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3 * (1 - opacity)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.arrow_back,
-                      color: Colors.white, size: 20),
-                ),
-              ),
+              // Back button — lingkaran semi-transparan (mengikuti DS top bar)
+              _BackButton(opacity: opacity, onBack: onBack),
+
+              // Title muncul saat scroll (fade-in)
               Expanded(
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 150),
                   opacity: opacity,
-                  child: const Text(
-                    'Assessment',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
+                  child: Text('Assessment', style: _DS.navTitle()),
                 ),
               ),
-              const SizedBox(width: 48),
+
+              const SizedBox(width: _DS.sp48),
             ],
           ),
         ),
@@ -634,6 +893,37 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+class _BackButton extends StatelessWidget {
+  final double opacity;
+  final VoidCallback onBack;
+
+  const _BackButton({required this.opacity, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onBack,
+      icon: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(_DS.sp6),
+        decoration: BoxDecoration(
+          // Lingkaran hitam semi-transparan saat di atas hero (seperti DS back button)
+          color: Colors.black.withOpacity(0.45 * (1 - opacity)),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.15 * (1 - opacity)),
+            width: 1,
+          ),
+        ),
+        child: const Icon(Icons.arrow_back, color: _DS.white, size: 18),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Skeleton Loading — logo animasi pulsing (TIDAK DIUBAH)
+// ─────────────────────────────────────────────────────────────────────────────
 class _IntroSkeleton extends StatefulWidget {
   const _IntroSkeleton();
 
@@ -664,26 +954,6 @@ class _IntroSkeletonState extends State<_IntroSkeleton>
     super.dispose();
   }
 
-  Widget _block({
-    double? width,
-    required double height,
-    BorderRadius? radius,
-  }) {
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, _) {
-        return Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: _NetflixPalette.surfaceRaised.withOpacity(_pulse.value),
-            borderRadius: radius ?? BorderRadius.circular(4),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -697,7 +967,7 @@ class _IntroSkeletonState extends State<_IntroSkeleton>
             errorBuilder: (_, __, ___) {
               return const Icon(
                 Icons.image_outlined,
-                color: _NetflixPalette.greyMuted,
+                color: _DS.textMuted,
                 size: 56,
               );
             },
@@ -708,6 +978,10 @@ class _IntroSkeletonState extends State<_IntroSkeleton>
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Error State — card terpusat dengan dua tombol (Back & Retry)
+// Mengikuti pola error state dari design system
+// ─────────────────────────────────────────────────────────────────────────────
 class _IntroError extends StatelessWidget {
   final String message;
   final VoidCallback onBack;
@@ -723,82 +997,61 @@ class _IntroError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(_DS.sp32),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Error icon container
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: _NetflixPalette.surface,
+                padding: const EdgeInsets.all(_DS.sp20),
+                decoration: BoxDecoration(
+                  color: _DS.surface,
                   shape: BoxShape.circle,
+                  border: Border.all(color: _DS.divider),
                 ),
                 child: const Icon(
                   Icons.error_outline,
-                  color: _NetflixPalette.grey,
-                  size: 40,
+                  color: _DS.textSecondary,
+                  size: 36,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: _DS.sp20),
+
+              // Error title
               Text(
-                message,
-                style: const TextStyle(
-                  color: _NetflixPalette.grey,
-                  fontSize: 14,
-                  fontFamily: 'Montserrat',
-                  height: 1.5,
-                ),
+                'Something went wrong',
+                style: _DS.label(color: _DS.textPrimary),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 28),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12,
-                runSpacing: 12,
+              const SizedBox(height: _DS.sp8),
+
+              // Error message
+              Text(
+                message,
+                style: _DS.body(),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: _DS.sp32),
+
+              // Buttons — mengikuti pola Sign In page di design system
+              // Back: sekunder (border outline)
+              // Retry: primer (merah)
+              Row(
                 children: [
-                  OutlinedButton(
-                    onPressed: onBack,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: _NetflixPalette.divider),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    child: const Text(
-                      'Back',
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Expanded(
+                    child: _OutlineButton(
+                      label: 'Back',
+                      onPressed: onBack,
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: onRetry,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _NetflixPalette.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    child: const Text(
-                      'Retry',
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w600,
-                      ),
+                  const SizedBox(width: _DS.sp12),
+                  Expanded(
+                    child: _PrimaryButton(
+                      label: 'Retry',
+                      onPressed: onRetry,
                     ),
                   ),
                 ],
@@ -806,6 +1059,68 @@ class _IntroError extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Tombol outline sekunder — "Use a Sign-In Code" style dari design system
+class _OutlineButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const _OutlineButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _DS.textPrimary,
+        side: const BorderSide(color: _DS.divider),
+        backgroundColor: _DS.surfaceRaised,
+        padding: const EdgeInsets.symmetric(
+          horizontal: _DS.sp20,
+          vertical: _DS.sp16,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_DS.radiusButton),
+        ),
+      ),
+      child: Text(
+        label,
+        style: _DS.buttonLabel(color: _DS.textPrimary),
+      ),
+    );
+  }
+}
+
+/// Tombol primer merah — "Sign In" style dari design system
+class _PrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const _PrimaryButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _DS.red,
+        foregroundColor: _DS.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(
+          horizontal: _DS.sp20,
+          vertical: _DS.sp16,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_DS.radiusButton),
+        ),
+      ),
+      child: Text(
+        label,
+        style: _DS.buttonLabel(color: _DS.white),
       ),
     );
   }

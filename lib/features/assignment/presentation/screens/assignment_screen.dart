@@ -8,6 +8,33 @@ import '../../../../core/theme/app_theme.dart';
 import '../../data/models/assignment_model.dart';
 import '../providers/assignment_provider.dart';
 
+// ─── Design tokens (sesuai DESIGN_SYSTEM.md) ─────────────────────────────────
+// bg utama   : #060908
+// bg card    : #120F0E
+// bg layer   : #141110  (header, divider area)
+// overlay    : #161210  (hover card)
+// primary    : #DB202C
+// success    : #00B14F
+// white      : #FFFFFF
+// text sec   : rgba(255,255,255,0.65)
+// text muted : rgba(255,255,255,0.45)
+// border     : rgba(255,255,255,0.10)
+
+class _DS {
+  static const bgPage    = Color(0xFF060908);
+  static const bgCard    = Color(0xFF120F0E);
+  static const bgHeader  = Color(0xFF141110);
+  static const bgOverlay = Color(0xFF161210);
+  static const primary   = Color(0xFFDB202C);
+  static const success   = Color(0xFF00B14F);
+  static const white     = Color(0xFFFFFFFF);
+  static const textSec   = Color(0xFFA6A6A6);   // ~rgba(255,255,255,0.65)
+  static const textMuted = Color(0xFF737373);   // ~rgba(255,255,255,0.45)
+  static const border    = Color(0xFF1A1A1A);   // ~rgba(255,255,255,0.10)
+
+  static const fontFamily = 'Montserrat';
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 class AssignmentScreen extends ConsumerStatefulWidget {
@@ -29,7 +56,7 @@ class _AssignmentScreenState extends ConsumerState<AssignmentScreen> {
     ref.watch(assignmentDetailProvider(widget.assignmentId));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _DS.bgPage,
       body: assignmentAsync.when(
         loading: () => const _AssignmentSkeleton(),
         error: (e, _) => _AssignmentError(
@@ -131,9 +158,9 @@ class _AssignmentContentState extends State<_AssignmentContent>
         position: _slide,
         child: CustomScrollView(
           slivers: [
-            // ── SliverAppBar ──
+            // ── SliverAppBar ──────────────────────────────────────────
             SliverAppBar(
-              backgroundColor: AppColors.background,
+              backgroundColor: _DS.bgHeader,
               floating: true,
               snap: true,
               elevation: 0,
@@ -141,34 +168,30 @@ class _AssignmentContentState extends State<_AssignmentContent>
                 icon: Icons.arrow_back_ios_new_rounded,
                 onTap: () => Navigator.of(context).pop(),
               ),
-              title: Column(
-                children: const [
-                  Text(
-                    'ASSIGNMENT',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
-                      letterSpacing: 2.5,
-                    ),
-                  ),
-                ],
+              title: const Text(
+                'ASSIGNMENT',
+                style: TextStyle(
+                  color: _DS.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: _DS.fontFamily,
+                  letterSpacing: 3,
+                ),
               ),
               centerTitle: true,
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(0.5),
                 child: Container(
                   height: 0.5,
-                  color: const Color(0xFF2A2A2A),
+                  color: _DS.border,
                 ),
               ),
             ),
 
-            // ── Body ──
+            // ── Body ──────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 60),
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 60),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -177,32 +200,29 @@ class _AssignmentContentState extends State<_AssignmentContent>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Eyebrow
                           _EyebrowLabel(
                               label: a.module.title?.toUpperCase() ?? 'MODULE'),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
 
-                          // Title
                           Text(
                             a.title,
                             style: const TextStyle(
-                              color: AppColors.textPrimary,
+                              color: _DS.white,
                               fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              fontFamily: _DS.fontFamily,
                               height: 1.25,
-                              letterSpacing: -0.5,
+                              letterSpacing: -0.3,
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 12),
 
-                          // Description
                           Text(
                             a.description ?? 'No description available.',
                             style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                              fontFamily: 'Montserrat',
+                              color: _DS.textSec,
+                              fontSize: 14,
+                              fontFamily: _DS.fontFamily,
                               height: 1.65,
                             ),
                           ),
@@ -211,19 +231,16 @@ class _AssignmentContentState extends State<_AssignmentContent>
                           const _Divider(),
                           const SizedBox(height: 16),
 
-                          // Meta rows
                           _MetaRow(label: 'Status', value: a.status ?? '-'),
                           if (a.uploadConstraints != null)
                             _MetaRow(
                               label: 'Max file size',
-                              value:
-                              a.uploadConstraints!.videoMaxSizeLabel,
+                              value: a.uploadConstraints!.videoMaxSizeLabel,
                             ),
                           if (a.uploadConstraints != null)
                             _MetaRow(
                               label: 'Accepted formats',
-                              value: (a.uploadConstraints!
-                                  .acceptedExtensions ??
+                              value: (a.uploadConstraints!.acceptedExtensions ??
                                   ['mp4', 'mov', 'webm'])
                                   .join(', ')
                                   .toUpperCase(),
@@ -232,7 +249,7 @@ class _AssignmentContentState extends State<_AssignmentContent>
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // ── Submission card ──
                     if (a.submission != null)
@@ -240,7 +257,7 @@ class _AssignmentContentState extends State<_AssignmentContent>
 
                     // ── Error message ──
                     if (widget.submitError != null) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       _ErrorBanner(message: widget.submitError!),
                     ],
 
@@ -253,16 +270,16 @@ class _AssignmentContentState extends State<_AssignmentContent>
                       hasSubmission: a.submission != null,
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
-                    // Small hint
                     Center(
                       child: Text(
                         'Your video will be reviewed by the instructor',
                         style: TextStyle(
-                          color: AppColors.textMuted.withOpacity(0.6),
+                          color: _DS.textMuted.withOpacity(0.7),
                           fontSize: 11,
-                          fontFamily: 'Montserrat',
+                          fontFamily: _DS.fontFamily,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ),
@@ -284,21 +301,19 @@ class _SubmissionCard extends StatelessWidget {
 
   const _SubmissionCard({required this.submission});
 
-
-
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
       case 'passed':
-        return const Color(0xFF2ECC71);
+        return _DS.success;
       case 'rejected':
       case 'failed':
-        return AppColors.primary;
+        return _DS.primary;
       case 'pending':
       case 'in_review':
-        return const Color(0xFFF39C12);
+        return const Color(0xFFDF6739); // warm orange dari design system
       default:
-        return AppColors.textMuted;
+        return _DS.textMuted;
     }
   }
 
@@ -319,10 +334,10 @@ class _SubmissionCard extends StatelessWidget {
                     const Text(
                       'LATEST SUBMISSION',
                       style: TextStyle(
-                        color: AppColors.textMuted,
+                        color: _DS.textMuted,
                         fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
+                        fontFamily: _DS.fontFamily,
                         letterSpacing: 2,
                       ),
                     ),
@@ -330,10 +345,10 @@ class _SubmissionCard extends StatelessWidget {
                     const Text(
                       'Review Status',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: _DS.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                       ),
                     ),
                   ],
@@ -342,11 +357,12 @@ class _SubmissionCard extends StatelessWidget {
               // Status pill
               Container(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: color.withOpacity(0.4), width: 1),
+                  color: color.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(2),
+                  border:
+                  Border.all(color: color.withOpacity(0.35), width: 1),
                 ),
                 child: Text(
                   submission.status.replaceAll('_', ' ').toUpperCase(),
@@ -354,7 +370,7 @@ class _SubmissionCard extends StatelessWidget {
                     color: color,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
+                    fontFamily: _DS.fontFamily,
                     letterSpacing: 1.2,
                   ),
                 ),
@@ -371,35 +387,35 @@ class _SubmissionCard extends StatelessWidget {
 
           if (submission.feedback != null && submission.feedback!.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Instructor Feedback',
+                    'INSTRUCTOR FEEDBACK',
                     style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11,
-                      fontFamily: 'Montserrat',
-                      letterSpacing: 0.5,
+                      color: _DS.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: _DS.fontFamily,
+                      letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111111),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                          color: const Color(0xFF2A2A2A), width: 1),
+                      color: _DS.bgOverlay,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: _DS.border, width: 1),
                     ),
                     child: Text(
                       submission.feedback!,
                       style: const TextStyle(
-                        color: AppColors.textSecondary,
+                        color: _DS.textSec,
                         fontSize: 13,
-                        fontFamily: 'Montserrat',
+                        fontFamily: _DS.fontFamily,
                         height: 1.6,
                         fontStyle: FontStyle.italic,
                       ),
@@ -472,25 +488,25 @@ class _VideoButtonState extends State<_VideoButton>
         scale: _scaleCtrl,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 13),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFF2A2A2A)),
+            color: const Color(0xFF1A1410), // warm dark sesuai DS
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: _DS.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Icon(Icons.play_circle_outline_rounded,
-                  color: AppColors.textSecondary, size: 18),
-              SizedBox(width: 8),
-              Text(
+                  color: _DS.textSec, size: 18),
+              const SizedBox(width: 8),
+              const Text(
                 'Watch Uploaded Video',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: _DS.textSec,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'Montserrat',
+                  fontFamily: _DS.fontFamily,
                 ),
               ),
             ],
@@ -558,16 +574,19 @@ class _UploadButtonState extends State<_UploadButton>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: double.infinity,
-          height: 54,
+          height: 48, // sesuai DS: Large button ~42px, sedikit lebih tinggi
           decoration: BoxDecoration(
-            color: enabled ? AppColors.primary : const Color(0xFF2A2A2A),
+            // DS: primary #DB202C, disabled pakai rgba(255,255,255,0.2)
+            color: enabled
+                ? _DS.primary
+                : const Color(0xFF1A1A1A),
             borderRadius: BorderRadius.circular(4),
             boxShadow: enabled
                 ? [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+                color: _DS.primary.withOpacity(0.30),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
               ),
             ]
                 : [],
@@ -575,27 +594,27 @@ class _UploadButtonState extends State<_UploadButton>
           child: Center(
             child: widget.submitting
                 ? const SizedBox(
-              width: 22,
-              height: 22,
+              width: 20,
+              height: 20,
               child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2.5),
+                  color: _DS.white, strokeWidth: 2.5),
             )
                 : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.upload_rounded,
-                    color: Colors.white, size: 20),
+                    color: _DS.white, size: 20),
                 const SizedBox(width: 10),
                 Text(
                   widget.hasSubmission
                       ? 'Re-upload Assignment'
                       : 'Upload Assignment Video',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: _DS.white,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 0.2,
+                    fontFamily: _DS.fontFamily,
+                    letterSpacing: 0.3,
                   ),
                 ),
               ],
@@ -618,25 +637,24 @@ class _ErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
-        border:
-        Border.all(color: AppColors.primary.withOpacity(0.3), width: 1),
+        color: _DS.primary.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: _DS.primary.withOpacity(0.30), width: 1),
       ),
       child: Row(
         children: [
           const Icon(Icons.error_outline_rounded,
-              color: AppColors.primary, size: 16),
+              color: _DS.primary, size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                color: AppColors.primary,
+                color: _DS.primary,
                 fontSize: 12,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
                 height: 1.5,
               ),
             ),
@@ -660,9 +678,17 @@ class _SectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: _DS.bgCard,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2A2A2A), width: 1),
+        border: Border.all(color: _DS.border, width: 1),
+        // DS: modal/panel shadow
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: child,
     );
@@ -679,18 +705,18 @@ class _EyebrowLabel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(4),
+        color: _DS.primary.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(2),
         border:
-        Border.all(color: AppColors.primary.withOpacity(0.25), width: 0.5),
+        Border.all(color: _DS.primary.withOpacity(0.25), width: 0.5),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.primary,
+          color: _DS.primary,
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          fontFamily: 'Montserrat',
+          fontFamily: _DS.fontFamily,
           letterSpacing: 1.5,
         ),
       ),
@@ -703,7 +729,7 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(height: 0.5, color: const Color(0xFF2A2A2A));
+    return Container(height: 0.5, color: _DS.border);
   }
 }
 
@@ -725,9 +751,9 @@ class _MetaRow extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: AppColors.textMuted,
+                color: _DS.textMuted,
                 fontSize: 12,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
               ),
             ),
           ),
@@ -738,10 +764,10 @@ class _MetaRow extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: _DS.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
               ),
             ),
           ),
@@ -766,7 +792,7 @@ class _HeaderIconBtn extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Icon(icon, color: AppColors.textPrimary, size: 18),
+          child: Icon(icon, color: _DS.white, size: 18),
         ),
       ),
     );
@@ -803,7 +829,7 @@ class _AssignmentSkeletonState extends State<_AssignmentSkeleton>
     super.dispose();
   }
 
-  Widget _bone(double height, {double? width, double radius = 6}) {
+  Widget _bone(double height, {double? width, double radius = 4}) {
     return AnimatedBuilder(
       animation: _shimAnim,
       builder: (_, __) => Container(
@@ -812,8 +838,8 @@ class _AssignmentSkeletonState extends State<_AssignmentSkeleton>
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(radius),
           color: Color.lerp(
-            const Color(0xFF1E1E1E),
-            const Color(0xFF2A2A2A),
+            _DS.bgCard,
+            const Color(0xFF1E1A18),
             _shimAnim.value,
           ),
         ),
@@ -826,34 +852,33 @@ class _AssignmentSkeletonState extends State<_AssignmentSkeleton>
     return CustomScrollView(
       slivers: [
         const SliverAppBar(
-          backgroundColor: AppColors.background,
+          backgroundColor: _DS.bgHeader,
           floating: true,
           snap: true,
           title: Text(
             'ASSIGNMENT',
             style: TextStyle(
-              color: AppColors.primary,
+              color: _DS.primary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              fontFamily: 'Montserrat',
-              letterSpacing: 2.5,
+              fontFamily: _DS.fontFamily,
+              letterSpacing: 3,
             ),
           ),
           centerTitle: true,
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 32, 20, 40),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
+                    color: _DS.bgCard,
                     borderRadius: BorderRadius.circular(8),
-                    border:
-                    Border.all(color: const Color(0xFF2A2A2A), width: 1),
+                    border: Border.all(color: _DS.border, width: 1),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -874,14 +899,13 @@ class _AssignmentSkeletonState extends State<_AssignmentSkeleton>
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
+                    color: _DS.bgCard,
                     borderRadius: BorderRadius.circular(8),
-                    border:
-                    Border.all(color: const Color(0xFF2A2A2A), width: 1),
+                    border: Border.all(color: _DS.border, width: 1),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -899,7 +923,7 @@ class _AssignmentSkeletonState extends State<_AssignmentSkeleton>
                   ),
                 ),
                 const SizedBox(height: 24),
-                _bone(54, radius: 4),
+                _bone(48, radius: 4),
               ],
             ),
           ),
@@ -934,20 +958,20 @@ class _AssignmentError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(32),
+                color: _DS.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.wifi_off_rounded,
-                  color: AppColors.primary, size: 28),
+                  color: _DS.primary, size: 28),
             ),
             const SizedBox(height: 20),
             const Text(
               'Something went wrong',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: _DS.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
               ),
             ),
             const SizedBox(height: 8),
@@ -955,9 +979,9 @@ class _AssignmentError extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: AppColors.textSecondary,
+                color: _DS.textSec,
                 fontSize: 13,
-                fontFamily: 'Montserrat',
+                fontFamily: _DS.fontFamily,
                 height: 1.5,
               ),
             ),
@@ -968,21 +992,23 @@ class _AssignmentError extends StatelessWidget {
                 OutlinedButton(
                   onPressed: onBack,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: Color(0xFF2A2A2A)),
+                    foregroundColor: _DS.textSec,
+                    side: const BorderSide(color: _DS.border),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4)),
                   ),
                   child: const Text('Go Back',
-                      style: TextStyle(fontFamily: 'Montserrat')),
+                      style: TextStyle(fontFamily: _DS.fontFamily)),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: onRetry,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: _DS.primary,
+                    // DS hover: #F6121D — Flutter pakai overlayColor
+                    overlayColor: const Color(0xFFF6121D),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 28, vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -991,8 +1017,8 @@ class _AssignmentError extends StatelessWidget {
                   child: const Text(
                     'Try Again',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Montserrat',
+                      color: _DS.white,
+                      fontFamily: _DS.fontFamily,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
