@@ -38,23 +38,7 @@ bool _canOpenModule(String status) {
       normalizedStatus != 'hidden';
 }
 
-bool _isLessonModule(ModuleContentType type) {
-  return type == ModuleContentType.lesson ||
-      type == ModuleContentType.videoLecture;
-}
-
-String _moduleTypeLabel(ModuleContentType type) {
-  switch (type) {
-    case ModuleContentType.ebook:
-      return 'Ebook';
-    case ModuleContentType.certificate:
-      return 'Certificate';
-    case ModuleContentType.videoLecture:
-      return 'Video Lecture';
-    case ModuleContentType.lesson:
-      return 'Lesson';
-  }
-}
+// (Logika _isLessonModule dan _moduleTypeLabel sudah dihapus karena kita pakai viewTypes dari Backend)
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -375,13 +359,13 @@ class _ModuleCardState extends State<_ModuleCard>
                     // Image
                     module.thumbnailUrl != null
                         ? AuthNetworkImage(
-                            imageUrl: module.thumbnailUrl!,
-                            fit: BoxFit.cover,
-                            placeholderBuilder: (_) =>
-                                _ThumbnailPlaceholder(title: module.title),
-                            errorBuilderWidget: (_, __) =>
-                                _ThumbnailPlaceholder(title: module.title),
-                          )
+                      imageUrl: module.thumbnailUrl!,
+                      fit: BoxFit.cover,
+                      placeholderBuilder: (_) =>
+                          _ThumbnailPlaceholder(title: module.title),
+                      errorBuilderWidget: (_, __) =>
+                          _ThumbnailPlaceholder(title: module.title),
+                    )
                         : _ThumbnailPlaceholder(title: module.title),
 
                     // Bottom gradient
@@ -496,34 +480,37 @@ class _ModuleCardState extends State<_ModuleCard>
 
                     const SizedBox(height: 12),
 
-                    // Meta row
-                    Row(
+                    // Meta row (Menggunakan ViewTypes dari Backend)
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
-                        _MetaChip(
-                          icon: module.moduleType == ModuleContentType.certificate
-                              ? Icons.workspace_premium_outlined
-                              : module.moduleType == ModuleContentType.ebook
-                                  ? Icons.menu_book_outlined
-                                  : Icons.play_circle_outline,
-                          label: _moduleTypeLabel(module.moduleType),
-                          accent:
-                              module.moduleType == ModuleContentType.certificate,
-                        ),
-                        if (_isLessonModule(module.moduleType)) ...[
-                          const SizedBox(width: 12),
+                        if (module.viewTypes.contains('certificate'))
+                          const _MetaChip(
+                            icon: Icons.workspace_premium_outlined,
+                            label: 'Certificate',
+                            accent: true,
+                          ),
+                        if (module.viewTypes.contains('ebook'))
+                          const _MetaChip(
+                            icon: Icons.menu_book_outlined,
+                            label: 'Ebook',
+                          ),
+                        if (module.viewTypes.contains('video_lecturer'))
+                          const _MetaChip(
+                            icon: Icons.play_circle_fill,
+                            label: 'Video Lecturer',
+                          ),
+                        if (module.viewTypes.contains('lesson'))
                           _MetaChip(
                             icon: Icons.play_circle_outline,
                             label: '${module.lessonCount} lessons',
                           ),
-                        ],
-                        if (_isLessonModule(module.moduleType) &&
-                            module.assignmentsCount > 0) ...[
-                          const SizedBox(width: 12),
+                        if (module.viewTypes.contains('assignment'))
                           _MetaChip(
                             icon: Icons.assignment_outlined,
                             label: '${module.assignmentsCount} assignments',
                           ),
-                        ],
                       ],
                     ),
 
@@ -659,8 +646,10 @@ class _StatusBadge extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'active':
         color = _kNetflixRed;
+        break;
       case 'completed':
         color = _kGreenCheck;
+        break;
       default:
         color = _kTextMuted;
     }
@@ -742,7 +731,7 @@ class _ModuleListSkeletonState extends State<_ModuleListSkeleton>
               const SizedBox(height: 20),
               ...List.generate(
                 3,
-                (_) => Padding(
+                    (_) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

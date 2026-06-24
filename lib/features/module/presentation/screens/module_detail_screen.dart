@@ -30,10 +30,27 @@ void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
         context.push('/lessons/${firstLesson.id}');
       }
     } else if (module.viewTypes.contains('video_lecturer')) {
-      // Ambil video pertama yang siap
-      final firstVideo = module.videoLecturers.where((v) => v.status == 'ready').firstOrNull;
-      if (firstVideo != null) {
-        context.push('/courses/${firstVideo.slug}');
+      final videos = module.videoLecturers;
+      final firstVideoIndex = videos.indexWhere((v) => v.status == 'ready');
+
+      if (firstVideoIndex != -1) {
+        final firstVideo = videos[firstVideoIndex];
+        final hasNextVideo = firstVideoIndex < videos.length - 1;
+        final nextVideo = hasNextVideo ? videos[firstVideoIndex + 1] : null;
+
+        context.pushNamed(
+          'videoLecturer',
+          pathParameters: {
+            'videoId': firstVideo.id.toString(),
+          },
+          queryParameters: {
+            'title': firstVideo.title,
+            'url': firstVideo.hlsUrl ?? '',
+            if (hasNextVideo && nextVideo != null) 'nextVideoId': nextVideo.id.toString(),
+            if (hasNextVideo && nextVideo != null) 'nextVideoTitle': nextVideo.title,
+            if (hasNextVideo && nextVideo != null) 'nextVideoUrl': nextVideo.hlsUrl ?? '',
+          },
+        );
       }
     }
   } else if (kind == 'download') {
@@ -120,7 +137,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
 
     _itemCtrlList = List.generate(
       itemCount,
-      (i) => AnimationController(
+          (i) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 400),
       ),
@@ -132,9 +149,9 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
 
     _itemSlides = _itemCtrlList
         .map((c) => Tween<Offset>(
-              begin: const Offset(0, 0.08),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
 
     for (int i = 0; i < itemCount; i++) {
@@ -166,7 +183,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   Widget build(BuildContext context) {
     final module = widget.module;
     final assignments = _parseAssignments(module.assignments);
-    
+
     // Reset counter saat build ulang
     _animIndex = 0;
 
@@ -273,11 +290,11 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
       _buildAnimated(_SectionHeader(title: 'Lessons', count: module.lessons.length)),
       const SizedBox(height: 12),
       ...module.lessons.asMap().entries.map((entry) => _buildAnimated(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _LessonRow(lesson: entry.value, index: entry.key),
-            ),
-          )),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _LessonRow(lesson: entry.value, index: entry.key),
+        ),
+      )),
       const SizedBox(height: 16),
     ];
   }
@@ -288,11 +305,11 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
       _buildAnimated(_SectionHeader(title: 'Ebooks', count: module.ebooks.length)),
       const SizedBox(height: 12),
       ...module.ebooks.asMap().entries.map((entry) => _buildAnimated(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _EbookRow(ebook: entry.value, index: entry.key),
-            ),
-          )),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _EbookRow(ebook: entry.value, index: entry.key),
+        ),
+      )),
       const SizedBox(height: 16),
     ];
   }
@@ -303,11 +320,11 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
       _buildAnimated(_SectionHeader(title: 'Certificates', count: module.certificates.length)),
       const SizedBox(height: 12),
       ...module.certificates.asMap().entries.map((entry) => _buildAnimated(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _CertificateRow(certificate: entry.value, index: entry.key),
-            ),
-          )),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _CertificateRow(certificate: entry.value, index: entry.key),
+        ),
+      )),
       const SizedBox(height: 16),
     ];
   }
@@ -318,11 +335,11 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
       _buildAnimated(_SectionHeader(title: 'Assignments', count: assignments.length)),
       const SizedBox(height: 12),
       ...assignments.asMap().entries.map((entry) => _buildAnimated(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _AssignmentRow(assignment: entry.value, index: entry.key),
-            ),
-          )),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _AssignmentRow(assignment: entry.value, index: entry.key),
+        ),
+      )),
       const SizedBox(height: 16),
     ];
   }
@@ -332,12 +349,22 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
     return [
       _buildAnimated(_SectionHeader(title: 'Video Lecturer', count: module.videoLecturers.length)),
       const SizedBox(height: 12),
-      ...module.videoLecturers.asMap().entries.map((entry) => _buildAnimated(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _VideoLecturerRow(video: entry.value, index: entry.key),
+      ...module.videoLecturers.asMap().entries.map((entry) {
+        // Cek dan ambil data video selanjutnya
+        final isLast = entry.key == module.videoLecturers.length - 1;
+        final nextVideo = !isLast ? module.videoLecturers[entry.key + 1] : null;
+
+        return _buildAnimated(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _VideoLecturerRow(
+                video: entry.value,
+                nextVideo: nextVideo, // Kirim nextVideo ke dalam row
+                index: entry.key
             ),
-          )),
+          ),
+        );
+      }),
       const SizedBox(height: 16),
     ];
   }
@@ -363,42 +390,42 @@ class _HeroBanner extends StatelessWidget {
         // Thumbnail
         module.thumbnailUrl != null
             ? AuthNetworkImage(
-                imageUrl: module.thumbnailUrl!,
-                fit: BoxFit.cover,
-                placeholderBuilder: (_) => Container(
-                  color: _kSurfaceElevated,
-                  child: const Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: _kTextMuted,
-                      ),
-                    ),
-                  ),
-                ),
-                errorBuilderWidget: (_, __) => Container(
-                  color: _kSurfaceElevated,
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: _kTextMuted,
-                      size: 32,
-                    ),
-                  ),
-                ),
-              )
-            : Container(
-                color: _kSurfaceElevated,
-                child: const Center(
-                  child: Icon(
-                    Icons.image_not_supported_outlined,
-                    color: _kTextMuted,
-                    size: 32,
-                  ),
+          imageUrl: module.thumbnailUrl!,
+          fit: BoxFit.cover,
+          placeholderBuilder: (_) => Container(
+            color: _kSurfaceElevated,
+            child: const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _kTextMuted,
                 ),
               ),
+            ),
+          ),
+          errorBuilderWidget: (_, __) => Container(
+            color: _kSurfaceElevated,
+            child: const Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: _kTextMuted,
+                size: 32,
+              ),
+            ),
+          ),
+        )
+            : Container(
+          color: _kSurfaceElevated,
+          child: const Center(
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              color: _kTextMuted,
+              size: 32,
+            ),
+          ),
+        ),
 
         // Dark vignette
         Container(
@@ -416,7 +443,7 @@ class _HeroBanner extends StatelessWidget {
           ),
         ),
 
-        // Big center button 
+        // Big center button
         if (module.primaryCtaLabel != null)
           Center(
             child: GestureDetector(
@@ -462,7 +489,7 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // Ambil CTA data dari backend (Source of truth)
     final primaryLabel = module.primaryCtaLabel ?? 'Open Module';
-    
+
     IconData ctaIcon = Icons.play_arrow;
     if (module.primaryCtaKind == 'document') ctaIcon = Icons.menu_book_outlined;
     if (module.primaryCtaKind == 'download') ctaIcon = Icons.workspace_premium_outlined;
@@ -505,7 +532,7 @@ class _ActionRow extends StatelessWidget {
             ),
           ),
         ),
-        
+
         if (hasLessons && module.showProgress && !module.isComplete && module.progressPercentage > 0) ...[
           const SizedBox(width: 10),
           Expanded(
@@ -823,9 +850,14 @@ class _SectionHeader extends StatelessWidget {
 
 class _VideoLecturerRow extends StatefulWidget {
   final ModuleVideoLecturerItem video;
+  final ModuleVideoLecturerItem? nextVideo; // Menampung parameter video selanjutnya
   final int index;
 
-  const _VideoLecturerRow({required this.video, required this.index});
+  const _VideoLecturerRow({
+    required this.video,
+    required this.nextVideo,
+    required this.index,
+  });
 
   @override
   State<_VideoLecturerRow> createState() => _VideoLecturerRowState();
@@ -858,10 +890,27 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
   Widget build(BuildContext context) {
     final video = widget.video;
     final isReady = video.status == 'ready';
+    final nextVideo = widget.nextVideo;
 
     return GestureDetector(
-      // Navigasi ke video player dengan route slug course
-      onTap: isReady ? () => context.push('/courses/${video.slug}') : null,
+      // Navigasi ke video player dengan membawa parameter named dan queryParameters
+      onTap: isReady
+          ? () {
+        context.pushNamed(
+          'videoLecturer',
+          pathParameters: {
+            'videoId': video.id.toString(),
+          },
+          queryParameters: {
+            'title': video.title,
+            'url': video.hlsUrl ?? '',
+            if (nextVideo != null) 'nextVideoId': nextVideo.id.toString(),
+            if (nextVideo != null) 'nextVideoTitle': nextVideo.title,
+            if (nextVideo != null) 'nextVideoUrl': nextVideo.hlsUrl ?? '',
+          },
+        );
+      }
+          : null,
       onTapDown: (_) => _pressCtrl.forward(),
       onTapUp: (_) => _pressCtrl.reverse(),
       onTapCancel: () => _pressCtrl.reverse(),
@@ -884,29 +933,29 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
                   height: 52,
                   child: video.thumbnailUrl != null
                       ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            AuthNetworkImage(
-                              imageUrl: video.thumbnailUrl!,
-                              fit: BoxFit.cover,
-                              placeholderBuilder: (_) =>
-                                  _VideoThumbnailFallback(index: widget.index),
-                              errorBuilderWidget: (_, __) =>
-                                  _VideoThumbnailFallback(index: widget.index),
-                            ),
-                            // Mini play overlay
-                            Container(
-                              color: Colors.black.withOpacity(0.25),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.play_arrow,
-                                  color: Colors.white,
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
+                    fit: StackFit.expand,
+                    children: [
+                      AuthNetworkImage(
+                        imageUrl: video.thumbnailUrl!,
+                        fit: BoxFit.cover,
+                        placeholderBuilder: (_) =>
+                            _VideoThumbnailFallback(index: widget.index),
+                        errorBuilderWidget: (_, __) =>
+                            _VideoThumbnailFallback(index: widget.index),
+                      ),
+                      // Mini play overlay
+                      Container(
+                        color: Colors.black.withOpacity(0.25),
+                        child: const Center(
+                          child: Icon(
+                            Icons.play_arrow,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
                       : _VideoThumbnailFallback(index: widget.index),
                 ),
               ),
@@ -1007,17 +1056,17 @@ List<_ModuleAssignmentItem> _parseAssignments(List<dynamic> assignments) {
   return assignments
       .whereType<Map>()
       .map((raw) {
-        final data = Map<String, dynamic>.from(raw);
-        return _ModuleAssignmentItem(
-          id: data['id'] as int? ?? 0,
-          title: (data['title'] ?? data['name'] ?? 'Assignment').toString(),
-          description: data['description']?.toString(),
-          isLocked: data['is_locked'] as bool? ?? false,
-          lockReason: data['lock_reason']?.toString(),
-          status: (data['status'] ?? data['submission_status'] ?? 'available')
-              .toString(),
-        );
-      })
+    final data = Map<String, dynamic>.from(raw);
+    return _ModuleAssignmentItem(
+      id: data['id'] as int? ?? 0,
+      title: (data['title'] ?? data['name'] ?? 'Assignment').toString(),
+      description: data['description']?.toString(),
+      isLocked: data['is_locked'] as bool? ?? false,
+      lockReason: data['lock_reason']?.toString(),
+      status: (data['status'] ?? data['submission_status'] ?? 'available')
+          .toString(),
+    );
+  })
       .where((item) => item.id > 0)
       .toList();
 }
@@ -1317,48 +1366,48 @@ class _LessonRowState extends State<_LessonRow>
                   height: 52,
                   child: lesson.thumbnailUrl != null
                       ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            AuthNetworkImage(
-                              imageUrl: lesson.thumbnailUrl!,
-                              fit: BoxFit.cover,
-                              placeholderBuilder: (_) =>
-                                  _LessonThumbnailFallback(
-                                    index: widget.index,
-                                    isLocked: isLocked,
-                                  ),
-                              errorBuilderWidget: (_, __) =>
-                                  _LessonThumbnailFallback(
-                                    index: widget.index,
-                                    isLocked: isLocked,
-                                  ),
+                    fit: StackFit.expand,
+                    children: [
+                      AuthNetworkImage(
+                        imageUrl: lesson.thumbnailUrl!,
+                        fit: BoxFit.cover,
+                        placeholderBuilder: (_) =>
+                            _LessonThumbnailFallback(
+                              index: widget.index,
+                              isLocked: isLocked,
                             ),
-                            if (isLocked)
-                              Container(
-                                color: Colors.black.withOpacity(0.55),
-                                child: const Icon(
-                                  Icons.lock_outline,
-                                  color: _kTextMuted,
-                                  size: 18,
-                                ),
-                              )
-                            else
-                              Container(
-                                color: Colors.black.withOpacity(0.25),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.play_arrow,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                ),
-                              ),
-                          ],
+                        errorBuilderWidget: (_, __) =>
+                            _LessonThumbnailFallback(
+                              index: widget.index,
+                              isLocked: isLocked,
+                            ),
+                      ),
+                      if (isLocked)
+                        Container(
+                          color: Colors.black.withOpacity(0.55),
+                          child: const Icon(
+                            Icons.lock_outline,
+                            color: _kTextMuted,
+                            size: 18,
+                          ),
                         )
-                      : _LessonThumbnailFallback(
-                          index: widget.index,
-                          isLocked: isLocked,
+                      else
+                        Container(
+                          color: Colors.black.withOpacity(0.25),
+                          child: const Center(
+                            child: Icon(
+                              Icons.play_arrow,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
                         ),
+                    ],
+                  )
+                      : _LessonThumbnailFallback(
+                    index: widget.index,
+                    isLocked: isLocked,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1484,11 +1533,11 @@ class _AssignmentRowState extends State<_AssignmentRow>
       onTap: isLocked
           ? () => _showLockedDialog(context, assignment.lockReason)
           : () => context.pushNamed(
-                'assignment',
-                pathParameters: {
-                  'assignmentId': assignment.id.toString(),
-                },
-              ),
+        'assignment',
+        pathParameters: {
+          'assignmentId': assignment.id.toString(),
+        },
+      ),
       onTapDown: (_) => _pressCtrl.forward(),
       onTapUp: (_) => _pressCtrl.reverse(),
       onTapCancel: () => _pressCtrl.reverse(),
@@ -1647,7 +1696,7 @@ void _showLockedDialog(BuildContext context, String? reason) {
                 onTap: () => Navigator.pop(ctx),
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
                     color: _kNetflixRed,
                     borderRadius: BorderRadius.circular(4),
@@ -1688,14 +1737,14 @@ class _LessonThumbnailFallback extends StatelessWidget {
         child: isLocked
             ? const Icon(Icons.lock_outline, color: _kTextMuted, size: 18)
             : Text(
-                '${index + 1}',
-                style: const TextStyle(
-                  color: _kTextSecondary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
+          '${index + 1}',
+          style: const TextStyle(
+            color: _kTextSecondary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Montserrat',
+          ),
+        ),
       ),
     );
   }
@@ -1814,7 +1863,7 @@ class _ModuleDetailSkeletonState extends State<_ModuleDetailSkeleton>
                   const SizedBox(height: 24),
                   ...List.generate(
                     4,
-                    (_) => Padding(
+                        (_) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _Bone(
                           width: double.infinity, height: 76, color: c),

@@ -270,9 +270,12 @@ class ModuleVideoLecturerItem {
     required this.status,
     this.description,
     this.thumbnailUrl,
+    this.hlsUrl, // <--- TAMBAH INI
   });
 
   factory ModuleVideoLecturerItem.fromJson(Map<String, dynamic> json) {
+    final videoData = json['video'] as Map<String, dynamic>?; // Ambil object video
+
     return ModuleVideoLecturerItem(
       id: json['id'] as int? ?? 0,
       title: json['title'] as String? ?? '',
@@ -281,6 +284,7 @@ class ModuleVideoLecturerItem {
       index: json['index'] as int? ?? 0,
       status: json['status'] as String? ?? 'unavailable',
       thumbnailUrl: json['thumbnail_url'] as String?,
+      hlsUrl: videoData?['hls_url'] as String?, // <--- TAMBAH INI
     );
   }
 
@@ -291,6 +295,7 @@ class ModuleVideoLecturerItem {
   final int index;
   final String status;
   final String? thumbnailUrl;
+  final String? hlsUrl; // <--- TAMBAH INI
 }
 
 class ModuleDetail {

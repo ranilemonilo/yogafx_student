@@ -26,6 +26,9 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../shell/main_shell.dart';
 
+// --- IMPORT UNTUK VIDEO LECTURER BARU ---
+import '../../features/module/presentation/screens/video_lecturer_screen.dart';
+
 class AppRoutes {
   static const splash = '/splash';
   static const login = '/login';
@@ -36,6 +39,10 @@ class AppRoutes {
   static const modules = '/modules';
   static const moduleDetail = '/modules/:moduleId';
   static const ebookDetail = '/ebooks/:ebookId';
+
+  // --- KONSTANTA RUTE VIDEO LECTURER ---
+  static const videoLecturer = '/video-lecturer/:videoId';
+
   static const certificates = '/certificates';
   static const certificateDetail = '/certificates/:certificateId';
   static const profile = '/profile';
@@ -103,8 +110,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.loginOtp,
         name: 'loginOtp',
         builder: (context, state) => LoginOtpScreen(
-          challenge: state.extra
-          as LoginOtpScreenArgs,
+          challenge: state.extra as LoginOtpScreenArgs,
         ),
       ),
       GoRoute(
@@ -150,12 +156,41 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: '/ebooks/:ebookId',
+        path: AppRoutes.ebookDetail,
         name: 'ebookDetail',
         builder: (context, state) => EbookDetailScreen(
           ebookId: int.parse(state.pathParameters['ebookId']!),
         ),
       ),
+
+      // --- RUTE MANDIRI VIDEO LECTURER ---
+      GoRoute(
+        path: AppRoutes.videoLecturer,
+        name: 'videoLecturer',
+        builder: (context, state) {
+          final videoId = state.pathParameters['videoId']!;
+
+          // Ambil data video saat ini
+          final title = state.uri.queryParameters['title'] ?? 'Video Lecturer';
+          final videoUrl = state.uri.queryParameters['url'] ?? '';
+
+          // Ambil data video selanjutnya (opsional, tangkap jika ada)
+          final nextVideoId = state.uri.queryParameters['nextVideoId'];
+          final nextVideoTitle = state.uri.queryParameters['nextVideoTitle'];
+          final nextVideoUrl = state.uri.queryParameters['nextVideoUrl'];
+
+          return VideoLecturerScreen(
+            videoId: videoId,
+            title: title,
+            videoUrl: videoUrl,
+            nextVideoId: nextVideoId,
+            nextVideoTitle: nextVideoTitle,
+            nextVideoUrl: nextVideoUrl,
+          );
+        },
+      ),
+      // ------------------------------------
+
       GoRoute(
         path: AppRoutes.certificates,
         name: 'certificates',
