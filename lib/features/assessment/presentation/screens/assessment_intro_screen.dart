@@ -301,82 +301,9 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: _kHeroHeight,
-      width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (thumbnailUrl != null)
-            Image.network(
-              thumbnailUrl!,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return Container(color: _NetflixPalette.surfaceRaised);
-              },
-              errorBuilder: (_, __, ___) =>
-                  Container(color: _NetflixPalette.surfaceRaised),
-            )
-          else
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _NetflixPalette.surfaceRaised,
-                    _NetflixPalette.background,
-                  ],
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.quiz_outlined,
-                  color: _NetflixPalette.greyMuted,
-                  size: 56,
-                ),
-              ),
-            ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 110,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.55),
-                    Colors.black.withOpacity(0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 130,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    _NetflixPalette.background.withOpacity(0),
-                    _NetflixPalette.background,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    // Selalu kecil — cukup buat ruang status bar + back button.
+    // Thumbnail gak dipakai lagi sebagai hero besar.
+    return SizedBox(height: MediaQuery.paddingOf(context).top + 46);
   }
 }
 

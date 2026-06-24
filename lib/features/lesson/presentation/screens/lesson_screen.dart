@@ -241,6 +241,19 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     }
   }
 
+  Future<void> _reportProgress(int currentProgress) async {
+    try {
+      await ref
+          .read(lessonRepositoryProvider)
+          .updateProgress(widget.lesson.id, currentProgress);
+      if (currentProgress >= 100 && mounted) {
+        _refreshLearningState();
+      }
+    } catch (_) {
+      // silent fail — progress will retry on next tick
+    }
+  }
+
   void _onVideoProgress() {
     if (_videoController == null) return;
     final value = _videoController!.value;
@@ -251,12 +264,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
       _lastReportedProgress = currentProgress;
-      ref
-          .read(lessonRepositoryProvider)
-          .updateProgress(widget.lesson.id, currentProgress);
-      if (currentProgress >= 100) {
-        _refreshLearningState();
-      }
+      _reportProgress(currentProgress);
     }
 
     _handleAutoNext(value);
@@ -503,23 +511,32 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         ),
         slivers: [
         // Video
-        SliverToBoxAdapter(
-          child: _VideoSection(
-            lesson: lesson,
-            videoInitialized: _videoInitialized,
-            videoError: _videoError,
-            videoErrorMessage: _videoErrorMessage,
-            videoController: _videoController,
-            videoUnlocked: _isVideoUnlocked,
-            onRetry: _initVideo,
-            onBack: () => _handleBack(context),
-            onTogglePlayback: _toggleVideoPlayback,
-            onSeek: _seekVideo,
-            onToggleMute: _toggleMute,
-            onOpenFullscreen: _openFullscreen,
+          SliverToBoxAdapter(
+            child: _VideoSection(
+              lesson: lesson,
+              videoInitialized: _videoInitialized,
+              videoError: _videoError,
+              videoErrorMessage: _videoErrorMessage,
+              videoController: _videoController,
+              videoUnlocked: _isVideoUnlocked,
+              onRetry: _initVideo,
+              onBack: () => _handleBack(context),
+              onOpenWorkbook: () { // BARU
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: _kSurface,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  builder: (_) => _WorkbookSheet(workbook: lesson.workbook),
+                ).whenComplete(_refreshLesson);
+              },
+              onTogglePlayback: _toggleVideoPlayback,
+              onSeek: _seekVideo,
+              onToggleMute: _toggleMute,
+              onOpenFullscreen: _openFullscreen,
+            ),
           ),
-        ),
-
         // Body
         SliverToBoxAdapter(
           child: FadeTransition(
@@ -633,6 +650,7 @@ class _VideoSection extends StatelessWidget {
   final bool videoUnlocked;
   final VoidCallback onRetry;
   final VoidCallback onBack;
+  final VoidCallback onOpenWorkbook;
   final Future<void> Function() onTogglePlayback;
   final Future<void> Function(Duration position) onSeek;
   final Future<void> Function() onToggleMute;
@@ -647,6 +665,7 @@ class _VideoSection extends StatelessWidget {
     required this.videoUnlocked,
     required this.onRetry,
     required this.onBack,
+    required this.onOpenWorkbook, // BARU
     required this.onTogglePlayback,
     required this.onSeek,
     required this.onToggleMute,
@@ -698,6 +717,7 @@ class _VideoSection extends StatelessWidget {
       return _VideoPlaceholder(
         thumbnailUrl: lesson.thumbnailUrl,
         message: 'Open or download the workbook first to unlock the video.',
+        onTapOverride: onOpenWorkbook, // BARU
       );
     }
     if (lesson.video == null || !lesson.video!.isReady) {
@@ -1065,17 +1085,19 @@ class _VideoPlaceholder extends StatelessWidget {
   final String message;
   final bool showRetry;
   final VoidCallback? onRetry;
+  final VoidCallback? onTapOverride; // BARU
 
   const _VideoPlaceholder({
     this.thumbnailUrl,
     required this.message,
     this.showRetry = false,
     this.onRetry,
+    this.onTapOverride, // BARU
   });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    final content = Stack(
       fit: StackFit.expand,
       children: [
         if (thumbnailUrl != null)
@@ -1090,11 +1112,11 @@ class _VideoPlaceholder extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.play_circle_outline_rounded,
-                  color: _kTextMuted, size: 48),
+              const Icon(Icons.play_circle_outline_rounded, color: _kTextMuted, size: 48),
               const SizedBox(height: 10),
               Text(
                 message,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: _kTextSecondary,
                   fontSize: 13,
@@ -1106,27 +1128,17 @@ class _VideoPlaceholder extends StatelessWidget {
                 GestureDetector(
                   onTap: onRetry,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     decoration: BoxDecoration(
                       color: _kRed,
                       borderRadius: BorderRadius.circular(4),
                       boxShadow: [
-                        BoxShadow(
-                          color: _kRed.withOpacity(0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
+                        BoxShadow(color: _kRed.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: const Text(
                       'Try again',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'Montserrat'),
                     ),
                   ),
                 ),
@@ -1136,6 +1148,9 @@ class _VideoPlaceholder extends StatelessWidget {
         ),
       ],
     );
+
+    if (onTapOverride == null) return content;
+    return GestureDetector(onTap: onTapOverride, child: content);
   }
 }
 

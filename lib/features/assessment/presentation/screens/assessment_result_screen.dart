@@ -14,6 +14,7 @@ abstract class _NetflixPalette {
   static const Color surface = Color(0xFF1F1F1F);
   static const Color surfaceRaised = Color(0xFF2A2A2A);
   static const Color red = Color(0xFFE50914);
+  static const Color green = Color(0xFF46D369); // BARU
   static const Color grey = Color(0xFFB3B3B3);
   static const Color greyMuted = Color(0xFF808080);
   static const Color divider = Color(0xFF3A3A3A);
@@ -388,7 +389,7 @@ class _ResultBadge extends StatelessWidget {
       width: 104,
       height: 104,
       decoration: BoxDecoration(
-        color: isCompleted ? _NetflixPalette.red : _NetflixPalette.surfaceRaised,
+        color: isCompleted ? _NetflixPalette.green : _NetflixPalette.surfaceRaised, // diubah dari .red
         shape: BoxShape.circle,
         border: isCompleted
             ? null
