@@ -236,7 +236,9 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. Action Row (Primary CTA)
-                  if (module.primaryCtaLabel != null) ...[
+                  if (module.primaryCtaLabel != null &&
+                      !module.viewTypes.contains('ebook') &&
+                      !module.viewTypes.contains('video_lecturer')) ...[
                     _buildAnimated(_ActionRow(module: module)),
                     const SizedBox(height: 20),
                   ],
@@ -379,10 +381,15 @@ class _HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ikon Tengah Berdasarkan Kind dari Backend
     IconData centerIcon = Icons.play_arrow;
-    if (module.primaryCtaKind == 'document') centerIcon = Icons.menu_book_outlined;
-    if (module.primaryCtaKind == 'download') centerIcon = Icons.workspace_premium_outlined;
+
+    if (module.primaryCtaKind == 'document') {
+      centerIcon = Icons.menu_book_outlined;
+    }
+
+    if (module.primaryCtaKind == 'download') {
+      centerIcon = Icons.workspace_premium_outlined;
+    }
 
     return Stack(
       fit: StackFit.expand,
@@ -443,8 +450,11 @@ class _HeroBanner extends StatelessWidget {
           ),
         ),
 
-        // Big center button
-        if (module.primaryCtaLabel != null)
+        // Big center button only for lesson modules
+        if (module.primaryCtaLabel != null &&
+            !module.viewTypes.contains('certificate') &&
+            !module.viewTypes.contains('ebook') &&
+            !module.viewTypes.contains('video_lecturer'))
           Center(
             child: GestureDetector(
               onTap: () => _openPrimaryModuleContent(context, module),
