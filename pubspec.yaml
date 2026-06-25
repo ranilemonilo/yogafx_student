@@ -55,6 +55,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
   flutter_lints: ^3.0.0
 
   # Code generation
@@ -65,11 +66,16 @@ dev_dependencies:
   custom_lint: ^0.6.4
   riverpod_lint: ^2.3.10
 
+  # App Icon
+  flutter_launcher_icons: ^0.14.4
+
 flutter:
   uses-material-design: true
+
   assets:
     - assets/images/yogafx_logo.png
     - assets/fonts/
+
   fonts:
     - family: Montserrat
       fonts:
@@ -80,3 +86,14 @@ flutter:
           weight: 600
         - asset: assets/fonts/Montserrat-Bold.ttf
           weight: 700
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+
+  image_path: "assets/images/yogafx_logo.png"
+
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/yogafx_logo.png"
+
+  remove_alpha_ios: true
