@@ -1101,7 +1101,10 @@ class _ContinueCardState extends State<_ContinueCard>
                         _RedButton(
                           label: section.ctaLabel,
                           icon: Icons.play_arrow_rounded,
-                          onTap: () => context.push('/lessons/${section.lesson.id}'),
+                          onTap: () {
+                            final id = section.lesson?.id;
+                            if (id != null) context.push('/lessons/$id');
+                          },
                         ),
                       ],
                     ),
@@ -1395,17 +1398,16 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                   ),
                   const SizedBox(height: 3),
                   // Sesudah
-                  Text(
-                    'Continue the assessment from ${widget.continueLearningSection.lesson?.title ?? "your lesson"}',
-                    ...
-                    style: const TextStyle(
-                    color: _kTextMuted,
-                    fontSize: 11,
-                    fontFamily: 'Montserrat',
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                      Text(
+                        'Continue the assessment from ${widget.continueLearningSection.lesson?.title ?? "your lesson"}',
+                        style: const TextStyle(
+                          color: _kTextMuted,
+                          fontSize: 11,
+                          fontFamily: 'Montserrat',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
               ],
             ),
           ),
