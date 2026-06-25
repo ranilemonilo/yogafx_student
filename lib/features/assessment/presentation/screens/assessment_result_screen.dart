@@ -7,26 +7,28 @@ import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design Tokens — identik dengan assessment_intro_screen.dart
-// Disinkronkan penuh dengan design system Netflix
+// Design Tokens — Disinkronkan penuh dengan DESIGN_SYSTEM.md
 // ─────────────────────────────────────────────────────────────────────────────
 abstract class _DS {
-  // Colors
-  static const Color background    = Color(0xFF141110);
-  static const Color surface       = Color(0xFF1F1D1C);
-  static const Color surfaceRaised = Color(0xFF2A2826);
-  static const Color red           = Color(0xFFDB202C);
-  static const Color emerald       = Color(0xFF00B14F); // Secondary/Emerald dari DS
+  // Colors (sesuai §1 Warna)
+  static const Color background    = Color(0xFF060908); // Neutral / Black 1
+  static const Color surface       = Color(0xFF141110); // Neutral / Black 2 — header/footer
+  static const Color surfaceRaised = Color(0xFF120F0E); // Neutral / Black 3 — card/panel
+  static const Color red           = Color(0xFFDB202C); // Primary / Red
+  static const Color emerald       = Color(0xFF00B14F); // Secondary / Emerald
   static const Color white         = Color(0xFFFFFFFF);
   static const Color textPrimary   = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFA8A8A8); // ~65% white
-  static const Color textMuted     = Color(0xFF737373); // ~45% white
-  static const Color divider       = Color(0xFF3A3836);
+  static const Color textSecondary = Color(0xA6FFFFFF); // rgba(255,255,255,0.65)
+  static const Color textMuted     = Color(0x73FFFFFF); // rgba(255,255,255,0.45)
+  static const Color divider       = Color(0x1AFFFFFF); // rgba(255,255,255,0.1)
 
   // Border-radius
   static const double radiusButton = 4;
   static const double radiusBadge  = 2;
   static const double radiusCard   = 4;
+  static const double radiusInput  = 4;
+  static const double radiusAvatar = 8;
+  static const double radiusModal  = 8;
 
   // Spacing (8px grid)
   static const double sp4  = 4;
@@ -153,7 +155,7 @@ class AssessmentResultScreen extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Result Content — animasi TIDAK DIUBAH, hanya desain
+// Result Content
 // ─────────────────────────────────────────────────────────────────────────────
 class _ResultContent extends StatefulWidget {
   final int lessonId;
@@ -264,7 +266,6 @@ class _ResultContentState extends State<_ResultContent>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // ── Badge animasi (logika TIDAK DIUBAH)
           FadeTransition(
             opacity: _iconFade,
             child: ScaleTransition(
@@ -274,14 +275,12 @@ class _ResultContentState extends State<_ResultContent>
           ),
           const SizedBox(height: _DS.sp28),
 
-          // ── Teks status + skor
           FadeTransition(
             opacity: _textFade,
             child: SlideTransition(
               position: _textSlide,
               child: Column(
                 children: [
-                  // Status title
                   Text(
                     isCompleted
                         ? 'Assessment Complete'
@@ -290,7 +289,6 @@ class _ResultContentState extends State<_ResultContent>
                     textAlign: TextAlign.center,
                   ),
 
-                  // Eyebrow label skor (% correct) — pola label merah dari DS
                   if (isCompleted && correctnessLabel != null) ...[
                     const SizedBox(height: _DS.sp8),
                     Text(
@@ -305,7 +303,6 @@ class _ResultContentState extends State<_ResultContent>
 
                   const SizedBox(height: _DS.sp24),
 
-                  // ── Score Card — mengikuti DS surface card dengan border
                   _ScoreCard(
                     scoreValue: scoreValue,
                     isCompleted: isCompleted,
@@ -313,7 +310,6 @@ class _ResultContentState extends State<_ResultContent>
 
                   const SizedBox(height: _DS.sp20),
 
-                  // ── Summary text
                   Text(
                     summary,
                     style: _DS.body(),
@@ -326,7 +322,6 @@ class _ResultContentState extends State<_ResultContent>
 
           const SizedBox(height: _DS.sp40),
 
-          // ── Buttons (logika TIDAK DIUBAH)
           FadeTransition(
             opacity: _buttonsFade,
             child: SlideTransition(
@@ -344,8 +339,7 @@ class _ResultContentState extends State<_ResultContent>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Score Card — card surface dengan border tipis
-// Mengikuti card pattern dari design system (surface + border red @35%)
+// Score Card
 // ─────────────────────────────────────────────────────────────────────────────
 class _ScoreCard extends StatelessWidget {
   final String scoreValue;
@@ -366,7 +360,7 @@ class _ScoreCard extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: _DS.surface,
-        borderRadius: BorderRadius.circular(_DS.radiusCard),
+        borderRadius: BorderRadius.circular(_DS.radiusModal), // panel → 8px
         border: Border.all(
           color: isCompleted
               ? _DS.red.withOpacity(0.35)
@@ -376,7 +370,6 @@ class _ScoreCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Label "TOTAL SCORE" — uppercase label kecil dari DS
           Text(
             'TOTAL SCORE',
             style: _DS.labelSmall(
@@ -386,7 +379,6 @@ class _ScoreCard extends StatelessWidget {
           ),
           const SizedBox(height: _DS.sp12),
 
-          // Angka skor — Bold/Display 48px dari DS
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -397,12 +389,10 @@ class _ScoreCard extends StatelessWidget {
             ],
           ),
 
-          // Divider tipis
           const SizedBox(height: _DS.sp16),
           Container(height: 1, color: _DS.divider),
           const SizedBox(height: _DS.sp16),
 
-          // Status badge di dalam card
           _StatusBadge(isCompleted: isCompleted),
         ],
       ),
@@ -410,7 +400,6 @@ class _ScoreCard extends StatelessWidget {
   }
 }
 
-/// Badge status kecil di dalam score card — mirip maturity/quality badge di DS
 class _StatusBadge extends StatelessWidget {
   final bool isCompleted;
 
@@ -458,9 +447,7 @@ class _StatusBadge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Result Badge — icon bulat besar (animasi dari parent TIDAK DIUBAH)
-// Completed : emerald (Secondary/Emerald dari DS)
-// In Progress : surfaceRaised + border divider
+// Result Badge
 // ─────────────────────────────────────────────────────────────────────────────
 class _ResultBadge extends StatelessWidget {
   final bool isCompleted;
@@ -492,7 +479,7 @@ class _ResultBadge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Action Buttons — logika navigasi TIDAK DIUBAH, hanya desain
+// Action Buttons
 // ─────────────────────────────────────────────────────────────────────────────
 class _ActionButtons extends StatelessWidget {
   final int lessonId;
@@ -507,7 +494,6 @@ class _ActionButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Tombol primer putih — "Back to Lesson"
         _ResultButton(
           label: 'Back to Lesson',
           icon: Icons.arrow_back_rounded,
@@ -515,7 +501,6 @@ class _ActionButtons extends StatelessWidget {
           onTap: () => context.go('/lessons/$lessonId'),
         ),
 
-        // Tombol "Next Lesson" — tampil hanya jika nextLesson unlocked (logika TIDAK DIUBAH)
         if (nextLesson != null && nextLesson!.isUnlocked) ...[
           const SizedBox(height: _DS.sp12),
           _ResultButton(
@@ -528,7 +513,6 @@ class _ActionButtons extends StatelessWidget {
 
         const SizedBox(height: _DS.sp12),
 
-        // Tombol sekunder outline — "Browse Modules"
         _ResultButton(
           label: 'Browse Modules',
           icon: Icons.apps_rounded,
@@ -541,9 +525,7 @@ class _ActionButtons extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Result Button — mengikuti action button design system
-// Primary   : background putih, teks hitam (Play button style)
-// Secondary : border tipis, background transparan (outline style)
+// Result Button
 // ─────────────────────────────────────────────────────────────────────────────
 enum _ButtonStyle { primary, secondary }
 
@@ -622,7 +604,7 @@ class _ResultButtonState extends State<_ResultButton> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Loading State — spinner merah dari DS (TIDAK DIUBAH)
+// Loading State
 // ─────────────────────────────────────────────────────────────────────────────
 class _ResultLoadingState extends StatelessWidget {
   const _ResultLoadingState();
@@ -639,7 +621,7 @@ class _ResultLoadingState extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Error State — mengikuti error state pattern dari intro screen
+// Error State
 // ─────────────────────────────────────────────────────────────────────────────
 class _ResultErrorState extends StatelessWidget {
   final int lessonId;
@@ -660,7 +642,6 @@ class _ResultErrorState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Error icon container — konsisten dengan intro screen
               Container(
                 padding: const EdgeInsets.all(_DS.sp20),
                 decoration: BoxDecoration(
@@ -690,7 +671,6 @@ class _ResultErrorState extends StatelessWidget {
               ),
               const SizedBox(height: _DS.sp32),
 
-              // Tombol kembali
               _ResultButton(
                 label: 'Back to Lesson',
                 icon: Icons.arrow_back_rounded,

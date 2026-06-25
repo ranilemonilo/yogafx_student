@@ -18,18 +18,6 @@ import '../../data/models/lesson_model.dart';
 import '../providers/lesson_provider.dart';
 import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-
-const _kRed = Color(0xFFE50914);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kSurfaceHigh = Color(0xFF262626);
-const _kDivider = Color(0xFF252525);
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
-const _kGreen = Color(0xFF46D369);
 final _lessonContentKey = GlobalKey<_LessonContentState>();
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
@@ -61,7 +49,7 @@ class LessonScreen extends ConsumerWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: _kBg,
+        backgroundColor: AppColors.background,
         body: lessonAsync.when(
           loading: () => const _LessonSkeleton(),
           error: (e, _) => _LessonError(
@@ -89,10 +77,10 @@ void _handleLessonBack(BuildContext context) {
 }
 
 void _showLockedSnackBar(
-  BuildContext context, {
-  required String fallbackMessage,
-  String? reason,
-}) {
+    BuildContext context, {
+      required String fallbackMessage,
+      String? reason,
+    }) {
   const lockedMessage =
       'This page is not available yet. Please complete the previous module first.';
 
@@ -147,7 +135,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   bool get _requiresWorkbookFirst =>
       widget.lesson.workbook.isAvailable &&
-      !widget.lesson.progress.isWorkbookDownloaded;
+          !widget.lesson.progress.isWorkbookDownloaded;
 
   bool get _isVideoUnlocked => !_requiresWorkbookFirst;
 
@@ -266,8 +254,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     final nextLesson = widget.lesson.nextLesson;
     final shouldAutoNavigate =
         nextLesson != null &&
-        nextLesson.isUnlocked &&
-        widget.lesson.assessment == null;
+            nextLesson.isUnlocked &&
+            widget.lesson.assessment == null;
 
     if (!shouldAutoNavigate) {
       if (_autoNextRemainingSeconds != null && mounted) {
@@ -331,7 +319,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       if (!canReachAudioHost) {
         if (mounted) {
           setState(() => _audioError =
-              'No internet connection. Audio could not be loaded.');
+          'No internet connection. Audio could not be loaded.');
         }
         return;
       }
@@ -409,10 +397,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   Future<void> _navigateToLesson(
-    BuildContext context,
-    int lessonId, {
-    bool autoPlayVideo = false,
-  }) async {
+      BuildContext context,
+      int lessonId, {
+        bool autoPlayVideo = false,
+      }) async {
     await prepareForNavigation(context);
     if (!mounted) return;
     final suffix = autoPlayVideo ? '?autoplay=1' : '';
@@ -427,10 +415,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   @override
   void dispose() {
     _videoController?.removeListener(_onVideoProgress);
-
     _videoController?.dispose();
     _videoController = null;
-
     _audioPlayer?.dispose();
     _audioPlayer = null;
     _fadeCtrl.dispose();
@@ -443,7 +429,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Future<void> _toggleVideoPlayback() async {
     final controller = _videoController;
     if (controller == null || !controller.value.isInitialized) return;
-
     if (controller.value.isPlaying) {
       await controller.pause();
     } else {
@@ -454,7 +439,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Future<void> _seekVideo(Duration position) async {
     final controller = _videoController;
     if (controller == null || !controller.value.isInitialized) return;
-
     final duration = controller.value.duration;
     final safePosition = position > duration ? duration : position;
     await controller.seekTo(safePosition < Duration.zero ? Duration.zero : safePosition);
@@ -463,7 +447,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Future<void> _toggleMute() async {
     final controller = _videoController;
     if (controller == null || !controller.value.isInitialized) return;
-
     final nextMuted = controller.value.volume > 0;
     await controller.setVolume(nextMuted ? 0 : 1);
     if (mounted) setState(() {});
@@ -485,9 +468,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       ),
     );
 
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -495,127 +476,110 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     final lesson = widget.lesson;
 
     return RefreshIndicator(
-      color: _kRed,
+      color: AppColors.primary,
       onRefresh: _refreshLesson,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
         slivers: [
-        // Video
-        SliverToBoxAdapter(
-          child: _VideoSection(
-            lesson: lesson,
-            videoInitialized: _videoInitialized,
-            videoError: _videoError,
-            videoErrorMessage: _videoErrorMessage,
-            videoController: _videoController,
-            videoUnlocked: _isVideoUnlocked,
-            onRetry: _initVideo,
-            onBack: () => _handleBack(context),
-            onTogglePlayback: _toggleVideoPlayback,
-            onSeek: _seekVideo,
-            onToggleMute: _toggleMute,
-            onOpenFullscreen: _openFullscreen,
+          // Video
+          SliverToBoxAdapter(
+            child: _VideoSection(
+              lesson: lesson,
+              videoInitialized: _videoInitialized,
+              videoError: _videoError,
+              videoErrorMessage: _videoErrorMessage,
+              videoController: _videoController,
+              videoUnlocked: _isVideoUnlocked,
+              onRetry: _initVideo,
+              onBack: () => _handleBack(context),
+              onTogglePlayback: _toggleVideoPlayback,
+              onSeek: _seekVideo,
+              onToggleMute: _toggleMute,
+              onOpenFullscreen: _openFullscreen,
+            ),
           ),
-        ),
 
-        // Body
-        SliverToBoxAdapter(
-          child: FadeTransition(
-            opacity: _fadeAnim,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Breadcrumb
-                  _ModuleBreadcrumb(module: lesson.module),
-                  const SizedBox(height: 10),
-
-                  // Title
-                  Text(
-                    lesson.title,
-                    style: const TextStyle(
-                      color: _kTextPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Montserrat',
-                      height: 1.2,
+          // Body
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ModuleBreadcrumb(module: lesson.module),
+                    const SizedBox(height: 10),
+                    Text(
+                      lesson.title,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'Montserrat',
+                        height: 1.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Progress
-                  _LessonProgressBar(
-                    progress: lesson.progress,
-                    animation: _progressAnim,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Action chips
-                  _ActionRow(
-                    lesson: lesson,
-                    isAssessmentUnlocked: _isAssessmentUnlocked,
-                    onWorkbookDismissed: _refreshLesson,
-                    audioLoading: _audioLoading,
-                    audioReady: _audioReady,
-                    audioError: _audioError,
-                    audioPlayer: _audioPlayer,
-                    onRetryAudio: _initAudio,
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Content
-                  if (lesson.content != null && lesson.content!.isNotEmpty) ...[
-                    _ContentSection(content: lesson.content!),
-                    const SizedBox(height: 28),
-                  ],
-
-                  // Workbook
-                  if (lesson.workbook.isAvailable) ...[
-                    _WorkbookSection(
-                      workbook: lesson.workbook,
-                      onDismissed: _refreshLesson,
+                    const SizedBox(height: 16),
+                    _LessonProgressBar(
+                      progress: lesson.progress,
+                      animation: _progressAnim,
                     ),
-                    const SizedBox(height: 28),
-                  ],
-
-                  // Assessment
-                  if (lesson.assessment != null) ...[
-                    _AssessmentBanner(
+                    const SizedBox(height: 20),
+                    _ActionRow(
                       lesson: lesson,
-                      isUnlocked: _isAssessmentUnlocked,
+                      isAssessmentUnlocked: _isAssessmentUnlocked,
+                      onWorkbookDismissed: _refreshLesson,
+                      audioLoading: _audioLoading,
+                      audioReady: _audioReady,
+                      audioError: _audioError,
+                      audioPlayer: _audioPlayer,
+                      onRetryAudio: _initAudio,
                     ),
                     const SizedBox(height: 28),
+                    if (lesson.content != null && lesson.content!.isNotEmpty) ...[
+                      _ContentSection(content: lesson.content!),
+                      const SizedBox(height: 28),
+                    ],
+                    if (lesson.workbook.isAvailable) ...[
+                      _WorkbookSection(
+                        workbook: lesson.workbook,
+                        onDismissed: _refreshLesson,
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+                    if (lesson.assessment != null) ...[
+                      _AssessmentBanner(
+                        lesson: lesson,
+                        isUnlocked: _isAssessmentUnlocked,
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+                    if (lesson.navigation.isNotEmpty) ...[
+                      _NavigationSection(
+                        navigation: lesson.navigation,
+                        currentLessonId: lesson.id,
+                        onNavigate: (lessonId) =>
+                            _navigateToLesson(context, lessonId),
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+                    if (lesson.nextLesson != null)
+                      _NextLessonBanner(
+                        nextLesson: lesson.nextLesson!,
+                        countdownSeconds: lesson.assessment == null
+                            ? _autoNextRemainingSeconds
+                            : null,
+                        onNavigate: (lessonId) =>
+                            _navigateToLesson(context, lessonId),
+                      ),
                   ],
-
-                  // Navigation
-                  if (lesson.navigation.isNotEmpty) ...[
-                    _NavigationSection(
-                      navigation: lesson.navigation,
-                      currentLessonId: lesson.id,
-                      onNavigate: (lessonId) =>
-                          _navigateToLesson(context, lessonId),
-                    ),
-                    const SizedBox(height: 28),
-                  ],
-
-                  // Next lesson
-                  if (lesson.nextLesson != null)
-                    _NextLessonBanner(
-                      nextLesson: lesson.nextLesson!,
-                      countdownSeconds: lesson.assessment == null
-                          ? _autoNextRemainingSeconds
-                          : null,
-                      onNavigate: (lessonId) =>
-                          _navigateToLesson(context, lessonId),
-                    ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
         ],
       ),
     );
@@ -664,7 +628,6 @@ class _VideoSection extends StatelessWidget {
             child: _buildVideoBody(),
           ),
         ),
-        // Back button overlay
         Positioned(
           top: MediaQuery.paddingOf(context).top + 8,
           left: 12,
@@ -675,7 +638,7 @@ class _VideoSection extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadius.modal),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.12),
                   width: 0.8,
@@ -722,15 +685,13 @@ class _VideoSection extends StatelessWidget {
             AuthNetworkImage(
               imageUrl: lesson.thumbnailUrl!,
               fit: BoxFit.cover,
-              placeholderBuilder: (_) =>
-                  Container(color: _kSurfaceElevated),
-              errorBuilderWidget: (_, __) =>
-                  Container(color: _kSurfaceElevated),
+              placeholderBuilder: (_) => Container(color: AppColors.surfaceElevated),
+              errorBuilderWidget: (_, __) => Container(color: AppColors.surfaceElevated),
             ),
           Container(color: Colors.black.withOpacity(0.5)),
           const Center(
             child: CircularProgressIndicator(
-              color: _kRed,
+              color: AppColors.primary,
               strokeWidth: 2,
             ),
           ),
@@ -878,7 +839,7 @@ class _VideoControlsBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.58),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.modal),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -888,10 +849,10 @@ class _VideoControlsBar extends StatelessWidget {
               trackHeight: 2.5,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-              activeTrackColor: _kRed,
+              activeTrackColor: AppColors.primary,
               inactiveTrackColor: Colors.white24,
-              thumbColor: _kRed,
-              overlayColor: _kRed.withOpacity(0.18),
+              thumbColor: AppColors.primary,
+              overlayColor: AppColors.primary.withOpacity(0.18),
             ),
             child: Slider(
               value: currentMillis.toDouble(),
@@ -1026,7 +987,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                     height: 40,
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.55),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppRadius.modal),
                     ),
                     child: const Icon(
                       Icons.arrow_back_ios_new_rounded,
@@ -1082,8 +1043,8 @@ class _VideoPlaceholder extends StatelessWidget {
           AuthNetworkImage(
             imageUrl: thumbnailUrl!,
             fit: BoxFit.cover,
-            placeholderBuilder: (_) => Container(color: _kSurfaceElevated),
-            errorBuilderWidget: (_, __) => Container(color: _kSurfaceElevated),
+            placeholderBuilder: (_) => Container(color: AppColors.surfaceElevated),
+            errorBuilderWidget: (_, __) => Container(color: AppColors.surfaceElevated),
           ),
         Container(color: Colors.black.withOpacity(0.65)),
         Center(
@@ -1091,12 +1052,12 @@ class _VideoPlaceholder extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.play_circle_outline_rounded,
-                  color: _kTextMuted, size: 48),
+                  color: AppColors.textMuted, size: 48),
               const SizedBox(height: 10),
               Text(
                 message,
                 style: const TextStyle(
-                  color: _kTextSecondary,
+                  color: AppColors.textSecondary,
                   fontSize: 13,
                   fontFamily: 'Montserrat',
                 ),
@@ -1106,14 +1067,13 @@ class _VideoPlaceholder extends StatelessWidget {
                 GestureDetector(
                   onTap: onRetry,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     decoration: BoxDecoration(
-                      color: _kRed,
-                      borderRadius: BorderRadius.circular(4),
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(AppRadius.button),
                       boxShadow: [
                         BoxShadow(
-                          color: _kRed.withOpacity(0.35),
+                          color: AppColors.primary.withOpacity(0.35),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -1151,13 +1111,13 @@ class _ModuleBreadcrumb extends StatelessWidget {
       onTap: () => _handleLessonBack(context),
       child: Row(
         children: [
-          const Icon(Icons.layers_rounded, color: _kTextMuted, size: 12),
+          const Icon(Icons.layers_rounded, color: AppColors.textMuted, size: 12),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               module.title,
               style: const TextStyle(
-                color: _kTextMuted,
+                color: AppColors.textMuted,
                 fontSize: 11,
                 fontFamily: 'Montserrat',
               ),
@@ -1168,13 +1128,13 @@ class _ModuleBreadcrumb extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: _kSurfaceHigh,
-              borderRadius: BorderRadius.circular(4),
+              color: AppColors.overlayDark,
+              borderRadius: BorderRadius.circular(AppRadius.card),
             ),
             child: Text(
               '${module.completedLessons}/${module.lessonCount}',
               style: const TextStyle(
-                color: _kTextMuted,
+                color: AppColors.textMuted,
                 fontSize: 10,
                 fontFamily: 'Montserrat',
               ),
@@ -1203,12 +1163,12 @@ class _LessonProgressBar extends StatelessWidget {
         AnimatedBuilder(
           animation: animation,
           builder: (_, __) => ClipRRect(
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(AppRadius.badge),
             child: LinearProgressIndicator(
               value: animation.value,
-              backgroundColor: _kDivider,
+              backgroundColor: AppColors.divider,
               valueColor: AlwaysStoppedAnimation<Color>(
-                isDone ? _kGreen : _kRed,
+                isDone ? AppColors.secondary : AppColors.primary,
               ),
               minHeight: 2.5,
             ),
@@ -1219,12 +1179,12 @@ class _LessonProgressBar extends StatelessWidget {
           children: [
             if (isDone) ...[
               const Icon(Icons.check_circle_rounded,
-                  color: _kGreen, size: 13),
+                  color: AppColors.secondary, size: 13),
               const SizedBox(width: 5),
               const Text(
                 'Completed',
                 style: TextStyle(
-                  color: _kGreen,
+                  color: AppColors.secondary,
                   fontSize: 11,
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w600,
@@ -1234,7 +1194,7 @@ class _LessonProgressBar extends StatelessWidget {
               Text(
                 '${progress.watchProgress}% watched',
                 style: const TextStyle(
-                  color: _kTextMuted,
+                  color: AppColors.textMuted,
                   fontSize: 11,
                   fontFamily: 'Montserrat',
                 ),
@@ -1273,7 +1233,7 @@ class _ActionRow extends StatelessWidget {
   void _openWorkbook(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: _kSurface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -1284,7 +1244,7 @@ class _ActionRow extends StatelessWidget {
   void _openAudio(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: _kSurface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -1382,23 +1342,23 @@ class _ActionChipState extends State<_ActionChip>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _kDivider, width: 0.8),
+            color: AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(AppRadius.avatar),
+            border: Border.all(color: AppColors.divider, width: 0.8),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 widget.icon,
-                color: enabled ? _kTextSecondary : _kTextMuted,
+                color: enabled ? AppColors.textSecondary : AppColors.textMuted,
                 size: 14,
               ),
               const SizedBox(width: 7),
               Text(
                 widget.label,
                 style: TextStyle(
-                  color: enabled ? _kTextSecondary : _kTextMuted,
+                  color: enabled ? AppColors.textSecondary : AppColors.textMuted,
                   fontSize: 12,
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w500,
@@ -1428,7 +1388,7 @@ class _ContentSection extends StatelessWidget {
         Text(
           content,
           style: const TextStyle(
-            color: _kTextSecondary,
+            color: AppColors.textSecondary,
             fontSize: 13,
             fontFamily: 'Montserrat',
             height: 1.75,
@@ -1460,7 +1420,7 @@ class _WorkbookSection extends StatelessWidget {
         GestureDetector(
           onTap: () => showModalBottomSheet(
             context: context,
-            backgroundColor: _kSurface,
+            backgroundColor: AppColors.surface,
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
@@ -1469,9 +1429,9 @@ class _WorkbookSection extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _kSurfaceElevated,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _kDivider, width: 0.8),
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(AppRadius.modal),
+              border: Border.all(color: AppColors.divider, width: 0.8),
             ),
             child: Row(
               children: [
@@ -1479,13 +1439,13 @@ class _WorkbookSection extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: _kRed.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.avatar),
                     border: Border.all(
-                        color: _kRed.withOpacity(0.22), width: 0.8),
+                        color: AppColors.primary.withOpacity(0.22), width: 0.8),
                   ),
                   child: const Icon(Icons.description_rounded,
-                      color: _kRed, size: 18),
+                      color: AppColors.primary, size: 18),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -1495,7 +1455,7 @@ class _WorkbookSection extends StatelessWidget {
                       Text(
                         'Lesson Workbook',
                         style: TextStyle(
-                          color: _kTextPrimary,
+                          color: AppColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
@@ -1505,7 +1465,7 @@ class _WorkbookSection extends StatelessWidget {
                       Text(
                         'Open or download the workbook',
                         style: TextStyle(
-                          color: _kTextMuted,
+                          color: AppColors.textMuted,
                           fontSize: 11,
                           fontFamily: 'Montserrat',
                         ),
@@ -1514,7 +1474,7 @@ class _WorkbookSection extends StatelessWidget {
                   ),
                 ),
                 const Icon(Icons.chevron_right_rounded,
-                    color: _kTextMuted, size: 18),
+                    color: AppColors.textMuted, size: 18),
               ],
             ),
           ),
@@ -1581,14 +1541,13 @@ class _WorkbookSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle
           Center(
             child: Container(
               width: 36,
               height: 3,
               decoration: BoxDecoration(
-                color: _kDivider,
-                borderRadius: BorderRadius.circular(2),
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(AppRadius.badge),
               ),
             ),
           ),
@@ -1596,7 +1555,7 @@ class _WorkbookSheet extends StatelessWidget {
           const Text(
             'Workbook',
             style: TextStyle(
-              color: _kTextPrimary,
+              color: AppColors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w800,
               fontFamily: 'Montserrat',
@@ -1606,13 +1565,12 @@ class _WorkbookSheet extends StatelessWidget {
           Text(
             workbook.fileName ?? 'Lesson file',
             style: const TextStyle(
-              color: _kTextMuted,
+              color: AppColors.textMuted,
               fontSize: 12,
               fontFamily: 'Montserrat',
             ),
           ),
           const SizedBox(height: 24),
-
           if (workbook.url != null)
             _SheetButton(
               label: 'Open Workbook',
@@ -1676,8 +1634,8 @@ class _AudioSheet extends StatelessWidget {
               width: 36,
               height: 3,
               decoration: BoxDecoration(
-                color: _kDivider,
-                borderRadius: BorderRadius.circular(2),
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(AppRadius.badge),
               ),
             ),
           ),
@@ -1685,7 +1643,7 @@ class _AudioSheet extends StatelessWidget {
           const Text(
             'Audio',
             style: TextStyle(
-              color: _kTextPrimary,
+              color: AppColors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w800,
               fontFamily: 'Montserrat',
@@ -1696,13 +1654,13 @@ class _AudioSheet extends StatelessWidget {
             const Text(
               'Loading audio...',
               style: TextStyle(
-                  color: _kTextMuted, fontSize: 12, fontFamily: 'Montserrat'),
+                  color: AppColors.textMuted, fontSize: 12, fontFamily: 'Montserrat'),
             )
           else if (audioError != null)
             Text(
               audioError!,
               style: const TextStyle(
-                  color: Color(0xFFE57373),
+                  color: AppColors.error,
                   fontSize: 12,
                   fontFamily: 'Montserrat'),
             )
@@ -1710,7 +1668,7 @@ class _AudioSheet extends StatelessWidget {
             const Text(
               'Play the audio for this lesson',
               style: TextStyle(
-                  color: _kTextMuted, fontSize: 12, fontFamily: 'Montserrat'),
+                  color: AppColors.textMuted, fontSize: 12, fontFamily: 'Montserrat'),
             ),
           const SizedBox(height: 24),
           if (audioReady && audioPlayer != null)
@@ -1770,16 +1728,16 @@ class _SheetButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: isPrimary ? _kRed : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          color: isPrimary ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.avatar),
           border: Border.all(
-            color: isPrimary ? _kRed : _kDivider,
+            color: isPrimary ? AppColors.primary : AppColors.divider,
             width: 0.8,
           ),
           boxShadow: isPrimary
               ? [
             BoxShadow(
-              color: _kRed.withOpacity(0.3),
+              color: AppColors.primary.withOpacity(0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             )
@@ -1790,12 +1748,13 @@ class _SheetButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                color: isPrimary ? Colors.white : _kTextSecondary, size: 16),
+                color: isPrimary ? Colors.white : AppColors.textSecondary,
+                size: 16),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: isPrimary ? Colors.white : _kTextSecondary,
+                color: isPrimary ? Colors.white : AppColors.textSecondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
@@ -1834,8 +1793,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
-    _pulseAnim =
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
+    _pulseAnim = CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
   }
 
   @override
@@ -1848,15 +1806,15 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
   Widget build(BuildContext context) {
     final hasWorkbookGate =
         widget.lesson.workbook.isAvailable &&
-        !widget.lesson.progress.isWorkbookDownloaded;
+            !widget.lesson.progress.isWorkbookDownloaded;
     final hasPlayableVideo =
         widget.lesson.video != null && widget.lesson.video!.isReady;
     final isUnlocked = widget.isUnlocked;
     final lockMessage = hasWorkbookGate
         ? 'Open or download the workbook first to unlock the video and assessment.'
         : hasPlayableVideo
-            ? 'Watch at least 95% of the video to unlock it.'
-            : 'Complete the lesson materials to unlock it.';
+        ? 'Watch at least 95% of the video to unlock it.'
+        : 'Complete the lesson materials to unlock it.';
 
     return AnimatedBuilder(
       animation: _pulseAnim,
@@ -1869,25 +1827,24 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
           _showLockedSnackBar(
             context,
             fallbackMessage:
-                'You need to complete this lesson before accessing the assessment.',
+            'You need to complete this lesson before accessing the assessment.',
           );
         },
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isUnlocked ? const Color(0xFF1A0A0A) : _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(8),
+            color: isUnlocked ? const Color(0xFF130A08) : AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(AppRadius.modal),
             border: Border.all(
               color: isUnlocked
-                  ? _kRed.withOpacity(0.25 + _pulseAnim.value * 0.2)
-                  : _kDivider,
+                  ? AppColors.primary.withOpacity(0.25 + _pulseAnim.value * 0.2)
+                  : AppColors.divider,
               width: 0.8,
             ),
             boxShadow: isUnlocked
                 ? [
               BoxShadow(
-                color: _kRed
-                    .withOpacity(0.05 + _pulseAnim.value * 0.07),
+                color: AppColors.primary.withOpacity(0.05 + _pulseAnim.value * 0.07),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               )
@@ -1901,13 +1858,13 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                 height: 40,
                 decoration: BoxDecoration(
                   color: isUnlocked
-                      ? _kRed.withOpacity(0.12)
-                      : _kSurfaceHigh,
-                  borderRadius: BorderRadius.circular(8),
+                      ? AppColors.primary.withOpacity(0.12)
+                      : AppColors.overlayDark,
+                  borderRadius: BorderRadius.circular(AppRadius.avatar),
                 ),
                 child: Icon(
                   isUnlocked ? Icons.quiz_rounded : Icons.lock_rounded,
-                  color: isUnlocked ? _kRed : _kTextMuted,
+                  color: isUnlocked ? AppColors.primary : AppColors.textMuted,
                   size: 18,
                 ),
               ),
@@ -1919,7 +1876,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                     Text(
                       isUnlocked ? 'Assessment Available' : 'Assessment Locked',
                       style: TextStyle(
-                        color: isUnlocked ? _kTextPrimary : _kTextMuted,
+                        color: isUnlocked ? AppColors.textPrimary : AppColors.textMuted,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
@@ -1927,11 +1884,9 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      isUnlocked
-                          ? 'Start the assessment now'
-                          : lockMessage,
+                      isUnlocked ? 'Start the assessment now' : lockMessage,
                       style: const TextStyle(
-                        color: _kTextMuted,
+                        color: AppColors.textMuted,
                         fontSize: 11,
                         fontFamily: 'Montserrat',
                       ),
@@ -1942,7 +1897,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
               if (isUnlocked)
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: _kRed.withOpacity(0.7),
+                  color: AppColors.primary.withOpacity(0.7),
                   size: 20,
                 ),
             ],
@@ -2003,9 +1958,7 @@ class _NavLessonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        if (isCurrent) {
-          return;
-        }
+        if (isCurrent) return;
         if (item.isLocked) {
           _showLockedSnackBar(
             context,
@@ -2019,28 +1972,26 @@ class _NavLessonRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isCurrent ? const Color(0xFF1A0A0A) : _kSurfaceElevated,
-          borderRadius: BorderRadius.circular(6),
+          color: isCurrent ? const Color(0xFF130A08) : AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(AppRadius.avatar),
           border: Border.all(
-            color: isCurrent ? _kRed.withOpacity(0.3) : _kDivider,
+            color: isCurrent ? AppColors.primary.withOpacity(0.3) : AppColors.divider,
             width: 0.8,
           ),
         ),
         child: Row(
           children: [
-            // Status icon / number
             SizedBox(
               width: 24,
               child: item.isLocked
-                  ? const Icon(Icons.lock_rounded,
-                  color: _kTextMuted, size: 13)
+                  ? const Icon(Icons.lock_rounded, color: AppColors.textMuted, size: 13)
                   : item.status == 'completed'
                   ? const Icon(Icons.check_circle_rounded,
-                  color: _kGreen, size: 15)
+                  color: AppColors.secondary, size: 15)
                   : Text(
                 '${item.sortOrder}',
                 style: TextStyle(
-                  color: isCurrent ? _kRed : _kTextMuted,
+                  color: isCurrent ? AppColors.primary : AppColors.textMuted,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Montserrat',
@@ -2053,38 +2004,34 @@ class _NavLessonRow extends StatelessWidget {
                 item.title,
                 style: TextStyle(
                   color: item.isLocked
-                      ? _kTextMuted
+                      ? AppColors.textMuted
                       : isCurrent
-                      ? _kTextPrimary
-                      : _kTextSecondary,
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                   fontSize: 13,
-                  fontWeight:
-                  isCurrent ? FontWeight.w700 : FontWeight.w400,
+                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
                   fontFamily: 'Montserrat',
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Progress %
             if (!item.isLocked && item.progressPercentage > 0 && !isCurrent)
               Text(
                 '${item.progressPercentage}%',
                 style: const TextStyle(
-                  color: _kTextMuted,
+                  color: AppColors.textMuted,
                   fontSize: 10,
                   fontFamily: 'Montserrat',
                 ),
               ),
-            // NOW badge
             if (isCurrent) ...[
               const SizedBox(width: 8),
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _kRed,
-                  borderRadius: BorderRadius.circular(3),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppRadius.badge),
                 ),
                 child: const Text(
                   'NOW',
@@ -2169,9 +2116,9 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
         scale: _scale,
         child: Container(
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _kDivider, width: 0.8),
+            color: AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(AppRadius.modal),
+            border: Border.all(color: AppColors.divider, width: 0.8),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.3),
@@ -2183,7 +2130,6 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
           clipBehavior: Clip.hardEdge,
           child: Row(
             children: [
-              // Thumbnail
               SizedBox(
                 width: 100,
                 height: 70,
@@ -2195,17 +2141,17 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                         imageUrl: widget.nextLesson.thumbnailUrl!,
                         fit: BoxFit.cover,
                         placeholderBuilder: (_) =>
-                            Container(color: _kSurfaceHigh),
+                            Container(color: AppColors.overlayDark),
                         errorBuilderWidget: (_, __) =>
-                            Container(color: _kSurfaceHigh),
+                            Container(color: AppColors.overlayDark),
                       )
                     else
-                      Container(color: _kSurfaceHigh),
+                      Container(color: AppColors.overlayDark),
                     if (!isUnlocked)
                       Container(
                         color: Colors.black.withOpacity(0.55),
                         child: const Icon(Icons.lock_rounded,
-                            color: _kTextMuted, size: 18),
+                            color: AppColors.textMuted, size: 18),
                       ),
                   ],
                 ),
@@ -2218,7 +2164,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                     const Text(
                       'NEXT LESSON',
                       style: TextStyle(
-                        color: _kTextMuted,
+                        color: AppColors.textMuted,
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
@@ -2229,7 +2175,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                     Text(
                       widget.nextLesson.title,
                       style: TextStyle(
-                        color: isUnlocked ? _kTextPrimary : _kTextMuted,
+                        color: isUnlocked ? AppColors.textPrimary : AppColors.textMuted,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
@@ -2242,7 +2188,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                       Text(
                         'Auto next in ${countdownSeconds}s',
                         style: const TextStyle(
-                          color: _kRed,
+                          color: AppColors.primary,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'Montserrat',
@@ -2255,10 +2201,8 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
               Padding(
                 padding: const EdgeInsets.only(right: 14),
                 child: Icon(
-                  isUnlocked
-                      ? Icons.play_arrow_rounded
-                      : Icons.lock_rounded,
-                  color: isUnlocked ? _kRed : _kTextMuted,
+                  isUnlocked ? Icons.play_arrow_rounded : Icons.lock_rounded,
+                  color: isUnlocked ? AppColors.primary : AppColors.textMuted,
                   size: 22,
                 ),
               ),
@@ -2284,15 +2228,15 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 12,
           decoration: BoxDecoration(
-            color: _kRed,
-            borderRadius: BorderRadius.circular(2),
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.badge),
           ),
         ),
         const SizedBox(width: 8),
         Text(
           text.toUpperCase(),
           style: const TextStyle(
-            color: _kTextMuted,
+            color: AppColors.textMuted,
             fontSize: 9,
             fontWeight: FontWeight.w700,
             fontFamily: 'Montserrat',
@@ -2341,7 +2285,8 @@ class _LessonSkeletonState extends State<_LessonSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
-        final shimmer = Color.lerp(_kSurface, _kSurfaceHigh, _anim.value)!;
+        final shimmer =
+        Color.lerp(AppColors.shimmer, AppColors.shimmerHighlight, _anim.value)!;
         return Column(
           children: [
             AspectRatio(
@@ -2357,8 +2302,7 @@ class _LessonSkeletonState extends State<_LessonSkeleton>
                   const SizedBox(height: 12),
                   _Bone(width: 260, height: 26, color: shimmer),
                   const SizedBox(height: 18),
-                  _Bone(
-                      width: double.infinity, height: 2.5, color: shimmer),
+                  _Bone(width: double.infinity, height: 2.5, color: shimmer),
                   const SizedBox(height: 24),
                   Row(
                     children: [
@@ -2368,11 +2312,9 @@ class _LessonSkeletonState extends State<_LessonSkeleton>
                     ],
                   ),
                   const SizedBox(height: 28),
-                  _Bone(
-                      width: double.infinity, height: 80, color: shimmer),
+                  _Bone(width: double.infinity, height: 80, color: shimmer),
                   const SizedBox(height: 14),
-                  _Bone(
-                      width: double.infinity, height: 80, color: shimmer),
+                  _Bone(width: double.infinity, height: 80, color: shimmer),
                 ],
               ),
             ),
@@ -2387,8 +2329,7 @@ class _Bone extends StatelessWidget {
   final double width;
   final double height;
   final Color color;
-  const _Bone(
-      {required this.width, required this.height, required this.color});
+  const _Bone({required this.width, required this.height, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -2397,7 +2338,7 @@ class _Bone extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppRadius.avatar),
       ),
     );
   }
@@ -2424,18 +2365,18 @@ class _LessonError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                border: Border.all(color: AppColors.primary.withOpacity(0.25)),
               ),
               child: const Icon(Icons.wifi_off_rounded,
-                  color: _kRed, size: 28),
+                  color: AppColors.primary, size: 28),
             ),
             const SizedBox(height: 20),
             Text(
               message,
               style: const TextStyle(
-                color: _kTextSecondary,
+                color: AppColors.textSecondary,
                 fontSize: 13,
                 fontFamily: 'Montserrat',
                 height: 1.5,
@@ -2453,13 +2394,13 @@ class _LessonError extends StatelessWidget {
                         horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: _kDivider, width: 0.8),
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                      border: Border.all(color: AppColors.divider, width: 0.8),
                     ),
                     child: const Text(
                       'Back',
                       style: TextStyle(
-                        color: _kTextSecondary,
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
@@ -2474,11 +2415,11 @@ class _LessonError extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: _kRed,
-                      borderRadius: BorderRadius.circular(4),
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(AppRadius.button),
                       boxShadow: [
                         BoxShadow(
-                          color: _kRed.withOpacity(0.35),
+                          color: AppColors.primary.withOpacity(0.35),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),

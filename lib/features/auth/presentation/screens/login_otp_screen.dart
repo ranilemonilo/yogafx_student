@@ -196,7 +196,8 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     final isBusy = _isVerifying || _isResending;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      // Neutral / Black 1 — bg utama (§1)
+      backgroundColor: const Color(0xFF060908),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -205,8 +206,10 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
               width: 400,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
               decoration: BoxDecoration(
-                color: const Color(0xE6000000),
-                borderRadius: BorderRadius.circular(6),
+                // Neutral / Black 3 — card/panel
+                color: const Color(0xFF120F0E),
+                // Modal / panel radius 8px
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Form(
                 key: _formKey,
@@ -238,7 +241,8 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                     Text(
                       'Enter the OTP code sent to ${_maskEmail(_email)}',
                       style: const TextStyle(
-                        color: Color(0xFFB3B3B3),
+                        // rgba(255,255,255,0.65) — teks sekunder/deskripsi
+                        color: Color(0xA6FFFFFF),
                         fontSize: 13,
                         fontFamily: 'Montserrat',
                         height: 1.5,
@@ -252,8 +256,8 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                             : 'This OTP code has expired.',
                         style: TextStyle(
                           color: _timeRemaining > Duration.zero
-                              ? const Color(0xFF808080)
-                              : const Color(0xFFE87C03),
+                              ? const Color(0x73FFFFFF) // rgba(255,255,255,0.45)
+                              : const Color(0xFFE87C03), // warning
                           fontSize: 12,
                           fontFamily: 'Montserrat',
                         ),
@@ -266,7 +270,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                     const Text(
                       'OTP CODE',
                       style: TextStyle(
-                        color: Color(0xFFB3B3B3),
+                        color: Color(0xA6FFFFFF),
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
@@ -295,24 +299,25 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                       decoration: InputDecoration(
                         hintText: '123456',
                         hintStyle: const TextStyle(
-                          color: Color(0xFF555555),
+                          color: Color(0x73FFFFFF),
                           fontFamily: 'Montserrat',
                           letterSpacing: 4,
                         ),
                         errorText: _otpFieldError,
                         filled: true,
-                        fillColor: const Color(0xFF1C1C1C),
+                        // Input default — rgba(255,255,255,0.1)
+                        fillColor: const Color(0x1AFFFFFF),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(4),
-                          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+                          borderSide: const BorderSide(color: Color(0x4DFFFFFF)), // rgba(255,255,255,0.3)
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(4),
-                          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+                          borderSide: const BorderSide(color: Color(0x4DFFFFFF)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(4),
-                          borderSide: const BorderSide(color: Color(0xFFE50914)),
+                          borderSide: const BorderSide(color: Color(0xFFDB202C)), // Primary / Red
                         ),
                       ),
                       validator: (value) {
@@ -329,30 +334,30 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                       child: ElevatedButton(
                         onPressed: isBusy ? null : _handleVerify,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE50914),
-                          disabledBackgroundColor: const Color(0xFF2A2A2A),
+                          backgroundColor: const Color(0xFFDB202C),
+                          disabledBackgroundColor: const Color(0xFF120F0E),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                         child: _isVerifying
                             ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.2,
-                                ),
-                              )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.2,
+                          ),
+                        )
                             : const Text(
-                                'Verify OTP',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
+                          'Verify OTP',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -361,21 +366,21 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                         onPressed: isBusy ? null : _handleResend,
                         child: _isResending
                             ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFFE50914),
-                                  strokeWidth: 2,
-                                ),
-                              )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFDB202C),
+                            strokeWidth: 2,
+                          ),
+                        )
                             : const Text(
-                                'Resend OTP',
-                                style: TextStyle(
-                                  color: Color(0xFFE50914),
-                                  fontFamily: 'Montserrat',
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                          'Resend OTP',
+                          style: TextStyle(
+                            color: Color(0xFFDB202C),
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],

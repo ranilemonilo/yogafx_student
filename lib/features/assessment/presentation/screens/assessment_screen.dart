@@ -4,9 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/error/app_exception.dart';
-import '../../../../core/theme/app_theme.dart';
+// import '../../../../core/theme/app_theme.dart'; // Digantikan oleh design system _DS di bawah
 import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Design Tokens — Disinkronkan penuh dengan DESIGN_SYSTEM.md
+// ─────────────────────────────────────────────────────────────────────────────
+abstract class _DS {
+  // Colors (sesuai §1 Warna)
+  static const Color background    = Color(0xFF060908); // Neutral / Black 1
+  static const Color surface       = Color(0xFF141110); // Neutral / Black 2 — header/footer
+  static const Color surfaceRaised = Color(0xFF120F0E); // Neutral / Black 3 — card/panel
+  static const Color red           = Color(0xFFDB202C); // Primary / Red
+  static const Color emerald       = Color(0xFF00B14F); // Secondary / Emerald
+  static const Color white         = Color(0xFFFFFFFF);
+  static const Color textPrimary   = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xA6FFFFFF); // rgba(255,255,255,0.65)
+  static const Color textMuted     = Color(0x73FFFFFF); // rgba(255,255,255,0.45)
+  static const Color divider       = Color(0x1AFFFFFF); // rgba(255,255,255,0.1)
+
+  // Border-radius
+  static const double radiusButton = 4;
+  static const double radiusBadge  = 2;
+  static const double radiusCard   = 4;
+  static const double radiusInput  = 4;
+  static const double radiusAvatar = 8;
+  static const double radiusModal  = 8; // Digunakan untuk dialog & overlay
+}
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -84,7 +109,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
     ));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _DS.background,
       body: Stack(
         children: [
           attemptAsync.when(
@@ -133,19 +158,16 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
               return SafeArea(
                 child: Column(
                   children: [
-                    // Header
                     _AssessmentHeader(
                       assessment: data.assessment,
-                      canGoBack: false, 
+                      canGoBack: false,
                       onBack: () => _handleBack(context),
                       onClose: () => _handleClose(context),
                     ),
 
-                    // Slim progress bar
                     if (data.assessment.showProgressBar)
                       _NetflixProgressBar(progress: data.assessment.progress),
 
-                    // Question content — animated
                     Expanded(
                       child: FadeTransition(
                         opacity: _fadeAnim,
@@ -173,7 +195,6 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                       ),
                     ),
 
-                    // Bottom CTA
                     _BottomAction(
                       questionType: data.question.questionType,
                       isLastQuestion: data.isLastQuestion,
@@ -183,7 +204,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                       canManuallyProceed: data.question.questionType == 'text'
                           ? _hasAnswer(data.question)
                           : (!data.question.hasCorrectnessGate ||
-                              _isOptionAnswerCorrect),
+                          _isOptionAnswerCorrect),
                       isRequired: data.question.required,
                       onPrevious: () {},
                       onSubmit: () => _handleSubmit(context, data),
@@ -244,10 +265,10 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
   }
 
   Future<void> _handleOptionSelected(
-    BuildContext context,
-    AssessmentAttemptData data,
-    int optionId,
-  ) async {
+      BuildContext context,
+      AssessmentAttemptData data,
+      int optionId,
+      ) async {
     if (_submitting) return;
 
     List<int> nextSelection;
@@ -394,7 +415,6 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
         }
       }
     }
-
     return exception.message;
   }
 
@@ -405,12 +425,13 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       builder: (ctx) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1F1F1F),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: _DS.surface,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_DS.radiusModal)),
           title: const Text(
             'Leave assessment?',
             style: TextStyle(
-              color: AppColors.textPrimary,
+              color: _DS.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w700,
               fontFamily: 'Montserrat',
@@ -420,7 +441,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
           content: const Text(
             'Your progress will be saved. You can continue later.',
             style: TextStyle(
-              color: AppColors.textSecondary,
+              color: _DS.textSecondary,
               fontSize: 14,
               fontFamily: 'Montserrat',
               height: 1.6,
@@ -436,7 +457,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
               child: const Text(
                 'Stay',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: _DS.textSecondary,
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w500,
                 ),
@@ -448,15 +469,15 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                 context.pop();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: _DS.red,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4)),
+                    borderRadius: BorderRadius.circular(_DS.radiusButton)),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               child: const Text(
                 'Leave',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _DS.white,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Montserrat',
                 ),
@@ -473,13 +494,13 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+            const Icon(Icons.info_outline, color: _DS.red, size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 msg,
                 style: const TextStyle(
-                  color: AppColors.textPrimary,
+                  color: _DS.textPrimary,
                   fontFamily: 'Montserrat',
                   fontSize: 13,
                 ),
@@ -487,9 +508,10 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF1F1F1F),
+        backgroundColor: _DS.surfaceRaised,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_DS.radiusModal)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
     );
@@ -542,7 +564,7 @@ class _NetflixLoaderState extends State<_NetflixLoader>
             errorBuilder: (_, __, ___) {
               return const Icon(
                 Icons.image_outlined,
-                color: AppColors.textMuted,
+                color: _DS.textMuted,
                 size: 56,
               );
             },
@@ -571,16 +593,23 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
           width: 280,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
           decoration: BoxDecoration(
-            color: const Color(0xFF171717),
-            borderRadius: BorderRadius.circular(24),
+            color: _DS.surface,
+            borderRadius: BorderRadius.circular(_DS.radiusModal),
             border: Border.all(
-              color: AppColors.primary.withOpacity(0.28),
+              color: _DS.red.withOpacity(0.28),
             ),
+            // Penambahan Shadow Modal/Panel sesuai design system
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.9),
+                blurRadius: 40,
+                offset: const Offset(0, 16),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // PERUBAHAN: Countdown sekarang ada di tengah loading circle
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -588,14 +617,14 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
                     width: 76,
                     height: 76,
                     child: CircularProgressIndicator(
-                      color: AppColors.primary,
+                      color: _DS.red,
                       strokeWidth: 4.5,
                     ),
                   ),
                   Text(
                     '$countdown',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: _DS.white,
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       fontFamily: 'Montserrat',
@@ -608,7 +637,7 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
                 'Processing Your Answers',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _DS.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'Montserrat',
@@ -619,7 +648,7 @@ class _AssessmentProcessingOverlay extends StatelessWidget {
                 'Please wait a moment...',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: _DS.textSecondary,
                   fontSize: 13,
                   fontFamily: 'Montserrat',
                   height: 1.5,
@@ -666,7 +695,7 @@ class _AssessmentHeader extends StatelessWidget {
                 const Text(
                   'ASSESSMENT',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: _DS.red,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Montserrat',
@@ -677,7 +706,7 @@ class _AssessmentHeader extends StatelessWidget {
                 Text(
                   assessment.title,
                   style: const TextStyle(
-                    color: AppColors.textPrimary,
+                    color: _DS.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Montserrat',
@@ -716,7 +745,7 @@ class _HeaderIconBtn extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Icon(icon, color: AppColors.textPrimary, size: 18),
+          child: Icon(icon, color: _DS.textPrimary, size: 18),
         ),
       ),
     );
@@ -750,10 +779,10 @@ class _NetflixProgressBar extends StatelessWidget {
                   height: 3,
                   decoration: BoxDecoration(
                     color: done
-                        ? AppColors.primary
+                        ? _DS.red
                         : active
-                            ? AppColors.primary.withOpacity(0.5)
-                            : AppColors.divider,
+                        ? _DS.red.withOpacity(0.5)
+                        : _DS.divider,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -764,7 +793,7 @@ class _NetflixProgressBar extends StatelessWidget {
           Text(
             '${progress.current} / ${progress.total}',
             style: const TextStyle(
-              color: AppColors.textMuted,
+              color: _DS.textMuted,
               fontSize: 11,
               fontFamily: 'Montserrat',
               letterSpacing: 0.5,
@@ -808,15 +837,15 @@ class _QuestionBody extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.15),
+              color: _DS.red.withOpacity(0.15),
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3), width: 0.5),
+                  color: _DS.red.withOpacity(0.3), width: 0.5),
             ),
             child: Text(
               question.title.toUpperCase(),
               style: const TextStyle(
-                color: AppColors.primary,
+                color: _DS.red,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
@@ -831,7 +860,7 @@ class _QuestionBody extends StatelessWidget {
             child: Text(
               question.questionText,
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: _DS.textPrimary,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 fontFamily: 'Montserrat',
@@ -847,7 +876,7 @@ class _QuestionBody extends StatelessWidget {
             child: Text(
               question.instructionText!,
               style: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.8),
+                color: _DS.textSecondary.withOpacity(0.8),
                 fontSize: 13,
                 fontFamily: 'Montserrat',
                 height: 1.6,
@@ -861,13 +890,13 @@ class _QuestionBody extends StatelessWidget {
             question.questionType == 'checkboxes')
           ...question.options.asMap().entries.map(
                 (entry) => _AnimatedOptionCard(
-                  index: entry.key,
-                  option: entry.value,
-                  isSelected: selectedOptionIds.contains(entry.value.id),
-                  isMulti: question.allowMultiSelect,
-                  onTap: () => onOptionSelected(entry.value.id),
-                ),
-              ),
+              index: entry.key,
+              option: entry.value,
+              isSelected: selectedOptionIds.contains(entry.value.id),
+              isMulti: question.allowMultiSelect,
+              onTap: () => onOptionSelected(entry.value.id),
+            ),
+          ),
         if (optionFeedbackMessage != null &&
             optionFeedbackMessage!.trim().isNotEmpty)
           Padding(
@@ -875,7 +904,7 @@ class _QuestionBody extends StatelessWidget {
             child: Text(
               optionFeedbackMessage!,
               style: TextStyle(
-                color: isCorrectFeedback ? Colors.green : AppColors.primary,
+                color: isCorrectFeedback ? _DS.emerald : _DS.red,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
@@ -958,23 +987,23 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
               color: widget.isSelected
-                  ? const Color(0xFF2B1212)
-                  : const Color(0xFF242424),
-              borderRadius: BorderRadius.circular(6),
+                  ? _DS.red.withOpacity(0.12)
+                  : _DS.surface,
+              borderRadius: BorderRadius.circular(_DS.radiusCard),
               border: Border.all(
                 color: widget.isSelected
-                    ? AppColors.primary
-                    : const Color(0xFF4A4A4A),
+                    ? _DS.red
+                    : _DS.divider,
                 width: widget.isSelected ? 1.5 : 1.0,
               ),
               boxShadow: widget.isSelected
                   ? [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.18),
-                        blurRadius: 12,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
+                BoxShadow(
+                  color: _DS.red.withOpacity(0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ]
                   : [],
             ),
             child: Row(
@@ -985,18 +1014,18 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
                   height: 22,
                   decoration: BoxDecoration(
                     shape: widget.isMulti ? BoxShape.rectangle : BoxShape.circle,
-                    borderRadius: widget.isMulti ? BorderRadius.circular(5) : null,
+                    borderRadius: widget.isMulti ? BorderRadius.circular(4) : null,
                     color: widget.isSelected
-                        ? AppColors.primary
+                        ? _DS.red
                         : Colors.transparent,
                     border: Border.all(
-                      color: AppColors.primary,
+                      color: widget.isSelected ? _DS.red : _DS.textMuted,
                       width: 1.5,
                     ),
                   ),
                   child: widget.isSelected
                       ? const Icon(Icons.check_rounded,
-                          color: Colors.white, size: 14)
+                      color: Colors.white, size: 14)
                       : null,
                 ),
                 const SizedBox(width: 16),
@@ -1012,7 +1041,7 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
                       errorBuilder: (_, __, ___) => Container(
                         width: 50,
                         height: 50,
-                        color: const Color(0xFF303030),
+                        color: _DS.surfaceRaised,
                         alignment: Alignment.center,
                         child: const Icon(
                           Icons.image_outlined,
@@ -1045,7 +1074,7 @@ class _AnimatedOptionCardState extends State<_AnimatedOptionCard>
                     padding: const EdgeInsets.only(left: 10),
                     child: Icon(
                       Icons.circle,
-                      color: AppColors.primary.withOpacity(0.7),
+                      color: _DS.red.withOpacity(0.7),
                       size: 7,
                     ),
                   ),
@@ -1087,20 +1116,20 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(_DS.radiusInput),
           border: Border.all(
-            color: _focused ? AppColors.primary : const Color(0xFF2A2A2A),
+            color: _focused ? _DS.red : _DS.divider,
             width: _focused ? 1.5 : 1.0,
           ),
-          color: const Color(0xFF1A1A1A),
+          color: _DS.surfaceRaised,
           boxShadow: _focused
               ? [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.12),
-                    blurRadius: 12,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
+            BoxShadow(
+              color: _DS.red.withOpacity(0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ]
               : [],
         ),
         child: TextField(
@@ -1109,7 +1138,7 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
           maxLength: widget.characterLimit,
           onChanged: widget.onChanged,
           style: const TextStyle(
-            color: AppColors.textPrimary,
+            color: _DS.textPrimary,
             fontFamily: 'Montserrat',
             fontSize: 14,
             height: 1.6,
@@ -1117,12 +1146,12 @@ class _NetflixTextFieldState extends State<_NetflixTextField> {
           decoration: InputDecoration(
             hintText: 'Write your answer here...',
             hintStyle: TextStyle(
-              color: AppColors.textMuted.withOpacity(0.6),
+              color: _DS.textMuted.withOpacity(0.6),
               fontFamily: 'Montserrat',
               fontSize: 14,
             ),
             counterStyle: const TextStyle(
-              color: AppColors.textMuted,
+              color: _DS.textMuted,
               fontFamily: 'Montserrat',
               fontSize: 11,
             ),
@@ -1169,10 +1198,10 @@ class _BottomAction extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 14, 24, 34),
       decoration: const BoxDecoration(
-        color: AppColors.background,
+        color: _DS.background,
         border: Border(
           top: BorderSide(
-            color: Color(0xFF2A2A2A),
+            color: _DS.divider,
             width: 0.5,
           ),
         ),
@@ -1185,59 +1214,59 @@ class _BottomAction extends StatelessWidget {
             onPressed: isEnabled ? onSubmit : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: canProceed && showManualSubmit
-                  ? AppColors.primary
-                  : const Color(0xFF2A2A2A),
-              disabledBackgroundColor: const Color(0xFF2A2A2A),
+                  ? _DS.red
+                  : _DS.surfaceRaised,
+              disabledBackgroundColor: _DS.surfaceRaised,
               elevation: canProceed ? 4 : 0,
-              shadowColor: AppColors.primary.withOpacity(0.4),
+              shadowColor: _DS.red.withOpacity(0.4),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(_DS.radiusButton),
               ),
             ),
             child: submitting
                 ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                  )
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2.5,
+              ),
+            )
                 : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isLastQuestion
-                            ? 'Submit Assessment'
-                            : 'Next Question',
-                        style: TextStyle(
-                          color: canProceed
-                              ? Colors.white
-                              : AppColors.textMuted,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      if (canProceed && !isLastQuestion) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ],
-                      if (canProceed && isLastQuestion) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.check_circle_outline_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ],
-                    ],
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  isLastQuestion
+                      ? 'Submit Assessment'
+                      : 'Next Question',
+                  style: TextStyle(
+                    color: canProceed
+                        ? Colors.white
+                        : _DS.textMuted,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Montserrat',
+                    letterSpacing: 0.2,
                   ),
+                ),
+                if (canProceed && !isLastQuestion) ...[
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ],
+                if (canProceed && isLastQuestion) ...[
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1273,12 +1302,12 @@ class _AttemptError extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: _DS.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(32),
                 ),
                 child: const Icon(
                   Icons.wifi_off_rounded,
-                  color: AppColors.primary,
+                  color: _DS.red,
                   size: 28,
                 ),
               ),
@@ -1286,7 +1315,7 @@ class _AttemptError extends StatelessWidget {
               const Text(
                 'Something went wrong',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: _DS.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Montserrat',
@@ -1296,7 +1325,7 @@ class _AttemptError extends StatelessWidget {
               Text(
                 message,
                 style: const TextStyle(
-                  color: AppColors.textSecondary,
+                  color: _DS.textSecondary,
                   fontSize: 13,
                   fontFamily: 'Montserrat',
                   height: 1.5,
@@ -1312,14 +1341,14 @@ class _AttemptError extends StatelessWidget {
                   OutlinedButton(
                     onPressed: onBack,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: Color(0xFF2A2A2A)),
+                      foregroundColor: _DS.textSecondary,
+                      side: const BorderSide(color: _DS.divider),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(_DS.radiusButton),
                       ),
                     ),
                     child: const Text(
@@ -1330,13 +1359,13 @@ class _AttemptError extends StatelessWidget {
                   ElevatedButton(
                     onPressed: onRetry,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: _DS.red,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 28,
                         vertical: 12,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(_DS.radiusButton),
                       ),
                     ),
                     child: const Text(

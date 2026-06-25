@@ -98,24 +98,21 @@ class _CertificateDetailContentState extends State<_CertificateDetailContent>
                 icon: Icons.arrow_back_ios_new_rounded,
                 onTap: () => Navigator.of(context).pop(),
               ),
-              title: Column(
-                children: const [
-                  Text(
-                    'CERTIFICATE',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
-                      letterSpacing: 2.5,
-                    ),
-                  ),
-                ],
+              title: const Text(
+                'CERTIFICATE',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                  letterSpacing: 2.5,
+                ),
               ),
               centerTitle: true,
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(0.5),
-                child: Container(height: 0.5, color: const Color(0xFF2A2A2A)),
+                // §1: divider = rgba(255,255,255,0.1)
+                child: Container(height: 0.5, color: AppColors.divider),
               ),
             ),
 
@@ -139,6 +136,7 @@ class _CertificateDetailContentState extends State<_CertificateDetailContent>
                           const Text(
                             'DETAILS',
                             style: TextStyle(
+                              // §2: textMuted = rgba(255,255,255,0.45)
                               color: AppColors.textMuted,
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -160,8 +158,9 @@ class _CertificateDetailContentState extends State<_CertificateDetailContent>
                             value: c.downloadUrl != null
                                 ? 'Available'
                                 : 'Not available',
+                            // §1: secondary = Emerald #00B14F untuk indikator sukses
                             valueColor: c.downloadUrl != null
-                                ? const Color(0xFF2ECC71)
+                                ? AppColors.secondary
                                 : null,
                           ),
                           _DetailRow(
@@ -170,7 +169,7 @@ class _CertificateDetailContentState extends State<_CertificateDetailContent>
                                 ? 'Available'
                                 : 'Not available',
                             valueColor: c.openUrl != null
-                                ? const Color(0xFF2ECC71)
+                                ? AppColors.secondary
                                 : null,
                           ),
                         ],
@@ -221,17 +220,18 @@ class _CertificateHeroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
-        // Subtle gold-tinted top border as accent
-        gradient: const LinearGradient(
+        // §1: surfaceElevated = Neutral Black 3 (#120F0E) untuk card/panel
+        borderRadius: BorderRadius.circular(AppRadius.modal),
+        border: Border.all(color: AppColors.divider),
+        // Subtle warm-tinted gradient sesuai palet coklat design system
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF1F1A10),
-            Color(0xFF1A1A1A),
-            Color(0xFF1A1A1A),
+            // §1: overlayDark (#161210) → surfaceElevated (#120F0E)
+            AppColors.overlayDark,
+            AppColors.surfaceElevated,
+            AppColors.surfaceElevated,
           ],
         ),
       ),
@@ -243,13 +243,13 @@ class _CertificateHeroCard extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withOpacity(0.10),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
                   color: AppColors.primary.withOpacity(0.25), width: 1),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: AppColors.primary.withOpacity(0.20),
                   blurRadius: 20,
                   spreadRadius: 2,
                 ),
@@ -266,15 +266,15 @@ class _CertificateHeroCard extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Type badge
+          // Type badge — §3: badge styling radius 2px
           Container(
             padding:
             const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.primary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppRadius.badge),
               border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3), width: 0.5),
+                  color: AppColors.primary.withOpacity(0.30), width: 0.5),
             ),
             child: Text(
               certificate.typeLabel.toUpperCase(),
@@ -290,7 +290,7 @@ class _CertificateHeroCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // Title
+          // Title — §2: Title 2 = 24px SemiBold
           Text(
             certificate.typeLabel,
             style: const TextStyle(
@@ -305,7 +305,7 @@ class _CertificateHeroCard extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Decorative line
+          // Decorative divider line
           Container(
             height: 1,
             decoration: BoxDecoration(
@@ -330,6 +330,7 @@ class _CertificateHeroCard extends StatelessWidget {
                 Text(
                   'Issued ${certificate.generatedAt}',
                   style: const TextStyle(
+                    // §2: caption 12px, textMuted = rgba(255,255,255,0.45)
                     color: AppColors.textMuted,
                     fontSize: 12,
                     fontFamily: 'Montserrat',
@@ -395,6 +396,7 @@ class _DetailRow extends StatelessWidget {
 }
 
 // ─── Action Buttons ───────────────────────────────────────────────────────────
+// §4: Primary = bg #DB202C, radius 4px | Secondary = bg rgba(255,255,255,0.2)
 
 class _ActionButton extends StatefulWidget {
   final String label;
@@ -449,22 +451,24 @@ class _ActionButtonState extends State<_ActionButton>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           width: double.infinity,
-          height: 54,
+          // §4: Large button height ~42px, pakai 48 agar konsisten dengan login
+          height: 48,
           decoration: BoxDecoration(
+            // Primary = #DB202C | Secondary = rgba(255,255,255,0.2) §4
             color: widget.primary
                 ? AppColors.primary
-                : const Color(0xFF1A1A1A),
-            borderRadius: BorderRadius.circular(4),
+                : AppColors.inputFill, // rgba(255,255,255,0.10)
+            borderRadius: BorderRadius.circular(AppRadius.button),
             border: widget.primary
                 ? null
-                : Border.all(color: const Color(0xFF2A2A2A)),
+                : Border.all(color: AppColors.divider),
             boxShadow: widget.primary
                 ? [
               BoxShadow(
                 color: AppColors.primary.withOpacity(0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
-              )
+              ),
             ]
                 : [],
           ),
@@ -473,8 +477,9 @@ class _ActionButtonState extends State<_ActionButton>
             children: [
               Icon(
                 widget.icon,
+                // §3: ikon putih untuk primary, textSecondary untuk secondary
                 color: widget.primary
-                    ? Colors.white
+                    ? AppColors.textPrimary
                     : AppColors.textSecondary,
                 size: 18,
               ),
@@ -483,8 +488,9 @@ class _ActionButtonState extends State<_ActionButton>
                 widget.label,
                 style: TextStyle(
                   color: widget.primary
-                      ? Colors.white
+                      ? AppColors.textPrimary
                       : AppColors.textSecondary,
+                  // §4: Large button = 16px Bold
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Montserrat',
@@ -512,9 +518,10 @@ class _SectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        // §1: surfaceElevated (#120F0E) untuk card/panel
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppRadius.modal),
+        border: Border.all(color: AppColors.divider),
       ),
       child: child,
     );
@@ -582,8 +589,9 @@ class _CertificateDetailSkeletonState
         height: h,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(r),
+          // §1: shimmer (#281D16) → shimmerHighlight (#3A2A1E)
           color: Color.lerp(
-              const Color(0xFF1E1E1E), const Color(0xFF2A2A2A), _anim.value),
+              AppColors.shimmer, AppColors.shimmerHighlight, _anim.value),
         ),
       ),
     );
@@ -617,9 +625,9 @@ class _CertificateDetailSkeletonState
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF2A2A2A)),
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(AppRadius.modal),
+                    border: Border.all(color: AppColors.divider),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -638,9 +646,9 @@ class _CertificateDetailSkeletonState
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF2A2A2A)),
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(AppRadius.modal),
+                    border: Border.all(color: AppColors.divider),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -656,9 +664,9 @@ class _CertificateDetailSkeletonState
                   ),
                 ),
                 const SizedBox(height: 24),
-                _bone(54, r: 4),
+                _bone(48, r: AppRadius.button),
                 const SizedBox(height: 12),
-                _bone(54, r: 4),
+                _bone(48, r: AppRadius.button),
               ],
             ),
           ),
@@ -691,7 +699,7 @@ class _CertificateDetailError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(32),
               ),
               child: const Icon(Icons.wifi_off_rounded,
@@ -702,6 +710,7 @@ class _CertificateDetailError extends StatelessWidget {
               'Something went wrong',
               style: TextStyle(
                 color: AppColors.textPrimary,
+                // §2: Headline 1 ~22px, pakai 18 untuk konteks error
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
@@ -712,6 +721,7 @@ class _CertificateDetailError extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
+                // §2: textSecondary = rgba(255,255,255,0.65)
                 color: AppColors.textSecondary,
                 fontSize: 13,
                 fontFamily: 'Montserrat',
@@ -726,7 +736,7 @@ class _CertificateDetailError extends StatelessWidget {
                     horizontal: 32, vertical: 14),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(AppRadius.button),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primary.withOpacity(0.35),
@@ -738,7 +748,7 @@ class _CertificateDetailError extends StatelessWidget {
                 child: const Text(
                   'Try Again',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontFamily: 'Montserrat',
                     fontWeight: FontWeight.w700,
                   ),

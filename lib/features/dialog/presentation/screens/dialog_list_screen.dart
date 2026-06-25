@@ -5,18 +5,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../data/models/dialog_model.dart';
 import '../providers/dialog_provider.dart';
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-
-const _kRed = Color(0xFFE50914);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kSurfaceHigh = Color(0xFF262626);
-const _kDivider = Color(0xFF252525);
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
-
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
 class DialogListScreen extends ConsumerWidget {
@@ -27,7 +15,7 @@ class DialogListScreen extends ConsumerWidget {
     final dialogsAsync = ref.watch(dialogListProvider);
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: AppColors.background,
       body: dialogsAsync.when(
         loading: () => const _DialogListSkeleton(),
         error: (e, _) => _DialogError(
@@ -59,7 +47,7 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
   @override
   void initState() {
     super.initState();
-    final count = widget.data.items.length + 1; // +1 for header
+    final count = widget.data.items.length + 1;
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -101,8 +89,8 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: _kRed,
-      backgroundColor: _kSurfaceElevated,
+      color: AppColors.primary,
+      backgroundColor: AppColors.surfaceElevated,
       onRefresh: () async {
         ref.invalidate(dialogListProvider);
         await ref.read(dialogListProvider.future);
@@ -133,13 +121,16 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
               child: Container(
                 margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
                 decoration: BoxDecoration(
-                  color: _kSurfaceElevated,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: _kDivider, width: 0.8),
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(AppRadius.modal),
+                  border: Border.all(
+                    color: AppColors.divider,
+                    width: 0.8,
+                  ),
                 ),
                 child: const Icon(
                   Icons.arrow_back_ios_new_rounded,
-                  color: _kTextPrimary,
+                  color: AppColors.textPrimary,
                   size: 15,
                 ),
               ),
@@ -147,7 +138,7 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
             title: const Text(
               'Dialogs',
               style: TextStyle(
-                color: _kTextPrimary,
+                color: AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
@@ -162,7 +153,6 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Section label
                   FadeTransition(
                     opacity: _fades[0],
                     child: SlideTransition(
@@ -171,7 +161,6 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Cards
                   ...widget.data.items.asMap().entries.map((entry) {
                     final i = entry.key + 1;
                     final item = entry.value;
@@ -256,12 +245,12 @@ class _DialogCardState extends State<_DialogCard>
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _kDivider, width: 0.8),
+            color: AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.divider, width: 0.8),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withOpacity(0.4),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -274,16 +263,16 @@ class _DialogCardState extends State<_DialogCard>
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: _kRed.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.avatar),
                   border: Border.all(
-                    color: _kRed.withOpacity(0.22),
+                    color: AppColors.primary.withOpacity(0.22),
                     width: 0.8,
                   ),
                 ),
                 child: const Icon(
                   Icons.auto_awesome_rounded,
-                  color: _kRed,
+                  color: AppColors.primary,
                   size: 20,
                 ),
               ),
@@ -296,7 +285,7 @@ class _DialogCardState extends State<_DialogCard>
                     Text(
                       item.title,
                       style: const TextStyle(
-                        color: _kTextPrimary,
+                        color: AppColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
@@ -308,7 +297,9 @@ class _DialogCardState extends State<_DialogCard>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: preview != null ? _kTextSecondary : _kTextMuted,
+                        color: preview != null
+                            ? AppColors.textSecondary
+                            : AppColors.textMuted,
                         fontSize: 12,
                         fontFamily: 'Montserrat',
                         height: 1.5,
@@ -324,7 +315,7 @@ class _DialogCardState extends State<_DialogCard>
               // Chevron
               const Icon(
                 Icons.chevron_right_rounded,
-                color: _kTextMuted,
+                color: AppColors.textMuted,
                 size: 20,
               ),
             ],
@@ -349,15 +340,15 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 12,
           decoration: BoxDecoration(
-            color: _kRed,
-            borderRadius: BorderRadius.circular(2),
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.badge),
           ),
         ),
         const SizedBox(width: 8),
         Text(
           text.toUpperCase(),
           style: const TextStyle(
-            color: _kTextMuted,
+            color: AppColors.textMuted,
             fontSize: 9,
             fontWeight: FontWeight.w700,
             fontFamily: 'Montserrat',
@@ -407,18 +398,18 @@ class _DialogListSkeletonState extends State<_DialogListSkeleton>
       animation: _anim,
       builder: (_, __) {
         final shimmer =
-        Color.lerp(_kSurface, _kSurfaceHigh, _anim.value)!;
+        Color.lerp(AppColors.shimmer, AppColors.shimmerHighlight, _anim.value)!;
         return CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: _kBg,
+              backgroundColor: AppColors.background,
               floating: true,
               snap: true,
               leading: Container(
                 margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
                 decoration: BoxDecoration(
                   color: shimmer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(AppRadius.modal),
                 ),
               ),
               title: _Bone(width: 80, height: 14, color: shimmer),
@@ -466,7 +457,7 @@ class _Bone extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
     );
   }
@@ -491,18 +482,24 @@ class _DialogError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.25),
+                ),
               ),
-              child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 28),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                color: AppColors.primary,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: _kTextSecondary,
+                color: AppColors.textSecondary,
                 fontSize: 13,
                 fontFamily: 'Montserrat',
                 height: 1.5,
@@ -515,11 +512,11 @@ class _DialogError extends StatelessWidget {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                 decoration: BoxDecoration(
-                  color: _kRed,
-                  borderRadius: BorderRadius.circular(4),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppRadius.button),
                   boxShadow: [
                     BoxShadow(
-                      color: _kRed.withOpacity(0.35),
+                      color: AppColors.primary.withOpacity(0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

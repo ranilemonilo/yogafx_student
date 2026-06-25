@@ -5,39 +5,34 @@ import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design Tokens — sesuai design system Netflix
-// Primary Red      : #DB202C
-// Background       : #141110  (Neutral/Black)
-// Surface          : #1F1D1C
-// Surface Raised   : #2A2826
-// Divider          : #3A3836
-// Text Primary     : #FFFFFF
-// Text Secondary   : rgba(255,255,255,0.65)
-// Text Muted       : rgba(255,255,255,0.45)
-// Font             : Montserrat
+// Design Tokens — disesuaikan dengan DESIGN_SYSTEM.md
 // ─────────────────────────────────────────────────────────────────────────────
 abstract class _DS {
-  // Colors
-  static const Color background    = Color(0xFF141110);
-  static const Color surface       = Color(0xFF1F1D1C);
-  static const Color surfaceRaised = Color(0xFF2A2826);
-  static const Color red           = Color(0xFFDB202C);
+  // Colors (sesuai §1 Warna)
+  static const Color background    = Color(0xFF060908); // Neutral / Black 1 — bg utama
+  static const Color surface       = Color(0xFF141110); // Neutral / Black 2 — header/footer
+  static const Color surfaceRaised = Color(0xFF120F0E); // Neutral / Black 3 — card/panel
+  static const Color red           = Color(0xFFDB202C); // Primary / Red
+  static const Color emerald       = Color(0xFF00B14F); // Secondary / Emerald
   static const Color white         = Color(0xFFFFFFFF);
   static const Color textPrimary   = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFA8A8A8); // ~65% white
-  static const Color textMuted     = Color(0xFF737373); // ~45% white
-  static const Color divider       = Color(0xFF3A3836);
+  static const Color textSecondary = Color(0xA6FFFFFF); // rgba(255,255,255,0.65)
+  static const Color textMuted     = Color(0x73FFFFFF); // rgba(255,255,255,0.45)
+  static const Color divider       = Color(0x1AFFFFFF); // rgba(255,255,255,0.1)
 
-  // Border-radius (design system)
-  static const double radiusButton  = 4;
-  static const double radiusBadge   = 2;
-  static const double radiusCard    = 4;
+  // Border-radius (sesuai §"Catatan Implementasi - Border Radius")
+  static const double radiusButton  = 4; // Tombol
+  static const double radiusCard    = 4; // Card thumbnail
+  static const double radiusInput   = 4; // Input field
+  static const double radiusBadge   = 2; // Badge/label kecil
+  static const double radiusAvatar  = 8; // Avatar profile
+  static const double radiusModal   = 8; // Modal / panel
   static const double radiusCircle  = 100;
 
   // Spacing (base 8px grid)
   static const double sp4  = 4;
   static const double sp6  = 6;
-  static const double sp8  = 8;
+  static const double sp8  = 8; // Grid dasar & Gutter antar card
   static const double sp10 = 10;
   static const double sp12 = 12;
   static const double sp16 = 16;
@@ -50,12 +45,6 @@ abstract class _DS {
   static const double sp48 = 48;
 
   // Type scale (Montserrat)
-  // Regular/Caption  12px
-  // Regular/Body     14px
-  // Medium/Label     14px  w500
-  // Semi Bold/Title  24px  w600
-  // Semi Bold/Header 36px  w600
-  // Bold/Display     48px  w700
   static TextStyle caption({Color? color}) => TextStyle(
     fontFamily: 'Montserrat',
     fontSize: 12,
@@ -182,7 +171,6 @@ class AssessmentIntroScreen extends ConsumerWidget {
     );
   }
 
-  // ── LOGIKA TIDAK DIUBAH ───────────────────────────────────────────────────
   Future<void> _startAssessment(
       BuildContext context,
       WidgetRef ref,
@@ -359,19 +347,12 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Lesson label (eyebrow)
                         _LessonTag(label: widget.lessonTitle),
                         const SizedBox(height: _DS.sp10),
-
-                        // ── Assessment Title
                         Text(widget.title, style: _DS.title()),
                         const SizedBox(height: _DS.sp16),
-
-                        // ── Divider tipis
                         const _ThinDivider(),
                         const SizedBox(height: _DS.sp16),
-
-                        // ── Description
                         if (widget.description != null) ...[
                           Text(
                             widget.description!,
@@ -379,15 +360,11 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
                           ),
                           const SizedBox(height: _DS.sp20),
                         ],
-
-                        // ── Meta info (duration, back nav)
                         _MetaRow(
                           durationMinutes: widget.durationMinutes,
                           allowBackNavigation: widget.allowBackNavigation,
                         ),
                         const SizedBox(height: _DS.sp28),
-
-                        // ── Eligibility / Progress
                         _EligibilitySection(
                           isUnlocked: widget.isUnlocked,
                           requiresWatchProgress: widget.requiresWatchProgress,
@@ -395,8 +372,6 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
                           progressFraction: widget.progressFraction,
                         ),
                         const SizedBox(height: _DS.sp32),
-
-                        // ── CTA Button
                         _StartButton(
                           isUnlocked: widget.isUnlocked,
                           label: widget.startLabel,
@@ -409,8 +384,6 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
               ),
             ],
           ),
-
-          // ── Floating Top Bar
           _TopBar(opacity: _appBarOpacity, onBack: widget.onBack),
         ],
       ),
@@ -419,7 +392,7 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hero — logika TIDAK DIUBAH
+// Hero
 // ─────────────────────────────────────────────────────────────────────────────
 class _Hero extends StatelessWidget {
   final String? thumbnailUrl;
@@ -433,7 +406,7 @@ class _Hero extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Thin Divider — komponen baru sesuai design system
+// Thin Divider
 // ─────────────────────────────────────────────────────────────────────────────
 class _ThinDivider extends StatelessWidget {
   const _ThinDivider();
@@ -449,7 +422,7 @@ class _ThinDivider extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lesson Tag / Eyebrow — warna merah, uppercase, letter-spacing
+// Lesson Tag / Eyebrow
 // ─────────────────────────────────────────────────────────────────────────────
 class _LessonTag extends StatelessWidget {
   final String label;
@@ -461,7 +434,6 @@ class _LessonTag extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Netflix "N" merah kecil sebagai eyebrow marker
         Container(
           width: 3,
           height: 14,
@@ -485,7 +457,7 @@ class _LessonTag extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Meta Row — durasi & navigasi info
+// Meta Row
 // ─────────────────────────────────────────────────────────────────────────────
 class _MetaRow extends StatelessWidget {
   final int? durationMinutes;
@@ -535,7 +507,6 @@ class _MetaRow extends StatelessWidget {
   }
 }
 
-/// Badge meta kecil dengan ikon + teks — mirip maturity rating badge di DS
 class _MetaBadge extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -567,7 +538,7 @@ class _MetaBadge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Eligibility Section — progress bar + status
+// Eligibility Section
 // ─────────────────────────────────────────────────────────────────────────────
 class _EligibilitySection extends StatelessWidget {
   final bool isUnlocked;
@@ -588,7 +559,7 @@ class _EligibilitySection extends StatelessWidget {
       padding: const EdgeInsets.all(_DS.sp16),
       decoration: BoxDecoration(
         color: _DS.surface,
-        borderRadius: BorderRadius.circular(_DS.radiusCard),
+        borderRadius: BorderRadius.circular(_DS.radiusModal), // panel → 8px
         border: Border.all(
           color: isUnlocked
               ? _DS.red.withOpacity(0.35)
@@ -674,7 +645,6 @@ class _ProgressBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Status row
         Row(
           children: [
             Container(
@@ -701,8 +671,6 @@ class _ProgressBody extends StatelessWidget {
           ],
         ),
         const SizedBox(height: _DS.sp16),
-
-        // Progress label row — persis seperti video progress bar di DS
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -716,8 +684,6 @@ class _ProgressBody extends StatelessWidget {
           ],
         ),
         const SizedBox(height: _DS.sp8),
-
-        // Progress bar — identik dengan Video Progress Indicator di design system
         ClipRRect(
           borderRadius: BorderRadius.circular(3),
           child: SizedBox(
@@ -725,9 +691,7 @@ class _ProgressBody extends StatelessWidget {
             height: 4,
             child: Stack(
               children: [
-                // Track
                 Container(color: _DS.surfaceRaised),
-                // Fill — animasi TweenAnimationBuilder TIDAK DIUBAH
                 TweenAnimationBuilder<double>(
                   tween: Tween<double>(begin: 0, end: progressFraction),
                   duration: const Duration(milliseconds: 900),
@@ -745,8 +709,6 @@ class _ProgressBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: _DS.sp10),
-
-        // Hint text
         if (!isUnlocked)
           Text(
             'Watch at least 95% of the video to unlock this assessment.',
@@ -758,9 +720,7 @@ class _ProgressBody extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Start Button — mengikuti action button design system
-// Unlocked  : background putih, teks hitam (Play button style)
-// Locked    : background surfaceRaised, teks muted (disabled state)
+// Start Button
 // ─────────────────────────────────────────────────────────────────────────────
 class _StartButton extends StatefulWidget {
   final bool isUnlocked;
@@ -806,8 +766,6 @@ class _StartButtonState extends State<_StartButton> {
               height: 52,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                // Unlocked: putih (Play button style dari DS)
-                // Locked: abu-abu gelap (disabled style)
                 color: unlocked
                     ? (_pressed ? const Color(0xFFE0E0E0) : _DS.white)
                     : _DS.surfaceRaised,
@@ -833,8 +791,6 @@ class _StartButtonState extends State<_StartButton> {
             ),
           ),
         ),
-
-        // Sub-label di bawah tombol saat unlocked — pola dari DS Sign In
         if (unlocked) ...[
           const SizedBox(height: _DS.sp12),
           Text(
@@ -849,7 +805,7 @@ class _StartButtonState extends State<_StartButton> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Top Bar — fade-in background saat scroll
+// Top Bar
 // ─────────────────────────────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
   final double opacity;
@@ -868,14 +824,22 @@ class _TopBar extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           height: 56,
-          color: _DS.background.withOpacity(opacity),
+          decoration: BoxDecoration(
+            color: _DS.background.withOpacity(opacity),
+            boxShadow: opacity > 0
+                ? [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.7 * opacity),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              )
+            ]
+                : null,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: _DS.sp4),
           child: Row(
             children: [
-              // Back button — lingkaran semi-transparan (mengikuti DS top bar)
               _BackButton(opacity: opacity, onBack: onBack),
-
-              // Title muncul saat scroll (fade-in)
               Expanded(
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 150),
@@ -883,7 +847,6 @@ class _TopBar extends StatelessWidget {
                   child: Text('Assessment', style: _DS.navTitle()),
                 ),
               ),
-
               const SizedBox(width: _DS.sp48),
             ],
           ),
@@ -907,7 +870,6 @@ class _BackButton extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(_DS.sp6),
         decoration: BoxDecoration(
-          // Lingkaran hitam semi-transparan saat di atas hero (seperti DS back button)
           color: Colors.black.withOpacity(0.45 * (1 - opacity)),
           shape: BoxShape.circle,
           border: Border.all(
@@ -922,7 +884,7 @@ class _BackButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Skeleton Loading — logo animasi pulsing (TIDAK DIUBAH)
+// Skeleton Loading & Error (Logika Tidak Diubah)
 // ─────────────────────────────────────────────────────────────────────────────
 class _IntroSkeleton extends StatefulWidget {
   const _IntroSkeleton();
@@ -978,10 +940,6 @@ class _IntroSkeletonState extends State<_IntroSkeleton>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Error State — card terpusat dengan dua tombol (Back & Retry)
-// Mengikuti pola error state dari design system
-// ─────────────────────────────────────────────────────────────────────────────
 class _IntroError extends StatelessWidget {
   final String message;
   final VoidCallback onBack;
@@ -1004,7 +962,6 @@ class _IntroError extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Error icon container
               Container(
                 padding: const EdgeInsets.all(_DS.sp20),
                 decoration: BoxDecoration(
@@ -1019,26 +976,18 @@ class _IntroError extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: _DS.sp20),
-
-              // Error title
               Text(
                 'Something went wrong',
                 style: _DS.label(color: _DS.textPrimary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: _DS.sp8),
-
-              // Error message
               Text(
                 message,
                 style: _DS.body(),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: _DS.sp32),
-
-              // Buttons — mengikuti pola Sign In page di design system
-              // Back: sekunder (border outline)
-              // Retry: primer (merah)
               Row(
                 children: [
                   Expanded(
@@ -1064,7 +1013,6 @@ class _IntroError extends StatelessWidget {
   }
 }
 
-/// Tombol outline sekunder — "Use a Sign-In Code" style dari design system
 class _OutlineButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
@@ -1095,7 +1043,6 @@ class _OutlineButton extends StatelessWidget {
   }
 }
 
-/// Tombol primer merah — "Sign In" style dari design system
 class _PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;

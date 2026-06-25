@@ -37,7 +37,8 @@ class OverallProgressScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: AppColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(12),
+                // §: modal/panel radius 8px
+                borderRadius: BorderRadius.circular(AppRadius.modal),
                 border: Border.all(color: AppColors.divider, width: 0.6),
               ),
               child: Column(
@@ -68,6 +69,7 @@ class OverallProgressScreen extends StatelessWidget {
                             const Text(
                               'Completed',
                               style: TextStyle(
+                                // §2: textMuted = rgba(255,255,255,0.45)
                                 color: AppColors.textMuted,
                                 fontSize: 12,
                                 fontFamily: 'Montserrat',
@@ -102,22 +104,12 @@ class OverallProgressScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            _StatTile(label: 'Total modules', value: '$modulesTotal'),
             _StatTile(
-              label: 'Total modules',
-              value: '$modulesTotal',
-            ),
+                label: 'Modules completed', value: '$modulesCompleted'),
+            _StatTile(label: 'Total lessons', value: '$lessonsTotal'),
             _StatTile(
-              label: 'Modules completed',
-              value: '$modulesCompleted',
-            ),
-            _StatTile(
-              label: 'Total lessons',
-              value: '$lessonsTotal',
-            ),
-            _StatTile(
-              label: 'Lessons completed',
-              value: '$lessonsCompleted',
-            ),
+                label: 'Lessons completed', value: '$lessonsCompleted'),
             _StatTile(
               label: 'Overall percentage',
               value: '$overallProgressPercentage%',
@@ -147,10 +139,15 @@ class _StatTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: highlighted ? AppColors.primary.withOpacity(0.08) : AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(10),
+        color: highlighted
+            ? AppColors.primary.withOpacity(0.08)
+            : AppColors.surfaceElevated,
+        // §: card radius 4px
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: highlighted ? AppColors.primary.withOpacity(0.25) : AppColors.divider,
+          color: highlighted
+              ? AppColors.primary.withOpacity(0.25)
+              : AppColors.divider,
           width: 0.6,
         ),
       ),
@@ -194,7 +191,7 @@ class _DonutPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final strokeWidth = 18.0;
+    const strokeWidth = 18.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - strokeWidth;
     final rect = Rect.fromCircle(center: center, radius: radius);

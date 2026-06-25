@@ -5,17 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/dialog_provider.dart';
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-
-const _kRed = Color(0xFFE50914);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kDivider = Color(0xFF252525);
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 class DialogDetailScreen extends ConsumerWidget {
@@ -27,7 +16,7 @@ class DialogDetailScreen extends ConsumerWidget {
     final dialogAsync = ref.watch(dialogDetailProvider(dialogKey));
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: AppColors.background,
       body: dialogAsync.when(
         loading: () => const _DialogDetailSkeleton(),
         error: (e, _) => _DialogDetailError(
@@ -109,13 +98,13 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
             child: Container(
               margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
               decoration: BoxDecoration(
-                color: _kSurfaceElevated,
+                color: AppColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: _kDivider, width: 0.8),
+                border: Border.all(color: AppColors.divider, width: 0.8),
               ),
               child: const Icon(
                 Icons.arrow_back_ios_new_rounded,
-                color: _kTextPrimary,
+                color: AppColors.textPrimary,
                 size: 15,
               ),
             ),
@@ -123,7 +112,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
           title: Text(
             dialog.title,
             style: const TextStyle(
-              color: _kTextPrimary,
+              color: AppColors.textPrimary,
               fontSize: 15,
               fontWeight: FontWeight.w700,
               fontFamily: 'Montserrat',
@@ -149,7 +138,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                           width: 3,
                           height: 12,
                           decoration: BoxDecoration(
-                            color: _kRed,
+                            color: AppColors.primary,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -157,7 +146,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                         const Text(
                           'MESSAGE CONTENT',
                           style: TextStyle(
-                            color: _kTextMuted,
+                            color: AppColors.textMuted,
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'Montserrat',
@@ -169,118 +158,121 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                     const SizedBox(height: 16),
 
                     content.isEmpty
-                        ? Row(
-                        children: const [
-                          Icon(Icons.info_outline_rounded,
-                              color: _kTextMuted, size: 16),
-                          SizedBox(width: 10),
-                          Text(
-                            'No content available yet.',
-                            style: TextStyle(
-                              color: _kTextMuted,
-                              fontSize: 13,
-                              fontFamily: 'Montserrat',
-                              fontStyle: FontStyle.italic,
-                            ),
+                        ? const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            color: AppColors.textMuted, size: 16),
+                        SizedBox(width: 10),
+                        Text(
+                          'No content available yet.',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 13,
+                            fontFamily: 'Montserrat',
+                            fontStyle: FontStyle.italic,
                           ),
-                        ],
-                      )
+                        ),
+                      ],
+                    )
                         : Html(
-                        data: content,
-                        style: {
-                          'html': Style(
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.zero,
-                            color: _kTextSecondary,
-                            fontFamily: 'Montserrat',
-                            fontSize: FontSize(13),
-                            lineHeight: const LineHeight(1.75),
-                          ),
-                          'body': Style(
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.zero,
-                            color: _kTextSecondary,
-                            backgroundColor: Colors.transparent,
-                          ),
-                          'p': Style(
-                            margin: Margins.only(bottom: 14),
-                          ),
-                          'div': Style(
-                            margin: Margins.only(bottom: 14),
-                          ),
-                          'br': Style(
-                            lineHeight: const LineHeight(1.75),
-                          ),
-                          'strong': Style(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          'b': Style(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          'em': Style(
-                            fontStyle: FontStyle.italic,
-                          ),
-                          'i': Style(
-                            fontStyle: FontStyle.italic,
-                          ),
-                          'u': Style(
-                            textDecoration: TextDecoration.underline,
-                          ),
-                          'h1': Style(
-                            margin: Margins.only(bottom: 16),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.35),
-                          ),
-                          'h2': Style(
-                            margin: Margins.only(bottom: 14),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.35),
-                          ),
-                          'h3': Style(
-                            margin: Margins.only(bottom: 12),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.4),
-                          ),
-                          'h4': Style(
-                            margin: Margins.only(bottom: 10),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.45),
-                          ),
-                          'h5': Style(
-                            margin: Margins.only(bottom: 10),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.5),
-                          ),
-                          'h6': Style(
-                            margin: Margins.only(bottom: 8),
-                            fontFamily: 'Montserrat',
-                            lineHeight: const LineHeight(1.5),
-                          ),
-                          'ul': Style(
-                            margin: Margins.only(bottom: 14, left: 14),
-                            padding: HtmlPaddings.zero,
-                          ),
-                          'ol': Style(
-                            margin: Margins.only(bottom: 14, left: 14),
-                            padding: HtmlPaddings.zero,
-                          ),
-                          'li': Style(
-                            margin: Margins.only(bottom: 8),
-                          ),
-                          'blockquote': Style(
-                            color: _kTextPrimary,
-                            backgroundColor: _kSurface,
-                            border: Border(
-                              left: BorderSide(
-                                color: _kRed.withOpacity(0.8),
-                                width: 3,
-                              ),
+                      data: content,
+                      style: {
+                        'html': Style(
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                          // §2: textSecondary = rgba(255,255,255,0.65)
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Montserrat',
+                          fontSize: FontSize(13),
+                          lineHeight: const LineHeight(1.75),
+                        ),
+                        'body': Style(
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                          color: AppColors.textSecondary,
+                          backgroundColor: Colors.transparent,
+                        ),
+                        'p': Style(
+                          margin: Margins.only(bottom: 14),
+                        ),
+                        'div': Style(
+                          margin: Margins.only(bottom: 14),
+                        ),
+                        'br': Style(
+                          lineHeight: const LineHeight(1.75),
+                        ),
+                        'strong': Style(
+                          fontWeight: FontWeight.w700,
+                        ),
+                        'b': Style(
+                          fontWeight: FontWeight.w700,
+                        ),
+                        'em': Style(
+                          fontStyle: FontStyle.italic,
+                        ),
+                        'i': Style(
+                          fontStyle: FontStyle.italic,
+                        ),
+                        'u': Style(
+                          textDecoration: TextDecoration.underline,
+                        ),
+                        'h1': Style(
+                          margin: Margins.only(bottom: 16),
+                          fontFamily: 'Montserrat',
+                          lineHeight: const LineHeight(1.35),
+                        ),
+                        'h2': Style(
+                          margin: Margins.only(bottom: 14),
+                          fontFamily: 'Montserrat',
+                          lineHeight: const LineHeight(1.35),
+                        ),
+                        'h3': Style(
+                          margin: Margins.only(bottom: 12),
+                          fontFamily: 'Montserrat',
+                          lineHeight: const LineHeight(1.4),
+                        ),
+                        'h4': Style(
+                          margin: Margins.only(bottom: 10),
+                          fontFamily: 'Montserrat',
+                          lineHeight: const LineHeight(1.45),
+                        ),
+                        'h5': Style(
+                          margin: Margins.only(bottom: 10),
+                          fontFamily: 'Montserrat',
+                          lineHeight: const LineHeight(1.5),
+                        ),
+                        'h6': Style(
+                          margin: Margins.only(bottom: 8),
+                          fontFamily: 'Montserrat',
+                          lineHeight: const LineHeight(1.5),
+                        ),
+                        'ul': Style(
+                          margin: Margins.only(bottom: 14, left: 14),
+                          padding: HtmlPaddings.zero,
+                        ),
+                        'ol': Style(
+                          margin: Margins.only(bottom: 14, left: 14),
+                          padding: HtmlPaddings.zero,
+                        ),
+                        'li': Style(
+                          margin: Margins.only(bottom: 8),
+                        ),
+                        // §1: surface (#141110) untuk blockquote bg
+                        'blockquote': Style(
+                          color: AppColors.textPrimary,
+                          backgroundColor: AppColors.surface,
+                          border: Border(
+                            left: BorderSide(
+                              color: AppColors.primary.withOpacity(0.8),
+                              width: 3,
                             ),
-                            padding: HtmlPaddings.only(left: 14, top: 8, bottom: 8),
-                            margin: Margins.only(bottom: 14),
                           ),
-                        },
-                      ),
+                          padding: HtmlPaddings.only(
+                              left: 14, top: 8, bottom: 8),
+                          margin: Margins.only(bottom: 14),
+                        ),
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -329,12 +321,13 @@ class _DialogDetailSkeletonState extends State<_DialogDetailSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
-        final shimmer =
-        Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
+        // §1: shimmer (#281D16) → shimmerHighlight (#3A2A1E)
+        final shimmer = Color.lerp(
+            AppColors.shimmer, AppColors.shimmerHighlight, _anim.value)!;
         return CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: _kBg,
+              backgroundColor: AppColors.background,
               floating: true,
               snap: true,
               leading: Container(
@@ -355,9 +348,7 @@ class _DialogDetailSkeletonState extends State<_DialogDetailSkeleton>
                     _Bone(width: 80, height: 9, color: shimmer),
                     const SizedBox(height: 16),
                     _Bone(
-                        width: double.infinity,
-                        height: 240,
-                        color: shimmer),
+                        width: double.infinity, height: 240, color: shimmer),
                   ],
                 ),
               ),
@@ -373,7 +364,8 @@ class _Bone extends StatelessWidget {
   final double width;
   final double height;
   final Color color;
-  const _Bone({required this.width, required this.height, required this.color});
+  const _Bone(
+      {required this.width, required this.height, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -393,8 +385,7 @@ class _Bone extends StatelessWidget {
 class _DialogDetailError extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
-  const _DialogDetailError(
-      {required this.message, required this.onRetry});
+  const _DialogDetailError({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -408,18 +399,20 @@ class _DialogDetailError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.10),
                 shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                border:
+                Border.all(color: AppColors.primary.withOpacity(0.25)),
               ),
-              child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 28),
+              child: const Icon(Icons.wifi_off_rounded,
+                  color: AppColors.primary, size: 28),
             ),
             const SizedBox(height: 20),
             Text(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: _kTextSecondary,
+                color: AppColors.textSecondary,
                 fontSize: 13,
                 fontFamily: 'Montserrat',
                 height: 1.5,
@@ -432,11 +425,11 @@ class _DialogDetailError extends StatelessWidget {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                 decoration: BoxDecoration(
-                  color: _kRed,
-                  borderRadius: BorderRadius.circular(4),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppRadius.button),
                   boxShadow: [
                     BoxShadow(
-                      color: _kRed.withOpacity(0.35),
+                      color: AppColors.primary.withOpacity(0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -445,12 +438,13 @@ class _DialogDetailError extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.refresh_rounded, color: Colors.white, size: 15),
+                    Icon(Icons.refresh_rounded,
+                        color: AppColors.textPrimary, size: 15),
                     SizedBox(width: 6),
                     Text(
                       'Try again',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',

@@ -12,20 +12,7 @@ import '../providers/running_login_time_provider.dart';
 import '../utils/access_time_helper.dart';
 import '../../data/models/dashboard_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-// ─── Design Tokens ────────────────────────────────────────────────────────────
 
-const _kRed = Color(0xFFE50914);
-const _kRedDim = Color(0xFFB20710);
-const _kBg = Color(0xFF0D0D0D);
-const _kSurface = Color(0xFF161616);
-const _kSurfaceElevated = Color(0xFF1E1E1E);
-const _kSurfaceHigh = Color(0xFF262626);
-const _kDivider = Color(0xFF252525);
-const _kWhite = Colors.white;
-const _kTextPrimary = Colors.white;
-const _kTextSecondary = Color(0xFFB3B3B3);
-const _kTextMuted = Color(0xFF6B6B6B);
-const _kGreen = Color(0xFF46D369);
 const _kLockedModuleMessage =
     'This page is not available yet. Please complete the previous module first.';
 
@@ -58,14 +45,14 @@ class DashboardScreen extends ConsumerWidget {
 
     if (authStatus == AuthStatus.initial || authStatus == AuthStatus.loading) {
       return const Scaffold(
-        backgroundColor: _kBg,
+        backgroundColor: AppColors.background,
         body: _DashboardSkeleton(),
       );
     }
 
     if (authStatus != AuthStatus.authenticated) {
       return const Scaffold(
-        backgroundColor: _kBg,
+        backgroundColor: AppColors.background,
         body: SizedBox.shrink(),
       );
     }
@@ -73,7 +60,7 @@ class DashboardScreen extends ConsumerWidget {
     final dashboardAsync = ref.watch(dashboardProvider);
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
       body: dashboardAsync.when(
         loading: () => const _DashboardSkeleton(),
@@ -90,7 +77,8 @@ class DashboardScreen extends ConsumerWidget {
 Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
   await showModalBottomSheet<void>(
     context: context,
-    backgroundColor: _kSurface,
+    // §1: surface = Neutral Black 2 (#141110) untuk header/footer/sheet
+    backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -107,7 +95,7 @@ Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _kDivider,
+                    color: AppColors.divider,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -116,7 +104,7 @@ Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
               const Text(
                 'Profile Menu',
                 style: TextStyle(
-                  color: _kTextPrimary,
+                  color: AppColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Montserrat',
@@ -155,7 +143,7 @@ Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
 Future<void> _showInstantDialogMenu(BuildContext context) async {
   await showModalBottomSheet<void>(
     context: context,
-    backgroundColor: _kSurface,
+    backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -172,7 +160,7 @@ Future<void> _showInstantDialogMenu(BuildContext context) async {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _kDivider,
+                    color: AppColors.divider,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -181,7 +169,7 @@ Future<void> _showInstantDialogMenu(BuildContext context) async {
               const Text(
                 'Instant Access Dialog',
                 style: TextStyle(
-                  color: _kTextPrimary,
+                  color: AppColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Montserrat',
@@ -191,7 +179,8 @@ Future<void> _showInstantDialogMenu(BuildContext context) async {
               const Text(
                 'Choose the dialog you want to open.',
                 style: TextStyle(
-                  color: _kTextSecondary,
+                  // §2: textSecondary = rgba(255,255,255,0.65)
+                  color: AppColors.textSecondary,
                   fontSize: 12,
                   fontFamily: 'Montserrat',
                 ),
@@ -229,12 +218,13 @@ Future<bool?> _confirmLogout(BuildContext context) {
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
-        backgroundColor: _kSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.modal)),
         title: const Text(
           'Log Out',
           style: TextStyle(
-            color: _kTextPrimary,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
             fontFamily: 'Montserrat',
           ),
@@ -242,7 +232,7 @@ Future<bool?> _confirmLogout(BuildContext context) {
         content: const Text(
           'Are you sure you want to log out of your account?',
           style: TextStyle(
-            color: _kTextSecondary,
+            color: AppColors.textSecondary,
             fontFamily: 'Montserrat',
             height: 1.5,
           ),
@@ -255,8 +245,8 @@ Future<bool?> _confirmLogout(BuildContext context) {
           ElevatedButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _kRed,
-              foregroundColor: _kWhite,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.textPrimary,
             ),
             child: const Text('Log Out'),
           ),
@@ -327,7 +317,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
     final data = widget.data;
 
     return RefreshIndicator(
-      color: _kRed,
+      color: AppColors.primary,
       onRefresh: () async {
         ref.invalidate(dashboardProvider);
         await ref.read(dashboardProvider.future);
@@ -347,7 +337,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
                   const SizedBox(height: 28),
                   _animated(
                     1,
-                    _ContinueLearningSection(section: data.continueLearningSection),
+                    _ContinueLearningSection(
+                        section: data.continueLearningSection),
                   ),
                 ],
                 const SizedBox(height: 32),
@@ -359,7 +350,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
                   ),
                 ),
                 const SizedBox(height: 32),
-                _animated(3, _ModulesSection(section: data.availableModulesSection)),
+                _animated(
+                    3, _ModulesSection(section: data.availableModulesSection)),
                 const SizedBox(height: 56),
               ],
             ),
@@ -406,7 +398,7 @@ class _YogaFXAppBar extends ConsumerWidget {
         errorWidget: (_, __, ___) => const Text(
           'YogaFX',
           style: TextStyle(
-            color: _kTextPrimary,
+            color: AppColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w700,
             fontFamily: 'Montserrat',
@@ -425,8 +417,11 @@ class _YogaFXAppBar extends ConsumerWidget {
           child: GestureDetector(
             onTap: () => _showProfileMenu(context, ref),
             child: _DashboardProfileAvatar(
-              imageUrl: profileAsync.value?.profilePhoto ?? authState.user?.avatar,
-              displayName: profileAsync.value?.name ?? authState.user?.name ?? 'Student',
+              imageUrl: profileAsync.value?.profilePhoto ??
+                  authState.user?.avatar,
+              displayName: profileAsync.value?.name ??
+                  authState.user?.name ??
+                  'Student',
             ),
           ),
         ),
@@ -452,21 +447,20 @@ class _DashboardProfileAvatar extends StatelessWidget {
       width: 34,
       height: 34,
       decoration: BoxDecoration(
-        color: _kRed,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        color: AppColors.primary,
+        // §11: avatar radius 8px
+        borderRadius: BorderRadius.circular(AppRadius.avatar),
+        border: Border.all(color: AppColors.textPrimary.withOpacity(0.12)),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasImage
           ? AuthNetworkImage(
         imageUrl: imageUrl!,
         fit: BoxFit.cover,
-        placeholderBuilder: (_) => _DashboardProfileFallback(
-          displayName: displayName,
-        ),
-        errorBuilderWidget: (_, __) => _DashboardProfileFallback(
-          displayName: displayName,
-        ),
+        placeholderBuilder: (_) =>
+            _DashboardProfileFallback(displayName: displayName),
+        errorBuilderWidget: (_, __) =>
+            _DashboardProfileFallback(displayName: displayName),
       )
           : _DashboardProfileFallback(displayName: displayName),
     );
@@ -484,7 +478,7 @@ class _DashboardProfileFallback extends StatelessWidget {
       child: Text(
         _initials(displayName),
         style: const TextStyle(
-          color: _kWhite,
+          color: AppColors.textPrimary,
           fontSize: 12,
           fontWeight: FontWeight.w700,
           fontFamily: 'Montserrat',
@@ -501,9 +495,7 @@ String _initials(String value) {
       .where((part) => part.isNotEmpty)
       .toList();
   if (parts.isEmpty) return 'Y';
-  if (parts.length == 1) {
-    return parts.first.substring(0, 1).toUpperCase();
-  }
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
   return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
       .toUpperCase();
 }
@@ -523,29 +515,30 @@ class _InstantDialogButton extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
+            // §1: surfaceElevated = Neutral Black 3 untuk panel
+            color: AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: _kDivider, width: 0.8),
+            border: Border.all(color: AppColors.divider, width: 0.8),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
                 child: Text(
                   'Instant Access Dialog',
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _kTextPrimary,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Montserrat',
                   ),
                 ),
               ),
-              SizedBox(width: 6),
-              Icon(
+              const SizedBox(width: 6),
+              const Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: _kTextSecondary,
+                color: AppColors.textSecondary,
                 size: 18,
               ),
             ],
@@ -579,9 +572,9 @@ class _QuickDialogTile extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
+            color: AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _kDivider, width: 0.8),
+            border: Border.all(color: AppColors.divider, width: 0.8),
           ),
           child: Row(
             children: [
@@ -589,10 +582,10 @@ class _QuickDialogTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _kRed.withOpacity(0.12),
+                  color: AppColors.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: _kRed, size: 22),
+                child: Icon(icon, color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -602,7 +595,7 @@ class _QuickDialogTile extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        color: _kTextPrimary,
+                        color: AppColors.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
@@ -612,7 +605,7 @@ class _QuickDialogTile extends StatelessWidget {
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: _kTextSecondary,
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                         fontFamily: 'Montserrat',
                         height: 1.4,
@@ -624,7 +617,7 @@ class _QuickDialogTile extends StatelessWidget {
               const SizedBox(width: 8),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: _kTextSecondary,
+                color: AppColors.textSecondary,
                 size: 20,
               ),
             ],
@@ -650,7 +643,7 @@ class _ProfileMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDanger ? AppColors.primary : _kTextPrimary;
+    final color = isDanger ? AppColors.primary : AppColors.textPrimary;
 
     return Material(
       color: Colors.transparent,
@@ -660,9 +653,9 @@ class _ProfileMenuTile extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
+            color: AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kDivider, width: 0.8),
+            border: Border.all(color: AppColors.divider, width: 0.8),
           ),
           child: Row(
             children: [
@@ -725,32 +718,37 @@ class _HeroSectionState extends State<_HeroSection>
 
     return Stack(
       children: [
-        // Background cinematic gradient
+        // §1: background gradient dari overlayDark → background
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF1A0A0A), Color(0xFF0D0D0D)],
+              colors: [
+                AppColors.overlayDark,
+                AppColors.background,
+              ],
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tier badge
+              // Tier badge — §3: badge radius 2px
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _kRed.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(color: _kRed.withOpacity(0.5), width: 0.8),
+                  color: AppColors.primary.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(AppRadius.badge),
+                  border: Border.all(
+                      color: AppColors.primary.withOpacity(0.5), width: 0.8),
                 ),
                 child: Text(
                   tier.name.toUpperCase(),
                   style: const TextStyle(
-                    color: _kRed,
+                    color: AppColors.primary,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Montserrat',
@@ -759,11 +757,11 @@ class _HeroSectionState extends State<_HeroSection>
                 ),
               ),
               const SizedBox(height: 14),
-              // Welcome line
+              // Welcome line — §2: Caption 10px textMuted
               const Text(
                 'SELAMAT DATANG KEMBALI',
                 style: TextStyle(
-                  color: _kTextMuted,
+                  color: AppColors.textMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'Montserrat',
@@ -771,11 +769,11 @@ class _HeroSectionState extends State<_HeroSection>
                 ),
               ),
               const SizedBox(height: 6),
-              // Name with shimmer
+              // Name — §2: Header 36px Bold
               _ShimmerText(
                 text: student.firstName,
                 style: const TextStyle(
-                  color: _kTextPrimary,
+                  color: AppColors.textPrimary,
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'Montserrat',
@@ -783,18 +781,19 @@ class _HeroSectionState extends State<_HeroSection>
                 ),
               ),
               const SizedBox(height: 20),
-              // Red divider line — Netflix signature
+              // Animated red accent line
               AnimatedBuilder(
                 animation: _glowAnim,
                 builder: (_, __) => Container(
                   width: 48,
                   height: 3,
                   decoration: BoxDecoration(
-                    color: _kRed,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: [
                       BoxShadow(
-                        color: _kRed.withOpacity(0.3 + _glowAnim.value * 0.4),
+                        color: AppColors.primary
+                            .withOpacity(0.3 + _glowAnim.value * 0.4),
                         blurRadius: 8 + _glowAnim.value * 8,
                         spreadRadius: 0,
                       ),
@@ -805,12 +804,11 @@ class _HeroSectionState extends State<_HeroSection>
             ],
           ),
         ),
-        Positioned(
-          top: 110,  // tepat di bawah AppBar, sejajar dengan tier badge
+        const Positioned(
+          top: 110,
           right: 20,
-          child: const RunningLoginTimeCard(),
+          child: RunningLoginTimeCard(),
         ),
-        // Subtle scanline texture overlay
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(painter: _ScanlinePainter()),
@@ -821,7 +819,7 @@ class _HeroSectionState extends State<_HeroSection>
   }
 }
 
-// ─── Scanline Painter (cinematic texture) ─────────────────────────────────────
+// ─── Scanline Painter ─────────────────────────────────────────────────────────
 
 class _ScanlinePainter extends CustomPainter {
   @override
@@ -983,8 +981,9 @@ class _ContinueCardState extends State<_ContinueCard>
           width: double.infinity,
           height: 220,
           decoration: BoxDecoration(
-            color: _kSurface,
-            borderRadius: BorderRadius.circular(8),
+            // §1: surface = Neutral Black 2 untuk card
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.5),
@@ -1001,8 +1000,10 @@ class _ContinueCardState extends State<_ContinueCard>
                   child: AuthNetworkImage(
                     imageUrl: section.thumbnailUrl!,
                     fit: BoxFit.cover,
-                    placeholderBuilder: (_) => Container(color: _kSurface),
-                    errorBuilderWidget: (_, __) => Container(color: _kSurface),
+                    placeholderBuilder: (_) =>
+                        Container(color: AppColors.surface),
+                    errorBuilderWidget: (_, __) =>
+                        Container(color: AppColors.surface),
                   ),
                 ),
               Positioned.fill(
@@ -1010,7 +1011,6 @@ class _ContinueCardState extends State<_ContinueCard>
                   color: Colors.black.withOpacity(0.5),
                 ),
               ),
-              // Gradient overlay
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -1029,23 +1029,18 @@ class _ContinueCardState extends State<_ContinueCard>
                 left: 0,
                 top: 0,
                 bottom: 0,
-                child: Container(
-                  width: 3,
-                  color: _kRed,
-                ),
+                child: Container(width: 3, color: AppColors.primary),
               ),
-              // Content
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Module label
                     Text(
                       (section.module?.title ?? '').toUpperCase(),
                       style: const TextStyle(
-                        color: _kRed,
+                        color: AppColors.primary,
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
@@ -1053,11 +1048,10 @@ class _ContinueCardState extends State<_ContinueCard>
                       ),
                     ),
                     const SizedBox(height: 5),
-                    // Lesson title
                     Text(
                       section.lesson?.title ?? '',
                       style: const TextStyle(
-                        color: _kTextPrimary,
+                        color: AppColors.textPrimary,
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         fontFamily: 'Montserrat',
@@ -1067,22 +1061,18 @@ class _ContinueCardState extends State<_ContinueCard>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 14),
-                    // Animated progress bar
                     AnimatedBuilder(
                       animation: _progressAnim,
-                      builder: (_, __) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: _progressAnim.value,
-                              backgroundColor: Colors.white.withOpacity(0.12),
-                              valueColor: const AlwaysStoppedAnimation<Color>(_kRed),
-                              minHeight: 2.5,
-                            ),
-                          ),
-                        ],
+                      builder: (_, __) => ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: _progressAnim.value,
+                          backgroundColor:
+                          AppColors.textPrimary.withOpacity(0.12),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              AppColors.primary),
+                          minHeight: 2.5,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1091,13 +1081,12 @@ class _ContinueCardState extends State<_ContinueCard>
                         Text(
                           section.status,
                           style: const TextStyle(
-                            color: _kTextSecondary,
+                            color: AppColors.textSecondary,
                             fontSize: 11,
                             fontFamily: 'Montserrat',
                           ),
                         ),
                         const Spacer(),
-                        // CTA Button
                         _RedButton(
                           label: section.ctaLabel,
                           icon: Icons.play_arrow_rounded,
@@ -1171,20 +1160,22 @@ class _ProgressSectionState extends State<_ProgressSection>
             children: [
               _AnimatedStatCard(
                 label: 'Modules',
-                value: '${widget.section.modulesCompleted}/${widget.section.modulesTotal}',
+                value:
+                '${widget.section.modulesCompleted}/${widget.section.modulesTotal}',
                 icon: Icons.layers_rounded,
                 animation: _anim,
                 onTap: () => context.push(AppRoutes.modules),
               ),
               const SizedBox(width: 10),
-              // Sesudah
               _AnimatedStatCard(
                 label: 'Lessons',
-                value: '${widget.section.lessonsCompleted}/${widget.section.lessonsTotal}',
+                value:
+                '${widget.section.lessonsCompleted}/${widget.section.lessonsTotal}',
                 icon: Icons.play_circle_rounded,
                 animation: _anim,
                 onTap: () {
-                  final lessonId = widget.continueLearningSection.lesson?.id;
+                  final lessonId =
+                      widget.continueLearningSection.lesson?.id;
                   if (lessonId != null) {
                     context.push('/lessons/$lessonId');
                   } else {
@@ -1250,19 +1241,24 @@ class _AnimatedStatCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: highlight ? const Color(0xFF1A0A0A) : _kSurfaceElevated,
-                  borderRadius: BorderRadius.circular(8),
+                  // highlight → warm dark bg | default → surfaceElevated
+                  color: highlight
+                      ? AppColors.overlayDark
+                      : AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                   border: Border.all(
-                    color: highlight ? _kRed.withOpacity(0.4) : _kDivider,
+                    color: highlight
+                        ? AppColors.primary.withOpacity(0.4)
+                        : AppColors.divider,
                     width: 0.8,
                   ),
                   boxShadow: highlight
                       ? [
                     BoxShadow(
-                      color: _kRed.withOpacity(0.12),
+                      color: AppColors.primary.withOpacity(0.12),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ]
                       : [],
                 ),
@@ -1270,12 +1266,17 @@ class _AnimatedStatCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(icon,
-                        color: highlight ? _kRed : _kTextMuted, size: 18),
+                        color: highlight
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                        size: 18),
                     const SizedBox(height: 10),
                     Text(
                       value,
                       style: TextStyle(
-                        color: highlight ? _kRed : _kTextPrimary,
+                        color: highlight
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
                         fontFamily: 'Montserrat',
@@ -1285,7 +1286,7 @@ class _AnimatedStatCard extends StatelessWidget {
                     Text(
                       label,
                       style: const TextStyle(
-                        color: _kTextMuted,
+                        color: AppColors.textMuted,
                         fontSize: 10,
                         fontFamily: 'Montserrat',
                         letterSpacing: 0.5,
@@ -1325,7 +1326,8 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
-    _pulseAnim = CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
+    _pulseAnim =
+        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
   }
 
   @override
@@ -1341,7 +1343,6 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
       child: AnimatedBuilder(
         animation: _pulseAnim,
         builder: (_, __) => GestureDetector(
-          // Sesudah
           onTap: () {
             final lessonId = widget.continueLearningSection.lesson?.id;
             if (lessonId != null) {
@@ -1351,19 +1352,21 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: [Color(0xFF1A0A0A), Color(0xFF0D0D0D)],
+                colors: [AppColors.overlayDark, AppColors.background],
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(
-                color: _kRed.withOpacity(0.25 + _pulseAnim.value * 0.2),
+                color: AppColors.primary
+                    .withOpacity(0.25 + _pulseAnim.value * 0.2),
                 width: 0.8,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _kRed.withOpacity(0.06 + _pulseAnim.value * 0.06),
+                  color: AppColors.primary
+                      .withOpacity(0.06 + _pulseAnim.value * 0.06),
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),
@@ -1375,53 +1378,54 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _kRed.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(
-                        color: _kRed.withOpacity(0.25), width: 0.8),
+                        color: AppColors.primary.withOpacity(0.25),
+                        width: 0.8),
                   ),
-                  child: const Icon(Icons.quiz_rounded, color: _kRed, size: 20),
+                  child: const Icon(Icons.quiz_rounded,
+                      color: AppColors.primary, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    const Text(
-                    'Assessments',
-                    style: TextStyle(
-                      color: _kTextPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  // Sesudah
+                      const Text(
+                        'Assessments',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                      const SizedBox(height: 3),
                       Text(
                         'Continue the assessment from ${widget.continueLearningSection.lesson?.title ?? "your lesson"}',
                         style: const TextStyle(
-                          color: _kTextMuted,
+                          color: AppColors.textMuted,
                           fontSize: 11,
                           fontFamily: 'Montserrat',
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.primary.withOpacity(0.7),
+                  size: 20,
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: _kRed.withOpacity(0.7),
-            size: 20,
-          ),
-          ],
         ),
       ),
-    ),
-    ),
     );
   }
 }
@@ -1493,16 +1497,13 @@ class _ModulesSectionState extends State<_ModulesSection>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header row
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (!_searchOpen)
-                Expanded(
-                  child: _SectionLabel(text: widget.section.eyebrow),
-                )
+                Expanded(child: _SectionLabel(text: widget.section.eyebrow))
               else
                 const Spacer(),
               Flexible(
@@ -1522,36 +1523,38 @@ class _ModulesSectionState extends State<_ModulesSection>
                               ? TextField(
                             controller: _searchCtrl,
                             autofocus: true,
-                            onChanged: (v) => setState(() => _query = v),
+                            onChanged: (v) =>
+                                setState(() => _query = v),
                             style: const TextStyle(
-                              color: _kTextPrimary,
+                              color: AppColors.textPrimary,
                               fontSize: 13,
                               fontFamily: 'Montserrat',
                             ),
                             decoration: InputDecoration(
                               hintText: 'Search modules...',
                               hintStyle: const TextStyle(
-                                color: _kTextMuted,
+                                color: AppColors.textMuted,
                                 fontSize: 13,
                                 fontFamily: 'Montserrat',
                               ),
                               filled: true,
-                              fillColor: _kSurfaceElevated,
+                              // §5: inputFill untuk field
+                              fillColor: AppColors.surfaceElevated,
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
+                              contentPadding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius:
+                                BorderRadius.circular(AppRadius.input),
                                 borderSide: BorderSide.none,
                               ),
+                              // §5: focus border = primary red
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius:
+                                BorderRadius.circular(AppRadius.input),
                                 borderSide: const BorderSide(
-                                  color: _kRed,
-                                  width: 1,
-                                ),
+                                    color: AppColors.primary, width: 1),
                               ),
                             ),
                           )
@@ -1564,9 +1567,13 @@ class _ModulesSectionState extends State<_ModulesSection>
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
-                          _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+                          _searchOpen
+                              ? Icons.close_rounded
+                              : Icons.search_rounded,
                           key: ValueKey(_searchOpen),
-                          color: _searchOpen ? _kRed : _kTextSecondary,
+                          color: _searchOpen
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                           size: 20,
                         ),
                       ),
@@ -1574,13 +1581,13 @@ class _ModulesSectionState extends State<_ModulesSection>
                     if (!_searchOpen) ...[
                       GestureDetector(
                         onTap: () => context.go(AppRoutes.modules),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
+                          children: const [
                             Text(
                               'Lihat semua',
                               style: TextStyle(
-                                color: _kRed,
+                                color: AppColors.primary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 fontFamily: 'Montserrat',
@@ -1588,7 +1595,7 @@ class _ModulesSectionState extends State<_ModulesSection>
                             ),
                             SizedBox(width: 2),
                             Icon(Icons.chevron_right_rounded,
-                                color: _kRed, size: 16),
+                                color: AppColors.primary, size: 16),
                           ],
                         ),
                       ),
@@ -1601,20 +1608,20 @@ class _ModulesSectionState extends State<_ModulesSection>
         ),
         const SizedBox(height: 14),
 
-        // Results
         if (filtered.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Row(
               children: [
                 const Icon(Icons.search_off_rounded,
-                    color: _kTextMuted, size: 18),
+                    color: AppColors.textMuted, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Tidak ada modul untuk "$_query"',
                     style: const TextStyle(
-                      color: _kTextMuted,
+                      color: AppColors.textMuted,
                       fontSize: 13,
                       fontFamily: 'Montserrat',
                     ),
@@ -1701,8 +1708,8 @@ class _ModuleCardState extends State<_ModuleCard>
           child: Container(
             width: 200,
             decoration: BoxDecoration(
-              color: _kSurface,
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.4),
@@ -1710,7 +1717,8 @@ class _ModuleCardState extends State<_ModuleCard>
                   offset: const Offset(0, 6),
                 ),
                 BoxShadow(
-                  color: _kRed.withOpacity(_glowAnim.value * 0.15),
+                  color: AppColors.primary
+                      .withOpacity(_glowAnim.value * 0.15),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -1723,7 +1731,6 @@ class _ModuleCardState extends State<_ModuleCard>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail
             AspectRatio(
               aspectRatio: 16 / 7,
               child: Stack(
@@ -1739,7 +1746,6 @@ class _ModuleCardState extends State<_ModuleCard>
                         _ModuleThumbnailPlaceholder(title: module.title),
                   )
                       : _ModuleThumbnailPlaceholder(title: module.title),
-                  // Gradient
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -1753,7 +1759,6 @@ class _ModuleCardState extends State<_ModuleCard>
                       ),
                     ),
                   ),
-                  // Progress overlay
                   if (module.showProgress)
                     Positioned(
                       left: 12,
@@ -1766,17 +1771,18 @@ class _ModuleCardState extends State<_ModuleCard>
                             borderRadius: BorderRadius.circular(2),
                             child: LinearProgressIndicator(
                               value: module.progressPercentage / 100,
-                              backgroundColor: Colors.white.withOpacity(0.15),
-                              valueColor:
-                              const AlwaysStoppedAnimation<Color>(_kRed),
+                              backgroundColor:
+                              AppColors.textPrimary.withOpacity(0.15),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.primary),
                               minHeight: 2.5,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '${module.completedLessons}/${module.lessonCount} lessons',
-                            style: const TextStyle(
-                              color: Colors.white60,
+                            style: TextStyle(
+                              color: AppColors.textPrimary.withOpacity(0.6),
                               fontSize: 9,
                               fontFamily: 'Montserrat',
                             ),
@@ -1787,7 +1793,6 @@ class _ModuleCardState extends State<_ModuleCard>
                 ],
               ),
             ),
-            // Info
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
               child: Column(
@@ -1796,7 +1801,7 @@ class _ModuleCardState extends State<_ModuleCard>
                   Text(
                     module.title,
                     style: const TextStyle(
-                      color: _kTextPrimary,
+                      color: AppColors.textPrimary,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Montserrat',
@@ -1809,7 +1814,7 @@ class _ModuleCardState extends State<_ModuleCard>
                   Text(
                     module.statusLabel,
                     style: const TextStyle(
-                      color: _kTextSecondary,
+                      color: AppColors.textSecondary,
                       fontSize: 11,
                       fontFamily: 'Montserrat',
                     ),
@@ -1818,12 +1823,12 @@ class _ModuleCardState extends State<_ModuleCard>
                   Row(
                     children: [
                       const Icon(Icons.play_circle_outline_rounded,
-                          color: _kTextMuted, size: 12),
+                          color: AppColors.textMuted, size: 12),
                       const SizedBox(width: 4),
                       Text(
                         '${module.lessonCount} lessons',
                         style: const TextStyle(
-                          color: _kTextMuted,
+                          color: AppColors.textMuted,
                           fontSize: 10,
                           fontFamily: 'Montserrat',
                         ),
@@ -1847,20 +1852,23 @@ class _ModuleThumbnailPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _kSurfaceHigh,
+      // §1: surfaceCard (#281D16) untuk placeholder thumbnail
+      color: AppColors.surfaceCard,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.play_circle_outline_rounded,
-                color: _kTextMuted.withOpacity(0.6), size: 24),
+                color: AppColors.textMuted.withOpacity(0.6), size: 24),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 title,
                 style: const TextStyle(
-                    color: _kTextMuted, fontSize: 10, fontFamily: 'Montserrat'),
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                    fontFamily: 'Montserrat'),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -1893,9 +1901,9 @@ class _AccessTimeSection extends ConsumerWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: _kSurfaceElevated,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _kDivider, width: 0.8),
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: AppColors.divider, width: 0.8),
         ),
         child: Row(
           children: [
@@ -1903,10 +1911,11 @@ class _AccessTimeSection extends ConsumerWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(AppRadius.card),
               ),
-              child: const Icon(Icons.timer_rounded, color: _kRed, size: 18),
+              child: const Icon(Icons.timer_rounded,
+                  color: AppColors.primary, size: 18),
             ),
             const SizedBox(width: 16),
             Column(
@@ -1915,7 +1924,7 @@ class _AccessTimeSection extends ConsumerWidget {
                 const Text(
                   'TOTAL WAKTU BELAJAR',
                   style: TextStyle(
-                    color: _kTextMuted,
+                    color: AppColors.textMuted,
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'Montserrat',
@@ -1926,7 +1935,7 @@ class _AccessTimeSection extends ConsumerWidget {
                 Text(
                   formatAccessDuration(displayedAccessDuration),
                   style: const TextStyle(
-                    color: _kTextPrimary,
+                    color: AppColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Montserrat',
@@ -1955,7 +1964,7 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 12,
           decoration: BoxDecoration(
-            color: _kRed,
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -1963,7 +1972,7 @@ class _SectionLabel extends StatelessWidget {
         Text(
           text.toUpperCase(),
           style: const TextStyle(
-            color: _kTextSecondary,
+            color: AppColors.textSecondary,
             fontSize: 10,
             fontWeight: FontWeight.w700,
             fontFamily: 'Montserrat',
@@ -1992,11 +2001,11 @@ class _RedButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: _kRed,
-          borderRadius: BorderRadius.circular(4),
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(AppRadius.button),
           boxShadow: [
             BoxShadow(
-              color: _kRed.withOpacity(0.35),
+              color: AppColors.primary.withOpacity(0.35),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -2005,12 +2014,12 @@ class _RedButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: _kWhite, size: 15),
+            Icon(icon, color: AppColors.textPrimary, size: 15),
             const SizedBox(width: 5),
             Text(
               label,
               style: const TextStyle(
-                color: _kWhite,
+                color: AppColors.textPrimary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
@@ -2060,8 +2069,9 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
     return AnimatedBuilder(
       animation: _shimmerAnim,
       builder: (context, _) {
-        final shimmerColor =
-        Color.lerp(_kSurface, _kSurfaceHigh, _shimmerAnim.value)!;
+        // §1: shimmer (#281D16) → shimmerHighlight (#3A2A1E)
+        final shimmerColor = Color.lerp(
+            AppColors.shimmer, AppColors.shimmerHighlight, _shimmerAnim.value)!;
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 90, 20, 20),
           child: Column(
@@ -2071,17 +2081,32 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
               const SizedBox(height: 10),
               _Bone(width: 200, height: 36, color: shimmerColor),
               const SizedBox(height: 6),
-              _Bone(width: 48, height: 3, color: _kRed.withOpacity(0.3)),
+              _Bone(
+                  width: 48,
+                  height: 3,
+                  color: AppColors.primary.withOpacity(0.3)),
               const SizedBox(height: 32),
               _Bone(width: double.infinity, height: 220, color: shimmerColor),
               const SizedBox(height: 32),
               Row(
                 children: [
-                  Expanded(child: _Bone(width: double.infinity, height: 90, color: shimmerColor)),
+                  Expanded(
+                      child: _Bone(
+                          width: double.infinity,
+                          height: 90,
+                          color: shimmerColor)),
                   const SizedBox(width: 10),
-                  Expanded(child: _Bone(width: double.infinity, height: 90, color: shimmerColor)),
+                  Expanded(
+                      child: _Bone(
+                          width: double.infinity,
+                          height: 90,
+                          color: shimmerColor)),
                   const SizedBox(width: 10),
-                  Expanded(child: _Bone(width: double.infinity, height: 90, color: shimmerColor)),
+                  Expanded(
+                      child: _Bone(
+                          width: double.infinity,
+                          height: 90,
+                          color: shimmerColor)),
                 ],
               ),
               const SizedBox(height: 32),
@@ -2093,11 +2118,8 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
                   scrollDirection: Axis.horizontal,
                   itemCount: 3,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (_, __) => _Bone(
-                    width: 200,
-                    height: 270,
-                    color: shimmerColor,
-                  ),
+                  itemBuilder: (_, __) =>
+                      _Bone(width: 200, height: 270, color: shimmerColor),
                 ),
               ),
             ],
@@ -2112,7 +2134,8 @@ class _Bone extends StatelessWidget {
   final double width;
   final double height;
   final Color color;
-  const _Bone({required this.width, required this.height, required this.color});
+  const _Bone(
+      {required this.width, required this.height, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -2146,18 +2169,19 @@ class _DashboardError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _kRed.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.10),
                 shape: BoxShape.circle,
-                border: Border.all(color: _kRed.withOpacity(0.25)),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.25)),
               ),
               child: const Icon(Icons.wifi_off_rounded,
-                  color: _kRed, size: 28),
+                  color: AppColors.primary, size: 28),
             ),
             const SizedBox(height: 20),
             Text(
               message,
               style: const TextStyle(
-                color: _kTextSecondary,
+                color: AppColors.textSecondary,
                 fontSize: 13,
                 fontFamily: 'Montserrat',
                 height: 1.5,

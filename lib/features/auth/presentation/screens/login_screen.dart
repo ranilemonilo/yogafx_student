@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'login_otp_screen.dart';
 import '../providers/auth_provider.dart';
+import '../../../../core/theme/app_theme.dart'; // pastikan path sesuai project
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -134,25 +135,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final error = _requestError ?? authState.error;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      // ── §1: background utama = Neutral Black 1 ──
+      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // ── Subtle vignette ──
+          // ── Vignette — warna primary sesuai design system ──
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment.topRight,
                 radius: 1.8,
                 colors: [
-                  Color(0x18E50914),
+                  AppColors.primary.withOpacity(0.09),
                   Colors.transparent,
                 ],
               ),
             ),
           ),
 
-          // ── Full centered layout ──
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -181,7 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         children: [
           const SizedBox(height: 48),
 
-          // ── Centered Logo ──
+          // ── Logo ──
           ScaleTransition(
             scale: _logoScale,
             child: _buildLogo(),
@@ -189,15 +190,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
           const SizedBox(height: 40),
 
-          // ── Title ──
-          const Align(
+          // ── Title — §2: Title 1 = 28px SemiBold ──
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
               'Sign In',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 28,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
                 letterSpacing: -0.5,
               ),
@@ -221,7 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 // ── Email ──
                 _buildLabel('Email'),
                 const SizedBox(height: 8),
-                _NetflixField(
+                _DSInputField(
                   controller: _emailController,
                   hintText: 'your@email.com',
                   keyboardType: TextInputType.emailAddress,
@@ -240,7 +241,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 // ── Password ──
                 _buildLabel('Password'),
                 const SizedBox(height: 8),
-                _NetflixField(
+                _DSInputField(
                   controller: _passwordController,
                   hintText: '••••••••',
                   obscureText: _obscurePassword,
@@ -287,7 +288,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  // ── UPDATE: Membesarkan ukuran logo, pakai Network Image ──
   Widget _buildLogo() {
     return Image.network(
       'https://yogafx.b-cdn.net/content/Logo%20YogAFX.png',
@@ -295,17 +295,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       height: 120,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
-        // Fallback jika gambar gagal dimuat
-        return const Icon(Icons.image_not_supported, color: Colors.white, size: 80);
+        return const Icon(Icons.image_not_supported,
+            color: AppColors.textPrimary, size: 80);
       },
     );
   }
 
+  // ── §2: Caption 12px, letter-spacing 1.2 — label form ──
   Widget _buildLabel(String text) {
     return Text(
       text.toUpperCase(),
       style: const TextStyle(
-        color: Color(0xFFB3B3B3),
+        color: AppColors.textSecondary, // rgba(255,255,255,0.65)
         fontSize: 10,
         fontWeight: FontWeight.w600,
         fontFamily: 'Montserrat',
@@ -314,25 +315,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
+  // ── §5: Error border merah #DB202C, bukan oranye ──
   Widget _buildErrorBanner(String message) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A0A00),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE87C03).withOpacity(0.6)),
+        // Dark reddish bg sesuai tema gelap
+        color: AppColors.primary.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(AppRadius.modal),
+        border: Border.all(color: AppColors.error.withOpacity(0.6)),
       ),
       child: Row(
         children: [
           const Icon(Icons.error_outline_rounded,
-              color: Color(0xFFE87C03), size: 18),
+              color: AppColors.error, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                color: Color(0xFFE87C03),
+                color: AppColors.error,
                 fontSize: 13,
                 fontFamily: 'Montserrat',
                 height: 1.4,
@@ -345,9 +348,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 }
 
-// ─── Netflix Field ────────────────────────────────────────────────────────────
+// ─── Design System Input Field ────────────────────────────────────────────────
+// §5: Default border rgba(255,255,255,0.3) | Focus border #FFFFFF solid
+//     Fill default rgba(255,255,255,0.1) | Fill focus rgba(255,255,255,0.15)
+//     Error border #DB202C
 
-class _NetflixField extends StatefulWidget {
+class _DSInputField extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
   final bool obscureText;
@@ -358,7 +364,7 @@ class _NetflixField extends StatefulWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onSubmitted;
 
-  const _NetflixField({
+  const _DSInputField({
     required this.controller,
     required this.hintText,
     this.obscureText = false,
@@ -371,88 +377,77 @@ class _NetflixField extends StatefulWidget {
   });
 
   @override
-  State<_NetflixField> createState() => _NetflixFieldState();
+  State<_DSInputField> createState() => _DSInputFieldState();
 }
 
-class _NetflixFieldState extends State<_NetflixField> {
+class _DSInputFieldState extends State<_DSInputField> {
   bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     return Focus(
       onFocusChange: (v) => setState(() => _focused = v),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: _focused
-              ? [
-            BoxShadow(
-              color: const Color(0xFFE50914).withOpacity(0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            )
-          ]
-              : [],
+      child: TextFormField(
+        controller: widget.controller,
+        obscureText: widget.obscureText,
+        enabled: widget.enabled,
+        keyboardType: widget.keyboardType,
+        autocorrect: false,
+        onFieldSubmitted: widget.onSubmitted,
+        validator: widget.validator,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontFamily: 'Montserrat',
+          fontSize: 15,
         ),
-        child: TextFormField(
-          controller: widget.controller,
-          obscureText: widget.obscureText,
-          enabled: widget.enabled,
-          keyboardType: widget.keyboardType,
-          autocorrect: false,
-          onFieldSubmitted: widget.onSubmitted,
-          validator: widget.validator,
-          style: const TextStyle(
-            color: Colors.white,
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          // §2: placeholder = rgba(255,255,255,0.45)
+          hintStyle: const TextStyle(color: AppColors.textMuted),
+          filled: true,
+          // §5: fill default rgba(255,255,255,0.1), focus rgba(255,255,255,0.15)
+          fillColor: _focused ? AppColors.inputFillFocus : AppColors.inputFill,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            borderSide: const BorderSide(
+                color: Color(0x4DFFFFFF)), // rgba(255,255,255,0.3)
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            borderSide: const BorderSide(color: Color(0x4DFFFFFF)),
+          ),
+          // §5: focus = border putih solid
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            borderSide:
+            const BorderSide(color: AppColors.textPrimary, width: 1.5),
+          ),
+          // §5: error = border merah #DB202C
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            borderSide: const BorderSide(color: AppColors.error),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            borderSide: const BorderSide(color: AppColors.error),
+          ),
+          errorStyle: const TextStyle(
+            color: AppColors.error,
             fontFamily: 'Montserrat',
-            fontSize: 15,
+            fontSize: 11,
           ),
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            hintStyle: const TextStyle(color: Color(0xFF555555)),
-            filled: true,
-            fillColor: _focused
-                ? const Color(0xFF3A3A3A)
-                : const Color(0xFF2E2E2E),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide:
-              const BorderSide(color: Color(0xFF3A3A3A), width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide:
-              const BorderSide(color: Color(0xFFE50914), width: 1.5),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: Color(0xFFE87C03)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: Color(0xFFE87C03)),
-            ),
-            errorStyle: const TextStyle(
-              color: Color(0xFFE87C03),
-              fontFamily: 'Montserrat',
-              fontSize: 11,
-            ),
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            suffixIcon: widget.onSuffixTap != null
-                ? IconButton(
-              onPressed: widget.onSuffixTap,
-              icon: Icon(widget.suffixIcon,
-                  color: const Color(0xFF666666), size: 20),
-            )
-                : Icon(widget.suffixIcon,
-                color: const Color(0xFF555555), size: 20),
-          ),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          suffixIcon: widget.onSuffixTap != null
+              ? IconButton(
+            onPressed: widget.onSuffixTap,
+            icon: Icon(widget.suffixIcon,
+                // §3: ikon outline tipis, warna textMuted
+                color: AppColors.textMuted,
+                size: 20),
+          )
+              : Icon(widget.suffixIcon,
+              color: AppColors.textMuted, size: 20),
         ),
       ),
     );
@@ -460,6 +455,7 @@ class _NetflixFieldState extends State<_NetflixField> {
 }
 
 // ─── Sign In Button ───────────────────────────────────────────────────────────
+// §4: Large/Default h=42px | bg #DB202C | hover #F6121D | radius 4px
 
 class _SignInButton extends StatefulWidget {
   final bool isLoading;
@@ -474,6 +470,7 @@ class _SignInButton extends StatefulWidget {
 class _SignInButtonState extends State<_SignInButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _scaleCtrl;
+  bool _hovering = false;
 
   @override
   void initState() {
@@ -496,30 +493,42 @@ class _SignInButtonState extends State<_SignInButton>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: widget.isLoading ? null : (_) => _scaleCtrl.reverse(),
+      onTapDown: widget.isLoading
+          ? null
+          : (_) {
+        _scaleCtrl.reverse();
+        setState(() => _hovering = true);
+      },
       onTapUp: widget.isLoading
           ? null
           : (_) {
         _scaleCtrl.forward();
+        setState(() => _hovering = false);
         widget.onTap();
       },
-      onTapCancel: () => _scaleCtrl.forward(),
+      onTapCancel: () {
+        _scaleCtrl.forward();
+        setState(() => _hovering = false);
+      },
       child: ScaleTransition(
         scale: _scaleCtrl,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 150),
           width: double.infinity,
-          height: 52,
+          // §4: Large button height ~42px
+          height: 48,
           decoration: BoxDecoration(
             color: widget.isLoading
-                ? const Color(0x80E50914)
-                : const Color(0xFFE50914),
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: widget.isLoading
+                ? AppColors.primary.withOpacity(0.5)
+                : _hovering
+                ? AppColors.primaryHover // §4: hover lebih cerah
+                : AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.button), // §: 4px
+            boxShadow: widget.isLoading || _hovering
                 ? []
                 : [
               BoxShadow(
-                color: const Color(0xFFE50914).withOpacity(0.4),
+                color: AppColors.primary.withOpacity(0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -531,12 +540,13 @@ class _SignInButtonState extends State<_SignInButton>
               width: 22,
               height: 22,
               child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2.5),
+                  color: AppColors.textPrimary, strokeWidth: 2.5),
             )
                 : const Text(
               'Sign In',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
+                // §4: Large button = 16px Bold
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
@@ -575,13 +585,14 @@ class _LinkButtonState extends State<_LinkButton> {
       child: AnimatedDefaultTextStyle(
         duration: const Duration(milliseconds: 120),
         style: TextStyle(
-          color: _hovering ? Colors.white : const Color(0xFF808080),
+          // hover → textPrimary, default → textSecondary
+          color: _hovering ? AppColors.textPrimary : AppColors.textSecondary,
           fontSize: 12,
           fontFamily: 'Montserrat',
           fontWeight: FontWeight.w500,
           decoration:
           _hovering ? TextDecoration.underline : TextDecoration.none,
-          decorationColor: Colors.white,
+          decorationColor: AppColors.textPrimary,
         ),
         child: Text(widget.label),
       ),
