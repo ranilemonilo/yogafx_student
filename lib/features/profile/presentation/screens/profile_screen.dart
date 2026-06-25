@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../data/models/profile_model.dart';
@@ -41,8 +43,8 @@ Future<void> _showProfileActions(BuildContext context, WidgetRef ref) async {
   await showModalBottomSheet<void>(
     context: context,
     backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.modal),
     ),
     builder: (sheetContext) {
       return SafeArea(
@@ -64,7 +66,7 @@ Future<void> _showProfileActions(BuildContext context, WidgetRef ref) async {
               ),
               const SizedBox(height: 18),
               const Text(
-                'Profile Actions',
+                'Profile Menu',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 18,
@@ -74,14 +76,11 @@ Future<void> _showProfileActions(BuildContext context, WidgetRef ref) async {
               ),
               const SizedBox(height: 16),
               _ProfileActionTile(
-                icon: Icons.person_outline_rounded,
-                title: 'View Profile',
+                icon: Icons.edit_outlined,
+                title: 'Edit Profile',
                 onTap: () {
                   Navigator.of(sheetContext).pop();
-                  if (GoRouterState.of(context).matchedLocation !=
-                      AppRoutes.profile) {
-                    context.push(AppRoutes.profile);
-                  }
+                  context.push(AppRoutes.editProfile);
                 },
               ),
               const SizedBox(height: 10),
@@ -111,7 +110,9 @@ Future<bool?> _confirmLogout(BuildContext context) {
     builder: (dialogContext) {
       return AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.modal),
+        ),
         title: const Text(
           'Log Out',
           style: TextStyle(
@@ -144,10 +145,10 @@ Future<bool?> _confirmLogout(BuildContext context) {
 }
 
 Future<void> _sendPasswordResetEmail(
-    BuildContext context,
-    WidgetRef ref,
-    ProfileData profile,
-    ) async {
+  BuildContext context,
+  WidgetRef ref,
+  ProfileData profile,
+) async {
   showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -159,9 +160,7 @@ Future<void> _sendPasswordResetEmail(
   );
 
   try {
-    await ref.read(authRepositoryProvider).forgotPassword(
-      email: profile.email,
-    );
+    await ref.read(authRepositoryProvider).forgotPassword(email: profile.email);
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop();
       ScaffoldMessenger.of(context)
@@ -189,8 +188,6 @@ Future<void> _sendPasswordResetEmail(
   }
 }
 
-// ─── Content ────────────────────────────────────────────────────────────────
-
 class _ProfileContent extends ConsumerStatefulWidget {
   final ProfileData profile;
 
@@ -202,60 +199,63 @@ class _ProfileContent extends ConsumerStatefulWidget {
 
 class _ProfileContentState extends ConsumerState<_ProfileContent>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  static const int _slots = 8;
+  late final AnimationController _controller;
+  static const int _slotCount = 7;
   late final List<Animation<double>> _fades;
   late final List<Animation<Offset>> _slides;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 820),
+      duration: const Duration(milliseconds: 760),
     );
-    _fades = List.generate(_slots, (i) {
-      final start = (i * 0.10).clamp(0.0, 1.0);
-      final end = (start + 0.45).clamp(0.0, 1.0);
+    _fades = List.generate(_slotCount, (index) {
+      final start = (index * 0.1).clamp(0.0, 1.0);
+      final end = (start + 0.42).clamp(0.0, 1.0);
       return Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(
-          parent: _ctrl,
+          parent: _controller,
           curve: Interval(start, end, curve: Curves.easeOut),
         ),
       );
     });
-    _slides = List.generate(_slots, (i) {
-      final start = (i * 0.10).clamp(0.0, 1.0);
-      final end = (start + 0.45).clamp(0.0, 1.0);
+    _slides = List.generate(_slotCount, (index) {
+      final start = (index * 0.1).clamp(0.0, 1.0);
+      final end = (start + 0.42).clamp(0.0, 1.0);
       return Tween<Offset>(
-        begin: const Offset(0, 0.06),
+        begin: const Offset(0, 0.07),
         end: Offset.zero,
       ).animate(
         CurvedAnimation(
-          parent: _ctrl,
+          parent: _controller,
           curve: Interval(start, end, curve: Curves.easeOutCubic),
         ),
       );
     });
-    Future.delayed(const Duration(milliseconds: 80), () {
-      if (mounted) _ctrl.forward();
+    Future.delayed(const Duration(milliseconds: 60), () {
+      if (mounted) _controller.forward();
     });
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Widget _a(int slot, Widget child) => FadeTransition(
-    opacity: _fades[slot],
-    child: SlideTransition(position: _slides[slot], child: child),
-  );
+  Widget _animated(int slot, Widget child) {
+    return FadeTransition(
+      opacity: _fades[slot],
+      child: SlideTransition(position: _slides[slot], child: child),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
+
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () async {
@@ -263,9 +263,10 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
         await ref.read(profileProvider.future);
       },
       child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
-          // ── AppBar ──────────────────────────────────────────────────────
           SliverAppBar(
             backgroundColor: AppColors.background,
             floating: true,
@@ -287,107 +288,137 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Montserrat',
-                letterSpacing: 0.3,
+                letterSpacing: 0.2,
               ),
             ),
+            actions: [
+              IconButton(
+                onPressed: () => _showProfileActions(context, ref),
+                icon: const Icon(
+                  Icons.more_horiz_rounded,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _a(0, Align(
-                    alignment: Alignment.centerRight,
-                    child: const RunningLoginTimeCard(),
-                  )),
-                  const SizedBox(height: 8),
-                  _a(1, _ProfileHeroCard(profile: profile)),
-                  const SizedBox(height: 12),
-                  _a(2, Row(
-                    children: [
-                      Expanded(
-                        child: _NetflixButton(
-                          label: 'Edit Profile',
-                          icon: Icons.edit_outlined,
-                          onTap: () => context.push('/profile/edit'),
-                          filled: true,
+                  _animated(
+                    0,
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: const RunningLoginTimeCard(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _animated(1, _ProfileHeroCard(profile: profile)),
+                  const SizedBox(height: 20),
+                  _animated(
+                    2,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _ProfileButton(
+                            label: 'Edit Profile',
+                            icon: Icons.edit_outlined,
+                            onTap: () => context.push(AppRoutes.editProfile),
+                            variant: _ProfileButtonVariant.primary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _NetflixButton(
-                          label: 'Reset Password',
-                          icon: Icons.lock_reset_outlined,
-                          onTap: () =>
-                              _sendPasswordResetEmail(context, ref, profile),
-                          filled: false,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ProfileButton(
+                            label: 'Reset Password',
+                            icon: Icons.lock_reset_outlined,
+                            onTap: () =>
+                                _sendPasswordResetEmail(context, ref, profile),
+                            variant: _ProfileButtonVariant.secondary,
+                          ),
                         ),
-                      ),
-                    ],
-                  )),
-                  const SizedBox(height: 24),
-                  _a(4, _SectionCard(
-                    title: 'Account',
-                    icon: Icons.person_outline_rounded,
-                    children: [
-                      _InfoRow(label: 'Full name', value: profile.name),
-                      _InfoRow(label: 'Email', value: profile.email),
-                      _InfoRow(label: 'WhatsApp', value: profile.whatsapp),
-                      _InfoRow(label: 'Instagram', value: profile.instagram),
-                    ],
-                  )),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  _animated(
+                    3,
+                    _ProfileSectionCard(
+                      title: 'Account',
+                      icon: Icons.person_outline_rounded,
+                      children: [
+                        _InfoRow(label: 'Full name', value: profile.name),
+                        _InfoRow(label: 'Email', value: profile.email),
+                        _InfoRow(label: 'WhatsApp', value: profile.whatsapp),
+                        _InfoRow(label: 'Instagram', value: profile.instagram),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  _a(5, _SectionCard(
-                    title: 'Personal',
-                    icon: Icons.badge_outlined,
-                    children: [
-                      _InfoRow(label: 'Country', value: profile.country),
-                      _InfoRow(label: 'Birth date', value: profile.birthDate),
-                      _InfoRow(label: 'Gender', value: profile.gender),
-                    ],
-                  )),
+                  _animated(
+                    4,
+                    _ProfileSectionCard(
+                      title: 'Personal',
+                      icon: Icons.badge_outlined,
+                      children: [
+                        _InfoRow(label: 'Country', value: profile.country),
+                        _InfoRow(label: 'Birth date', value: profile.birthDate),
+                        _InfoRow(label: 'Gender', value: profile.gender),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  _a(6, _SectionCard(
-                    title: 'Practice',
-                    icon: Icons.self_improvement_rounded,
-                    children: [
-                      _InfoRow(
-                        label: 'Practicing yoga for',
-                        value: profile.practicingYogaFor,
-                      ),
-                      _InfoRow(
-                        label: 'Sequence experience',
-                        value: profile.yogaSequenceExperience,
-                      ),
-                      _InfoRow(
-                        label: 'Hours per week',
-                        value: profile.hoursPerWeek,
-                      ),
-                      _InfoRow(
-                        label: 'Fitness level',
-                        value: profile.currentFitnessLevel,
-                      ),
-                      _InfoRow(
-                        label: 'Flexibility',
-                        value: profile.flexibilityRating,
-                      ),
-                    ],
-                  )),
+                  _animated(
+                    5,
+                    _ProfileSectionCard(
+                      title: 'Practice',
+                      icon: Icons.self_improvement_outlined,
+                      children: [
+                        _InfoRow(
+                          label: 'Practicing yoga for',
+                          value: profile.practicingYogaFor,
+                        ),
+                        _InfoRow(
+                          label: 'Sequence experience',
+                          value: profile.yogaSequenceExperience,
+                        ),
+                        _InfoRow(
+                          label: 'Hours per week',
+                          value: profile.hoursPerWeek,
+                        ),
+                        _InfoRow(
+                          label: 'Fitness level',
+                          value: profile.currentFitnessLevel,
+                        ),
+                        _InfoRow(
+                          label: 'Flexibility',
+                          value: profile.flexibilityRating,
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  _a(7, _SectionCard(
-                    title: 'Motivation',
-                    icon: Icons.emoji_objects_outlined,
-                    children: [
-                      _InfoRow(label: 'Motivation', value: profile.motivation),
-                      _InfoRow(label: 'Why YogaFX', value: profile.whyYogafx),
-                      _InfoRow(
-                        label: 'How you found us',
-                        value: profile.howDidYouFindUs,
-                      ),
-                    ],
-                  )),
+                  _animated(
+                    6,
+                    _ProfileSectionCard(
+                      title: 'Motivation',
+                      icon: Icons.lightbulb_outline_rounded,
+                      children: [
+                        _InfoRow(label: 'Motivation', value: profile.motivation),
+                        _InfoRow(
+                          label: 'Why YogaFX',
+                          value: profile.whyYogafx,
+                        ),
+                        _InfoRow(
+                          label: 'How you found us',
+                          value: profile.howDidYouFindUs,
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -397,8 +428,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
     );
   }
 }
-
-// ─── Hero Card ───────────────────────────────────────────────────────────────
 
 class _ProfileHeroCard extends StatelessWidget {
   final ProfileData profile;
@@ -411,192 +440,244 @@ class _ProfileHeroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.divider, width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar with red ring accent
-          Stack(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(2.5),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primary, width: 2),
-                ),
-                child: CircleAvatar(
-                  radius: 32,
-                  backgroundColor: AppColors.surfaceElevated,
-                  backgroundImage: profile.profilePhoto != null
-                      ? NetworkImage(profile.profilePhoto!)
-                      : null,
-                  child: profile.profilePhoto == null
-                      ? Text(
-                    _initials(profile.name),
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
+              _ProfileAvatar(profile: profile),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SectionEyebrow(text: 'Student Profile'),
+                    const SizedBox(height: 10),
+                    Text(
+                      profile.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                        height: 1.15,
+                      ),
                     ),
-                  )
-                      : null,
-                ),
-              ),
-              // Online dot
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surface, width: 2),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      profile.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 0.2,
-                  ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MetaBadge(
+                icon: Icons.workspace_premium_outlined,
+                label: profile.accessTier.name.toUpperCase(),
+                tone: AppColors.primary,
+              ),
+              _MetaBadge(
+                icon: profile.profileCompleted
+                    ? Icons.verified_rounded
+                    : Icons.pending_outlined,
+                label: profile.profileCompleted
+                    ? 'PROFILE COMPLETE'
+                    : 'PROFILE INCOMPLETE',
+                tone: profile.profileCompleted
+                    ? AppColors.success
+                    : AppColors.warning,
+              ),
+              if ((profile.country ?? '').trim().isNotEmpty)
+                _MetaBadge(
+                  icon: Icons.public_outlined,
+                  label: profile.country!.trim(),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  profile.accessTier.name.toUpperCase(),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Profile status badge
-                _StatusBadge(completed: profile.profileCompleted),
-              ],
-            ),
+            ],
           ),
         ],
       ),
     );
   }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
-        .toUpperCase();
-  }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final bool completed;
+class _ProfileAvatar extends StatelessWidget {
+  final ProfileData profile;
 
-  const _StatusBadge({required this.completed});
+  const _ProfileAvatar({required this.profile});
 
   @override
   Widget build(BuildContext context) {
-    final color = completed ? AppColors.success : AppColors.primary;
-    final label = completed ? 'PROFILE COMPLETE' : 'PROFILE INCOMPLETE';
-    final icon = completed ? Icons.verified_rounded : Icons.info_outline_rounded;
+    final imageUrl = profile.profilePhoto?.trim();
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      width: 84,
+      height: 84,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.28), width: 0.8),
+        color: AppColors.surfaceCard,
+        borderRadius: BorderRadius.circular(AppRadius.avatar),
+        border: Border.all(color: AppColors.primary, width: 1.5),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 11),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Montserrat',
-              letterSpacing: 1.1,
-            ),
-          ),
-        ],
+      clipBehavior: Clip.antiAlias,
+      child: hasImage
+          ? AuthNetworkImage(
+              imageUrl: imageUrl!,
+              fit: BoxFit.cover,
+              placeholderBuilder: (_) =>
+                  _ProfileAvatarFallback(name: profile.name),
+              errorBuilderWidget: (_, __) =>
+                  _ProfileAvatarFallback(name: profile.name),
+            )
+          : _ProfileAvatarFallback(name: profile.name),
+    );
+  }
+}
+
+class _ProfileAvatarFallback extends StatelessWidget {
+  final String name;
+
+  const _ProfileAvatarFallback({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        _initials(name),
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 26,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'Montserrat',
+        ),
       ),
     );
   }
 }
 
-// ─── Netflix-style Button ────────────────────────────────────────────────────
-
-class _NetflixButton extends StatelessWidget {
-  final String label;
+class _MetaBadge extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
-  final bool filled;
+  final String label;
+  final Color? tone;
 
-  const _NetflixButton({
-    required this.label,
+  const _MetaBadge({
     required this.icon,
-    required this.onTap,
-    required this.filled,
+    required this.label,
+    this.tone,
   });
 
   @override
   Widget build(BuildContext context) {
+    final badgeColor = tone ?? AppColors.textSecondary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: badgeColor.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(AppRadius.badge),
+        border: Border.all(color: badgeColor.withOpacity(0.24)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: badgeColor, size: 12),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: badgeColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _ProfileButtonVariant { primary, secondary }
+
+class _ProfileButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final _ProfileButtonVariant variant;
+
+  const _ProfileButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.variant,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isPrimary = variant == _ProfileButtonVariant.primary;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppRadius.button),
         child: Ink(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: filled ? AppColors.primary : AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(6),
-            border: filled
+            color:
+                isPrimary ? AppColors.primary : Colors.white.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(AppRadius.button),
+            border: isPrimary
                 ? null
-                : Border.all(color: AppColors.divider, width: 0.8),
+                : Border.all(
+                    color: Colors.white.withOpacity(0.16),
+                    width: 0.8,
+                  ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
-                size: 15,
-                color: filled ? Colors.white : AppColors.textSecondary,
+                size: 16,
+                color: AppColors.textPrimary,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: filled ? Colors.white : AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                     fontFamily: 'Montserrat',
                   ),
                 ),
@@ -608,8 +689,6 @@ class _NetflixButton extends StatelessWidget {
     );
   }
 }
-
-// ─── Action Tile ─────────────────────────────────────────────────────────────
 
 class _ProfileActionTile extends StatelessWidget {
   final IconData icon;
@@ -632,17 +711,17 @@ class _ProfileActionTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.modal),
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.modal),
             border: Border.all(color: AppColors.divider, width: 0.8),
           ),
           child: Row(
             children: [
-              Icon(icon, color: color, size: 20),
+              Icon(icon, color: color, size: 18),
               const SizedBox(width: 12),
               Text(
                 title,
@@ -654,7 +733,7 @@ class _ProfileActionTile extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Icon(Icons.chevron_right_rounded, color: color, size: 20),
+              Icon(Icons.chevron_right_rounded, color: color, size: 18),
             ],
           ),
         ),
@@ -663,14 +742,12 @@ class _ProfileActionTile extends StatelessWidget {
   }
 }
 
-// ─── Section Card ─────────────────────────────────────────────────────────────
-
-class _SectionCard extends StatelessWidget {
+class _ProfileSectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final List<Widget> children;
 
-  const _SectionCard({
+  const _ProfileSectionCard({
     required this.title,
     required this.icon,
     required this.children,
@@ -682,56 +759,64 @@ class _SectionCard extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.divider, width: 0.8),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section header with subtle left accent bar
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppColors.divider, width: 0.5),
-                left: BorderSide(color: AppColors.primary, width: 3),
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
-              ),
-            ),
-            child: Row(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Icon(icon, color: AppColors.primary, size: 14),
+                Icon(icon, color: AppColors.primary, size: 15),
                 const SizedBox(width: 8),
-                Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 1.4,
-                  ),
-                ),
+                Expanded(child: _SectionEyebrow(text: title)),
               ],
             ),
-          ),
-          // Info rows
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
-            child: Column(
-              children: children,
-            ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            ...children,
+          ],
+        ),
       ),
     );
   }
 }
 
-// ─── Info Row ─────────────────────────────────────────────────────────────────
+class _SectionEyebrow extends StatelessWidget {
+  final String text;
+
+  const _SectionEyebrow({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 12,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text.toUpperCase(),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 1.8,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _InfoRow extends StatelessWidget {
   final String label;
@@ -741,7 +826,9 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isEmpty = value == null || value!.trim().isEmpty;
+    final displayValue = value?.trim() ?? '';
+    final isEmpty = displayValue.isEmpty;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -762,16 +849,14 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             flex: 6,
             child: Text(
-              isEmpty ? '—' : value!,
+              isEmpty ? '-' : displayValue,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: isEmpty
-                    ? AppColors.textMuted
-                    : AppColors.textPrimary,
+                color: isEmpty ? AppColors.textMuted : AppColors.textPrimary,
                 fontSize: 12,
+                fontWeight: isEmpty ? FontWeight.w400 : FontWeight.w500,
                 fontFamily: 'Montserrat',
-                fontWeight:
-                isEmpty ? FontWeight.w400 : FontWeight.w500,
+                height: 1.45,
               ),
             ),
           ),
@@ -781,79 +866,145 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-class _ProfileSkeleton extends StatelessWidget {
+class _ProfileSkeleton extends StatefulWidget {
   const _ProfileSkeleton();
 
   @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        const SliverAppBar(
-          backgroundColor: AppColors.background,
-          floating: true,
-          snap: true,
-          title: Text(
-            'My Profile',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _shimmer(height: 100, radius: 10),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _shimmer(height: 44, radius: 6)),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ...List.generate(
-                  4,
-                      (_) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _shimmer(height: 140, radius: 10),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+  State<_ProfileSkeleton> createState() => _ProfileSkeletonState();
+}
+
+class _ProfileSkeletonState extends State<_ProfileSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shimmerController;
+  late final Animation<double> _shimmerAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _shimmerAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
     );
   }
 
-  Widget _shimmer({required double height, required double radius}) {
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, _) {
+        final shimmerColor = Color.lerp(
+          AppColors.shimmer,
+          AppColors.shimmerHighlight,
+          _shimmerAnimation.value,
+        )!;
+
+        return CustomScrollView(
+          slivers: [
+            const SliverAppBar(
+              backgroundColor: AppColors.background,
+              floating: true,
+              snap: true,
+              title: Text(
+                'My Profile',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                child: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _bone(
+                        width: 158,
+                        height: 34,
+                        radius: 999,
+                        color: shimmerColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _bone(
+                      width: double.infinity,
+                      height: 180,
+                      radius: AppRadius.card,
+                      color: shimmerColor,
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _bone(
+                            width: double.infinity,
+                            height: 44,
+                            radius: AppRadius.button,
+                            color: shimmerColor,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _bone(
+                            width: double.infinity,
+                            height: 44,
+                            radius: AppRadius.button,
+                            color: shimmerColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+                    ...List.generate(
+                      4,
+                      (_) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _bone(
+                          width: double.infinity,
+                          height: 164,
+                          radius: AppRadius.card,
+                          color: shimmerColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _bone({
+    required double width,
+    required double height,
+    required double radius,
+    required Color color,
+  }) {
     return Container(
+      width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.shimmer,
+        color: color,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
   }
 }
-
-// ─── Error ────────────────────────────────────────────────────────────────────
 
 class _ProfileError extends StatelessWidget {
   final String message;
@@ -869,24 +1020,36 @@ class _ProfileError extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.wifi_off_outlined,
-              color: AppColors.textMuted,
-              size: 48,
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.25),
+                ),
+              ),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                color: AppColors.primary,
+                size: 28,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 14,
+                fontSize: 13,
                 fontFamily: 'Montserrat',
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             SizedBox(
-              width: 140,
+              width: 148,
               child: ElevatedButton(
                 onPressed: onRetry,
                 child: const Text('Try again'),
@@ -897,4 +1060,18 @@ class _ProfileError extends StatelessWidget {
       ),
     );
   }
+}
+
+String _initials(String value) {
+  final parts = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+
+  if (parts.isEmpty) return 'Y';
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+
+  return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+      .toUpperCase();
 }

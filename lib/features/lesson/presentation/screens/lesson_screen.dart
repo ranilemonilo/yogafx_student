@@ -6,12 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../module/presentation/providers/module_provider.dart';
 import '../../data/models/lesson_model.dart';
@@ -145,6 +147,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (!hasPlayableVideo) return true;
     return widget.lesson.progress.watchProgress >= 95;
   }
+
+  String? get _studentEmail => ref.read(authProvider).user?.email;
 
   @override
   void initState() {
@@ -492,6 +496,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
               videoErrorMessage: _videoErrorMessage,
               videoController: _videoController,
               videoUnlocked: _isVideoUnlocked,
+              studentEmail: _studentEmail,
+              onWorkbookDismissed: _refreshLesson,
               onRetry: _initVideo,
               onBack: () => _handleBack(context),
               onTogglePlayback: _toggleVideoPlayback,
@@ -532,6 +538,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                       lesson: lesson,
                       isAssessmentUnlocked: _isAssessmentUnlocked,
                       onWorkbookDismissed: _refreshLesson,
+                      studentEmail: _studentEmail,
                       audioLoading: _audioLoading,
                       audioReady: _audioReady,
                       audioError: _audioError,
@@ -546,6 +553,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                     if (lesson.workbook.isAvailable) ...[
                       _WorkbookSection(
                         workbook: lesson.workbook,
+                        studentEmail: _studentEmail,
                         onDismissed: _refreshLesson,
                       ),
                       const SizedBox(height: 28),
@@ -595,6 +603,8 @@ class _VideoSection extends StatelessWidget {
   final String? videoErrorMessage;
   final VideoPlayerController? videoController;
   final bool videoUnlocked;
+  final String? studentEmail;
+  final Future<void> Function() onWorkbookDismissed;
   final VoidCallback onRetry;
   final VoidCallback onBack;
   final Future<void> Function() onTogglePlayback;
@@ -609,6 +619,8 @@ class _VideoSection extends StatelessWidget {
     required this.videoErrorMessage,
     required this.videoController,
     required this.videoUnlocked,
+    required this.studentEmail,
+    required this.onWorkbookDismissed,
     required this.onRetry,
     required this.onBack,
     required this.onTogglePlayback,
@@ -625,7 +637,7 @@ class _VideoSection extends StatelessWidget {
           aspectRatio: 16 / 9,
           child: Container(
             color: Colors.black,
-            child: _buildVideoBody(),
+            child: _buildVideoBody(context),
           ),
         ),
         Positioned(
@@ -656,11 +668,19 @@ class _VideoSection extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoBody() {
+  Widget _buildVideoBody(BuildContext context) {
     if (!videoUnlocked) {
       return _VideoPlaceholder(
         thumbnailUrl: lesson.thumbnailUrl,
         message: 'Open or download the workbook first to unlock the video.',
+        onTap: lesson.workbook.isAvailable
+            ? () => _showWorkbookOptions(
+                  context: context,
+                  workbook: lesson.workbook,
+                  studentEmail: studentEmail,
+                  onDismissed: onWorkbookDismissed,
+                )
+            : null,
       );
     }
     if (lesson.video == null || !lesson.video!.isReady) {
@@ -1025,12 +1045,14 @@ class _VideoPlaceholder extends StatelessWidget {
   final String? thumbnailUrl;
   final String message;
   final bool showRetry;
+  final VoidCallback? onTap;
   final VoidCallback? onRetry;
 
   const _VideoPlaceholder({
     this.thumbnailUrl,
     required this.message,
     this.showRetry = false,
+    this.onTap,
     this.onRetry,
   });
 
@@ -1048,50 +1070,80 @@ class _VideoPlaceholder extends StatelessWidget {
           ),
         Container(color: Colors.black.withOpacity(0.65)),
         Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.play_circle_outline_rounded,
-                  color: AppColors.textMuted, size: 48),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontFamily: 'Montserrat',
+          child: GestureDetector(
+            onTap: onTap,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.play_circle_outline_rounded,
+                    color: AppColors.textMuted, size: 48),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontFamily: 'Montserrat',
+                  ),
                 ),
-              ),
-              if (showRetry && onRetry != null) ...[
-                const SizedBox(height: 14),
-                GestureDetector(
-                  onTap: onRetry,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                if (onTap != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: AppColors.surfaceElevated,
                       borderRadius: BorderRadius.circular(AppRadius.button),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      border: Border.all(
+                        color: AppColors.divider,
+                        width: 0.8,
+                      ),
                     ),
                     child: const Text(
-                      'Try again',
+                      'Workbook Options',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
                       ),
                     ),
                   ),
-                ),
+                ],
+                if (showRetry && onRetry != null) ...[
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    onTap: onRetry,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(AppRadius.button),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        'Try again',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],
@@ -1213,6 +1265,7 @@ class _ActionRow extends StatelessWidget {
   final LessonDetail lesson;
   final bool isAssessmentUnlocked;
   final Future<void> Function() onWorkbookDismissed;
+  final String? studentEmail;
   final bool audioLoading;
   final bool audioReady;
   final String? audioError;
@@ -1223,6 +1276,7 @@ class _ActionRow extends StatelessWidget {
     required this.lesson,
     required this.isAssessmentUnlocked,
     required this.onWorkbookDismissed,
+    required this.studentEmail,
     required this.audioLoading,
     required this.audioReady,
     required this.audioError,
@@ -1231,14 +1285,12 @@ class _ActionRow extends StatelessWidget {
   });
 
   void _openWorkbook(BuildContext context) {
-    showModalBottomSheet(
+    _showWorkbookOptions(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => _WorkbookSheet(workbook: lesson.workbook),
-    ).whenComplete(onWorkbookDismissed);
+      workbook: lesson.workbook,
+      studentEmail: studentEmail,
+      onDismissed: onWorkbookDismissed,
+    );
   }
 
   void _openAudio(BuildContext context) {
@@ -1403,10 +1455,12 @@ class _ContentSection extends StatelessWidget {
 
 class _WorkbookSection extends StatelessWidget {
   final LessonWorkbook workbook;
+  final String? studentEmail;
   final Future<void> Function() onDismissed;
 
   const _WorkbookSection({
     required this.workbook,
+    required this.studentEmail,
     required this.onDismissed,
   });
 
@@ -1418,14 +1472,12 @@ class _WorkbookSection extends StatelessWidget {
         const _SectionLabel(text: 'Workbook'),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: () => showModalBottomSheet(
+          onTap: () => _showWorkbookOptions(
             context: context,
-            backgroundColor: AppColors.surface,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            builder: (_) => _WorkbookSheet(workbook: workbook),
-          ).whenComplete(onDismissed),
+            workbook: workbook,
+            studentEmail: studentEmail,
+            onDismissed: onDismissed,
+          ),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1486,9 +1538,33 @@ class _WorkbookSection extends StatelessWidget {
 
 // ─── Workbook Sheet ───────────────────────────────────────────────────────────
 
+void _showWorkbookOptions({
+  required BuildContext context,
+  required LessonWorkbook workbook,
+  required String? studentEmail,
+  required Future<void> Function() onDismissed,
+}) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (_) => _WorkbookSheet(
+      workbook: workbook,
+      studentEmail: studentEmail,
+    ),
+  ).whenComplete(onDismissed);
+}
+
 class _WorkbookSheet extends StatelessWidget {
   final LessonWorkbook workbook;
-  const _WorkbookSheet({required this.workbook});
+  final String? studentEmail;
+
+  const _WorkbookSheet({
+    required this.workbook,
+    required this.studentEmail,
+  });
 
   Future<void> _downloadWorkbook(BuildContext context, String url) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -1533,6 +1609,46 @@ class _WorkbookSheet extends StatelessWidget {
         : '$baseName.pdf';
   }
 
+  Future<void> _sendWorkbookEmail(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final recipient = studentEmail?.trim() ?? '';
+    final workbookLink = (workbook.downloadUrl ?? workbook.url)?.trim();
+
+    if (recipient.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Student email is not available.')),
+      );
+      return;
+    }
+
+    if (workbookLink == null || workbookLink.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Workbook link is not available.')),
+      );
+      return;
+    }
+
+    final subject = Uri.encodeComponent('Your YogaFX workbook');
+    final body = Uri.encodeComponent(
+      'Hi,\n\nHere is your workbook link:\n$workbookLink\n\nRegards,\nYogaFX',
+    );
+    final mailUri = Uri.parse(
+      'mailto:$recipient?subject=$subject&body=$body',
+    );
+
+    navigator.pop();
+
+    if (await canLaunchUrl(mailUri)) {
+      await launchUrl(mailUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not open the email app.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -1571,11 +1687,19 @@ class _WorkbookSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          if (workbook.url != null)
+          if (workbook.downloadUrl != null)
+            _SheetButton(
+              label: 'Download',
+              icon: Icons.download_rounded,
+              isPrimary: true,
+              onTap: () => _downloadWorkbook(context, workbook.downloadUrl!),
+            ),
+          if (workbook.url != null) ...[
+            if (workbook.downloadUrl != null) const SizedBox(height: 10),
             _SheetButton(
               label: 'Open Workbook',
               icon: Icons.open_in_new_rounded,
-              isPrimary: true,
+              isPrimary: workbook.downloadUrl == null,
               onTap: () {
                 Navigator.pop(context);
                 context.push(
@@ -1587,13 +1711,14 @@ class _WorkbookSheet extends StatelessWidget {
                 );
               },
             ),
-          if (workbook.downloadUrl != null) ...[
+          ],
+          if ((workbook.downloadUrl ?? workbook.url) != null) ...[
             const SizedBox(height: 10),
             _SheetButton(
-              label: 'Download',
-              icon: Icons.download_rounded,
+              label: 'Send Email',
+              icon: Icons.email_outlined,
               isPrimary: false,
-              onTap: () => _downloadWorkbook(context, workbook.downloadUrl!),
+              onTap: () => _sendWorkbookEmail(context),
             ),
           ],
         ],

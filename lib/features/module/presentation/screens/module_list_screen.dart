@@ -7,18 +7,30 @@ import '../../../../core/widgets/running_login_time_card.dart';
 import '../../data/models/module_model.dart';
 import '../providers/module_provider.dart';
 
-// ─── Design Tokens (Berdasarkan DESIGN_SYSTEM.md) ─────────────────────────────
+// ─── Design Tokens (Sesuai DESIGN_SYSTEM.md & AppColors) ──────────────────────
 
-const _kRed = Color(0xFFDB202C); // Primary / Red
-const _kGreen = Color(0xFF00B14F); // Secondary / Emerald (Sukses/Completed)
-const _kBg = Color(0xFF060908); // Neutral / Black (Background Utama)
-const _kHeaderBg = Color(0xFF141110); // Neutral / Black (Header)
-const _kSurface = Color(0xFF120F0E); // Neutral / Black (Card/Panel)
-const _kSurfaceElevated = Color(0xFF281D16); // Neutral / Brown (Elevated/Hover)
-const _kDivider = Color(0x4DFFFFFF); // rgba(255,255,255,0.3)
-const _kTextPrimary = Color(0xFFFFFFFF); // Neutral / White
-const _kTextSecondary = Color(0xA6FFFFFF); // Transparent White 65% (Metadata)
-const _kTextMuted = Color(0x73FFFFFF); // Transparent White 45% (Placeholder/Disabled)
+const _kRed        = Color(0xFFDB202C); // Primary / Red
+const _kGreen      = Color(0xFF00B14F); // Secondary / Emerald
+const _kBg         = Color(0xFF060908); // Neutral Black 1 — bg utama
+const _kHeaderBg   = Color(0xFF141110); // Neutral Black 2 — header
+const _kSurface    = Color(0xFF120F0E); // Neutral Black 3 — card/panel
+const _kElevated   = Color(0xFF281D16); // Neutral Brown — elevated/hover
+
+const _kTextPrimary   = Color(0xFFFFFFFF);  // White
+const _kTextSecondary = Color(0xA6FFFFFF);  // White 65%
+const _kTextMuted     = Color(0x73FFFFFF);  // White 45%
+
+const _kDivider    = Color(0x1AFFFFFF);     // White 10% — divider tipis
+const _kBorderSoft = Color(0x4DFFFFFF);     // White 30% — border card/input
+
+const _kRedSoft    = Color(0x1ADB202C);     // Red 10%
+const _kRedBorder  = Color(0x4DDB202C);     // Red 30%
+
+// Shadow sesuai DS §Catatan Implementasi
+const _kShadowCard  = [BoxShadow(color: Color(0xCC000000), blurRadius: 24, offset: Offset(0, 8))];
+const _kShadowBtn   = [BoxShadow(color: Color(0xB3000000), blurRadius: 12, offset: Offset(0, 4))];
+
+// ─── Helpers (logika tidak diubah) ────────────────────────────────────────────
 
 const _kLockedModuleMessage =
     'This page is not available yet. Please complete the previous module first.';
@@ -32,23 +44,76 @@ void _showLockedModuleSnackBar(BuildContext context) {
           _kLockedModuleMessage,
           style: TextStyle(fontFamily: 'Montserrat'),
         ),
-        backgroundColor: _kSurfaceElevated,
+        backgroundColor: _kElevated,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
     );
 }
 
-bool _canOpenModule(String status) {
-  final normalizedStatus = status.toLowerCase();
-  return normalizedStatus != 'locked' &&
-      normalizedStatus != 'unavailable' &&
-      normalizedStatus != 'hidden';
+bool _canOpenModule(ModuleItem module) {
+  final status = module.status.toLowerCase();
+  if (!module.isVisible) return false;
+  if (status == 'locked' || status == 'hidden') return false;
+  if (status != 'unavailable') return true;
+
+  final hasNonLessonContent =
+      module.viewTypes.contains('ebook') ||
+      module.viewTypes.contains('certificate') ||
+      module.viewTypes.contains('video_lecturer') ||
+      module.viewTypes.contains('assignment');
+
+  return hasNonLessonContent;
 }
 
-// (Logika _isLessonModule dan _moduleTypeLabel sudah dihapus karena kita pakai viewTypes dari Backend)
+bool _isAssignmentModule(ModuleItem module) {
+  return module.viewTypes.contains('assignment') &&
+      !module.viewTypes.contains('lesson') &&
+      !module.viewTypes.contains('ebook') &&
+      !module.viewTypes.contains('certificate') &&
+      !module.viewTypes.contains('video_lecturer');
+}
+
+bool _isEbookModule(ModuleItem module) {
+  return module.viewTypes.contains('ebook') &&
+      !module.viewTypes.contains('lesson') &&
+      !module.viewTypes.contains('assignment') &&
+      !module.viewTypes.contains('certificate') &&
+      !module.viewTypes.contains('video_lecturer');
+}
+
+bool _isCertificateModule(ModuleItem module) {
+  return module.viewTypes.contains('certificate') &&
+      !module.viewTypes.contains('lesson') &&
+      !module.viewTypes.contains('assignment') &&
+      !module.viewTypes.contains('ebook') &&
+      !module.viewTypes.contains('video_lecturer');
+}
+
+bool _isVideoLecturerModule(ModuleItem module) {
+  return module.viewTypes.contains('video_lecturer') &&
+      !module.viewTypes.contains('lesson');
+}
+
+bool _isVideoLikeModule(ModuleItem module) {
+  return module.viewTypes.contains('lesson') || _isVideoLecturerModule(module);
+}
+
+IconData _moduleCardIcon(ModuleItem module) {
+  if (_isAssignmentModule(module)) return Icons.cloud_upload_rounded;
+  if (_isCertificateModule(module)) return Icons.workspace_premium_rounded;
+  if (_isEbookModule(module)) return Icons.menu_book_rounded;
+  if (_isVideoLecturerModule(module)) return Icons.ondemand_video_rounded;
+  return Icons.play_arrow_rounded;
+}
+
+String _moduleCardEyebrow(ModuleItem module) {
+  if (_isAssignmentModule(module)) return 'Assignment Upload';
+  if (_isCertificateModule(module)) return 'Certificate Access';
+  if (_isEbookModule(module)) return 'Reading Material';
+  if (_isVideoLecturerModule(module)) return 'Video Lecturer';
+  return 'Learning Module';
+}
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -73,9 +138,7 @@ class ModuleListScreen extends ConsumerWidget {
           slivers: [
             _NetflixAppBar(),
             modulesAsync.when(
-              loading: () => const SliverFillRemaining(
-                child: _ModuleListSkeleton(),
-              ),
+              loading: () => const SliverFillRemaining(child: _ModuleListSkeleton()),
               error: (e, _) => SliverFillRemaining(
                 child: _ModuleListError(
                   message: e.toString(),
@@ -109,6 +172,7 @@ class _NetflixAppBar extends StatelessWidget {
       floating: true,
       snap: true,
       elevation: 0,
+      scrolledUnderElevation: 0,
       titleSpacing: 8,
       leading: IconButton(
         onPressed: () => _handleModuleBack(context),
@@ -118,7 +182,7 @@ class _NetflixAppBar extends StatelessWidget {
         'Modules',
         style: TextStyle(
           color: _kTextPrimary,
-          fontSize: 24, // Title 2
+          fontSize: 24, // DS: Semi Bold / Title 2
           fontWeight: FontWeight.w600,
           fontFamily: 'Montserrat',
         ),
@@ -150,19 +214,14 @@ class _ModuleListContentState extends State<_ModuleListContent>
     final count = widget.data.items.length + 1; // +1 for summary bar
     _controllers = List.generate(
       count,
-          (i) => AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 420),
-      ),
+          (i) => AnimationController(vsync: this, duration: const Duration(milliseconds: 420)),
     );
     _fades = _controllers
         .map((c) => CurvedAnimation(parent: c, curve: Curves.easeOut))
         .toList();
     _slides = _controllers
-        .map((c) => Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
+        .map((c) => Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
 
     for (int i = 0; i < count; i++) {
@@ -174,9 +233,7 @@ class _ModuleListContentState extends State<_ModuleListContent>
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
+    for (final c in _controllers) c.dispose();
     super.dispose();
   }
 
@@ -191,7 +248,7 @@ class _ModuleListContentState extends State<_ModuleListContent>
   @override
   Widget build(BuildContext context) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 48), // Horizontal margin 4% (~16px)
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
       sliver: SliverList(
         delegate: SliverChildListDelegate([
           const Align(
@@ -205,7 +262,7 @@ class _ModuleListContentState extends State<_ModuleListContent>
                 (entry) => _animated(
               entry.key + 1,
               Padding(
-                padding: const EdgeInsets.only(bottom: 16), // Gutter kelipatan 8
+                padding: const EdgeInsets.only(bottom: 16),
                 child: _ModuleCard(module: entry.value),
               ),
             ),
@@ -216,7 +273,7 @@ class _ModuleListContentState extends State<_ModuleListContent>
   }
 }
 
-// ─── Summary Bar ─────────────────────────────────────────────────────────────
+// ─── Summary Bar ──────────────────────────────────────────────────────────────
 
 class _SummaryBar extends StatelessWidget {
   final ModuleListSummary summary;
@@ -234,7 +291,7 @@ class _SummaryBar extends StatelessWidget {
             label: '${summary.total} modules',
             icon: Icons.layers_rounded,
           ),
-          const SizedBox(width: 8), // Gutter
+          const SizedBox(width: 8),
           _SummaryChip(
             label: '${summary.completed} completed',
             icon: Icons.check_circle_rounded,
@@ -256,37 +313,28 @@ class _SummaryChip extends StatelessWidget {
   final IconData icon;
   final bool highlight;
 
-  const _SummaryChip({
-    required this.label,
-    required this.icon,
-    this.highlight = false,
-  });
+  const _SummaryChip({required this.label, required this.icon, this.highlight = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: highlight
-            ? const Color(0x1ADB202C) // Transparan Red
-            : _kSurfaceElevated,
-        borderRadius: BorderRadius.circular(4), // Radius tombol/chip 4px
+        color: highlight ? _kRedSoft : _kElevated,
+        borderRadius: BorderRadius.circular(4), // DS: radius 4px
         border: Border.all(
-          color: highlight ? const Color(0x4DDB202C) : _kDivider,
+          color: highlight ? _kRedBorder : _kBorderSoft,
           width: 0.8,
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: highlight ? _kRed : _kTextMuted,
-          ),
-          const SizedBox(width: 8),
+          Icon(icon, size: 14, color: highlight ? _kRed : _kTextMuted),
+          const SizedBox(width: 6),
           Text(
             label,
+            // DS: Regular / Caption 12px
             style: TextStyle(
               color: highlight ? _kRed : _kTextSecondary,
               fontSize: 12,
@@ -311,21 +359,17 @@ class _ModuleCard extends StatefulWidget {
   State<_ModuleCard> createState() => _ModuleCardState();
 }
 
-class _ModuleCardState extends State<_ModuleCard>
-    with SingleTickerProviderStateMixin {
+class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderStateMixin {
   late AnimationController _pressCtrl;
   late Animation<double> _scaleAnim;
 
   @override
   void initState() {
     super.initState();
-    _pressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _pressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    // DS: Card hover scale(1.1) untuk web; mobile pakai subtle 0.98
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.98)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -337,7 +381,10 @@ class _ModuleCardState extends State<_ModuleCard>
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
-    final canOpen = _canOpenModule(module.status);
+    final canOpen = _canOpenModule(module);
+    final isVideoLike = _isVideoLikeModule(module);
+    final cardIcon = _moduleCardIcon(module);
+    final eyebrow = _moduleCardEyebrow(module);
 
     return GestureDetector(
       onTap: () {
@@ -355,49 +402,40 @@ class _ModuleCardState extends State<_ModuleCard>
         child: Container(
           decoration: BoxDecoration(
             color: _kSurface,
-            borderRadius: BorderRadius.circular(4), // Radius Card 4px
-            border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x66000000), // Shadow Depth
-                blurRadius: 10,
-                offset: Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(4), // DS: Card radius 4px
+            border: Border.all(color: _kBorderSoft, width: 0.8),
+            boxShadow: _kShadowCard, // DS: 0 8px 24px rgba(0,0,0,0.8)
           ),
           clipBehavior: Clip.hardEdge,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Thumbnail ──
+              // ── Thumbnail 16:9 ──
               AspectRatio(
-                aspectRatio: 16 / 9, // Sesuai design system (16:9)
+                aspectRatio: 16 / 9,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Image
                     module.thumbnailUrl != null
                         ? AuthNetworkImage(
                       imageUrl: module.thumbnailUrl!,
                       fit: BoxFit.cover,
-                      placeholderBuilder: (_) =>
-                          _ThumbnailPlaceholder(title: module.title),
-                      errorBuilderWidget: (_, __) =>
-                          _ThumbnailPlaceholder(title: module.title),
+                      placeholderBuilder: (_) => _ThumbnailPlaceholder(title: module.title),
+                      errorBuilderWidget: (_, __) => _ThumbnailPlaceholder(title: module.title),
                     )
                         : _ThumbnailPlaceholder(title: module.title),
 
-                    // Bottom gradient
+                    // Gradient — DS §9 Hero Banner: Black 45% → transparent → bg
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.8),
+                            Colors.black.withOpacity(0.15), // tipis di atas
+                            Colors.black.withOpacity(0.80), // gelap di bawah
                           ],
-                          stops: const [0.5, 1.0],
+                          stops: const [0.4, 1.0],
                         ),
                       ),
                     ),
@@ -415,17 +453,15 @@ class _ModuleCardState extends State<_ModuleCard>
                         top: 12,
                         left: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _kGreen.withOpacity(0.95),
-                            borderRadius: BorderRadius.circular(2), // Badge Radius 2px
+                            color: _kGreen.withOpacity(0.92),
+                            borderRadius: BorderRadius.circular(2), // DS: badge 2px
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.check_rounded,
-                                  color: Colors.white, size: 14),
+                              Icon(Icons.check_rounded, color: Colors.white, size: 12),
                               SizedBox(width: 4),
                               Text(
                                 'Completed',
@@ -434,6 +470,7 @@ class _ModuleCardState extends State<_ModuleCard>
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'Montserrat',
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
@@ -441,23 +478,63 @@ class _ModuleCardState extends State<_ModuleCard>
                         ),
                       ),
 
-                    // Play button center
-                    if (canOpen)
+                    if (canOpen && isVideoLike)
                       Center(
                         child: Container(
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.45),
+                            color: Colors.black.withOpacity(0.60),
                             shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.8),
-                                width: 1.5),
+                            border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
                           ),
-                          child: const Icon(
-                            Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 28,
+                          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                        ),
+                      ),
+
+                    if (!isVideoLike)
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.40),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.10),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: _kRedSoft,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: _kRedBorder,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Icon(cardIcon, color: _kRed, size: 22),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                eyebrow,
+                                style: const TextStyle(
+                                  color: _kTextSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Montserrat',
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -465,24 +542,24 @@ class _ModuleCardState extends State<_ModuleCard>
                 ),
               ),
 
-              // ── Info ──
+              // ── Info Panel ──
               Padding(
-                padding: const EdgeInsets.all(16), // Padding 16px
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
+                    // Title — DS: Semi Bold / Title 2 (24px) terlalu besar untuk card list, pakai 18px SemiBold
                     Text(
                       module.title,
                       style: const TextStyle(
                         color: _kTextPrimary,
-                        fontSize: 18, // Title 3 Equivalent
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
                     ),
 
-                    // Description
+                    // Description — DS: Regular / Body 14px, White 65%
                     if (module.description != null) ...[
                       const SizedBox(height: 8),
                       Text(
@@ -500,7 +577,7 @@ class _ModuleCardState extends State<_ModuleCard>
 
                     const SizedBox(height: 16),
 
-                    // Meta row (menggunakan viewTypes dari Backend)
+                    // Meta chips
                     Wrap(
                       spacing: 16,
                       runSpacing: 8,
@@ -512,10 +589,7 @@ class _ModuleCardState extends State<_ModuleCard>
                             accent: true,
                           ),
                         if (module.viewTypes.contains('ebook'))
-                          const _MetaChip(
-                            icon: Icons.menu_book_rounded,
-                            label: 'Ebook',
-                          ),
+                          const _MetaChip(icon: Icons.menu_book_rounded, label: 'Ebook'),
                         if (module.viewTypes.contains('video_lecturer'))
                           const _MetaChip(
                             icon: Icons.play_circle_fill_rounded,
@@ -526,36 +600,39 @@ class _ModuleCardState extends State<_ModuleCard>
                             icon: Icons.play_circle_outline_rounded,
                             label: '${module.lessonCount} lessons',
                           ),
-                        if (module.viewTypes.contains('assignment') &&
-                            module.assignmentsCount > 0)
+                        if (module.viewTypes.contains('assignment') && module.assignmentsCount > 0)
                           _MetaChip(
-                            icon: Icons.assignment_outlined,
+                            icon: _isAssignmentModule(module)
+                                ? Icons.cloud_upload_outlined
+                                : Icons.assignment_outlined,
                             label: '${module.assignmentsCount} assignments',
+                            accent: _isAssignmentModule(module),
                           ),
                       ],
                     ),
 
-                    // Progress bar
+                    // Progress bar — DS: merah aktif, hijau jika selesai
                     if (module.showProgress) ...[
                       const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2), // Bar radius 2px
+                              borderRadius: BorderRadius.circular(2), // DS: bar radius 2px
                               child: LinearProgressIndicator(
                                 value: module.progressPercentage / 100,
                                 backgroundColor: _kDivider,
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   module.isComplete ? _kGreen : _kRed,
                                 ),
-                                minHeight: 4, // Sedikit ditebalkan
+                                minHeight: 4,
                               ),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Text(
                             '${module.completedLessons}/${module.lessonCount}',
+                            // DS: Regular / Caption 12px
                             style: const TextStyle(
                               color: _kTextMuted,
                               fontSize: 12,
@@ -584,25 +661,18 @@ class _MetaChip extends StatelessWidget {
   final String label;
   final bool accent;
 
-  const _MetaChip({
-    required this.icon,
-    required this.label,
-    this.accent = false,
-  });
+  const _MetaChip({required this.icon, required this.label, this.accent = false});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          color: accent ? _kRed : _kTextMuted,
-          size: 16,
-        ),
+        Icon(icon, color: accent ? _kRed : _kTextMuted, size: 16),
         const SizedBox(width: 6),
         Text(
           label,
+          // DS: Medium / Label 14px
           style: TextStyle(
             color: accent ? _kRed : _kTextSecondary,
             fontSize: 12,
@@ -625,14 +695,13 @@ class _ThumbnailPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _kSurfaceElevated,
+      color: _kElevated,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.movie_creation_outlined,
-                color: _kTextMuted, size: 40),
-            const SizedBox(height: 12),
+            const Icon(Icons.movie_creation_outlined, color: _kTextMuted, size: 36),
+            const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -679,8 +748,8 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.65),
-        borderRadius: BorderRadius.circular(2), // Badge radius 2px
+        color: Colors.black.withOpacity(0.65), // DS: Transparent Black 65%
+        borderRadius: BorderRadius.circular(2), // DS: badge 2px
         border: Border.all(color: color.withOpacity(0.5), width: 0.8),
       ),
       child: Text(
@@ -690,7 +759,7 @@ class _StatusBadge extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w700,
           fontFamily: 'Montserrat',
-          letterSpacing: 1,
+          letterSpacing: 1.0,
         ),
       ),
     );
@@ -714,13 +783,10 @@ class _ModuleListSkeletonState extends State<_ModuleListSkeleton>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
+      ..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.3, end: 0.7)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -734,7 +800,7 @@ class _ModuleListSkeletonState extends State<_ModuleListSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (context, _) {
-        final c = Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
+        final c = Color.lerp(_kSurface, _kElevated, _anim.value)!;
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
@@ -755,22 +821,34 @@ class _ModuleListSkeletonState extends State<_ModuleListSkeleton>
                 3,
                     (_) => Padding(
                   padding: const EdgeInsets.only(bottom: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _Bone(
-                        width: double.infinity,
-                        height: 200,
-                        color: c,
-                        radius: 4, // Radius card 4px
-                      ),
-                      const SizedBox(height: 16),
-                      _Bone(width: 220, height: 16, color: c),
-                      const SizedBox(height: 12),
-                      _Bone(width: double.infinity, height: 12, color: c),
-                      const SizedBox(height: 8),
-                      _Bone(width: 280, height: 12, color: c),
-                    ],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: c,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Thumbnail skeleton 16:9
+                        AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Container(color: c),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _Bone(width: 200, height: 18, color: Color.lerp(_kSurface, _kElevated, (_anim.value + 0.15).clamp(0.0, 1.0))!),
+                              const SizedBox(height: 10),
+                              _Bone(width: double.infinity, height: 12, color: Color.lerp(_kSurface, _kElevated, (_anim.value + 0.1).clamp(0.0, 1.0))!),
+                              const SizedBox(height: 6),
+                              _Bone(width: 260, height: 12, color: Color.lerp(_kSurface, _kElevated, (_anim.value + 0.1).clamp(0.0, 1.0))!),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -808,7 +886,7 @@ class _Bone extends StatelessWidget {
   }
 }
 
-// ─── Error ────────────────────────────────────────────────────────────────────
+// ─── Error Screen ─────────────────────────────────────────────────────────────
 
 class _ModuleListError extends StatelessWidget {
   final String message;
@@ -828,9 +906,9 @@ class _ModuleListError extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: const Color(0x1ADB202C),
+                color: _kRedSoft,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0x4DDB202C)),
+                border: Border.all(color: _kRedBorder),
               ),
               child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 28),
             ),
@@ -841,25 +919,19 @@ class _ModuleListError extends StatelessWidget {
                 color: _kTextSecondary,
                 fontSize: 14,
                 fontFamily: 'Montserrat',
+                height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 28),
-            InkWell(
+            GestureDetector(
               onTap: onRetry,
-              borderRadius: BorderRadius.circular(4), // Button radius 4px
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
                   color: _kRed,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x4DDB202C),
-                      blurRadius: 12,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(4), // DS: button radius 4px
+                  boxShadow: _kShadowBtn,
                 ),
                 child: const Text(
                   'Try again',

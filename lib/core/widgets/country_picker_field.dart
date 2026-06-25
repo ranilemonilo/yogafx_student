@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../data/country_options.dart';
 import '../theme/app_theme.dart';
 
@@ -34,8 +35,8 @@ class CountryPickerField extends StatelessWidget {
               context: context,
               isScrollControlled: true,
               backgroundColor: AppColors.surface,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.modal),
               ),
               builder: (_) => _CountryPickerSheet(
                 title: label,
@@ -48,12 +49,15 @@ class CountryPickerField extends StatelessWidget {
               field.didChange(option.name);
             }
           },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.input),
           child: InputDecorator(
             decoration: InputDecoration(
               labelText: label,
               errorText: field.errorText,
-              suffixIcon: const Icon(Icons.arrow_drop_down_rounded),
+              suffixIcon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.textSecondary,
+              ),
             ),
             child: Text(
               selectedOption == null ? hintText : labelBuilder(selectedOption!),
@@ -99,9 +103,9 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final query = _query.trim().toLowerCase();
     final results = countryOptions.where((option) {
-      if (_query.trim().isEmpty) return true;
-      final query = _query.trim().toLowerCase();
+      if (query.isEmpty) return true;
       return option.name.toLowerCase().contains(query) ||
           option.code.toLowerCase().contains(query) ||
           option.dialCode.contains(query);
@@ -116,8 +120,6 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Container(
@@ -130,52 +132,212 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            Text(
-              'Select ${widget.title}',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select ${widget.title}',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Choose one option to update this field.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontFamily: 'Montserrat',
+                ),
               ),
             ),
             const SizedBox(height: 14),
             TextField(
               controller: _searchController,
               onChanged: (value) => setState(() => _query = value),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontFamily: 'Montserrat',
+              ),
               decoration: const InputDecoration(
-                hintText: 'Search...',
-                prefixIcon: Icon(Icons.search_rounded),
+                hintText: 'Search country or code',
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
             const SizedBox(height: 14),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: results.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final option = results[index];
-                  final isSelected = option.code == widget.selectedOption?.code;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      widget.labelBuilder(option),
+            Expanded(
+              child: results.isEmpty
+                  ? const _CountryPickerEmptyState()
+                  : ListView.separated(
+                      itemCount: results.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final option = results[index];
+                        final isSelected =
+                            option.code == widget.selectedOption?.code;
+                        return _CountryOptionTile(
+                          option: option,
+                          isSelected: isSelected,
+                          label: widget.labelBuilder(option),
+                          onTap: () => Navigator.of(context).pop(option),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CountryOptionTile extends StatelessWidget {
+  final CountryOption option;
+  final bool isSelected;
+  final String label;
+  final VoidCallback onTap;
+
+  const _CountryOptionTile({
+    required this.option,
+    required this.isSelected,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withOpacity(0.12)
+                : AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary.withOpacity(0.35)
+                  : AppColors.divider,
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
                     ),
-                    trailing: isSelected
-                        ? const Icon(
-                            Icons.check_rounded,
-                            color: AppColors.primary,
-                          )
-                        : null,
-                    onTap: () => Navigator.of(context).pop(option),
-                  );
-                },
+                    const SizedBox(height: 4),
+                    Text(
+                      '${option.code.toUpperCase()} ${option.dialCode}',
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontFamily: 'Montserrat',
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.textPrimary,
+                    size: 14,
+                  ),
+                )
+              else
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textMuted,
+                  size: 18,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountryPickerEmptyState extends StatelessWidget {
+  const _CountryPickerEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                border: Border.all(color: AppColors.divider, width: 0.8),
+              ),
+              child: const Icon(
+                Icons.search_off_rounded,
+                color: AppColors.textMuted,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'No country found',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Montserrat',
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Try a different country name, ISO code, or dial code.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontFamily: 'Montserrat',
+                height: 1.45,
               ),
             ),
           ],

@@ -6,22 +6,33 @@ import '../../../../core/widgets/auth_network_image.dart';
 import '../../data/models/module_model.dart';
 import '../providers/module_provider.dart';
 
-// ─── Design Tokens (Berdasarkan DESIGN_SYSTEM.md) ─────────────────────────────
+// ─── Design Tokens (Sesuai DESIGN_SYSTEM.md & AppColors) ──────────────────────
 
-const _kRed = Color(0xFFDB202C); // Primary / Red
-const _kGreen = Color(0xFF00B14F); // Secondary / Emerald (Sukses/Completed)
-const _kBg = Color(0xFF060908); // Neutral / Black (Background Utama)
-const _kHeaderBg = Color(0xFF141110); // Neutral / Black (Header)
-const _kSurface = Color(0xFF120F0E); // Neutral / Black (Card/Panel)
-const _kSurfaceElevated = Color(0xFF281D16); // Neutral / Brown (Elevated/Hover)
-const _kDivider = Color(0x4DFFFFFF); // rgba(255,255,255,0.3)
-const _kTextPrimary = Color(0xFFFFFFFF); // Neutral / White
-const _kTextSecondary = Color(0xA6FFFFFF); // Transparent White 65% (Metadata)
-const _kTextMuted = Color(0x73FFFFFF); // Transparent White 45% (Placeholder/Disabled)
-const _kRedSoft = Color(0x1ADB202C);
-const _kRedBorder = Color(0x4DDB202C);
+const _kRed        = Color(0xFFDB202C); // Primary / Red
+const _kRedHover   = Color(0xFFF6121D); // Primary / Red Hover
+const _kGreen      = Color(0xFF00B14F); // Secondary / Emerald
+const _kBg         = Color(0xFF060908); // Neutral Black 1 — bg utama
+const _kHeaderBg   = Color(0xFF141110); // Neutral Black 2 — header
+const _kSurface    = Color(0xFF120F0E); // Neutral Black 3 — card/panel
+const _kElevated   = Color(0xFF281D16); // Neutral Brown — elevated/hover
+const _kOverlay    = Color(0xFF161210); // Neutral Brown — overlay gelap
 
-// ─── Logic CTA Berdasarkan Source of Truth Backend ────────────────────────────
+const _kTextPrimary   = Color(0xFFFFFFFF);           // White
+const _kTextSecondary = Color(0xA6FFFFFF);            // White 65%
+const _kTextMuted     = Color(0x73FFFFFF);            // White 45%
+
+const _kDivider    = Color(0x1AFFFFFF);               // White 10%
+const _kBorderSoft = Color(0x4DFFFFFF);               // White 30%
+
+const _kRedSoft    = Color(0x1ADB202C);               // Red 10%
+const _kRedBorder  = Color(0x4DDB202C);               // Red 30%
+
+// Shadow sesuai DS §Catatan Implementasi
+const _kShadowCard  = [BoxShadow(color: Color(0xCC000000), blurRadius: 24, offset: Offset(0, 8))];
+const _kShadowModal = [BoxShadow(color: Color(0xE6000000), blurRadius: 40, offset: Offset(0, 16))];
+const _kShadowBtn   = [BoxShadow(color: Color(0xB3000000), blurRadius: 12, offset: Offset(0, 4))];
+
+// ─── Logic CTA (tidak diubah) ─────────────────────────────────────────────────
 
 void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
   final kind = module.primaryCtaKind;
@@ -29,13 +40,12 @@ void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
   if (kind == 'play') {
     if (module.viewTypes.contains('lesson')) {
       final firstLesson = module.lessons.where((l) => !l.isLocked).firstOrNull;
-
       if (firstLesson != null) {
         context.push('/lessons/${firstLesson.id}');
       }
     } else if (module.viewTypes.contains('video_lecturer')) {
       final videos = module.videoLecturers;
-      final firstVideoIndex = videos.indexWhere((v) => v.status == 'ready');
+      final firstVideoIndex = videos.indexWhere(_isVideoAccessible);
 
       if (firstVideoIndex != -1) {
         final firstVideo = videos[firstVideoIndex];
@@ -44,25 +54,19 @@ void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
 
         context.pushNamed(
           'videoLecturer',
-          pathParameters: {
-            'videoId': firstVideo.id.toString(),
-          },
+          pathParameters: {'videoId': firstVideo.id.toString()},
           queryParameters: {
             'title': firstVideo.title,
             'url': firstVideo.hlsUrl ?? '',
-            if (hasNextVideo && nextVideo != null)
-              'nextVideoId': nextVideo.id.toString(),
-            if (hasNextVideo && nextVideo != null)
-              'nextVideoTitle': nextVideo.title,
-            if (hasNextVideo && nextVideo != null)
-              'nextVideoUrl': nextVideo.hlsUrl ?? '',
+            if (hasNextVideo && nextVideo != null) 'nextVideoId': nextVideo.id.toString(),
+            if (hasNextVideo && nextVideo != null) 'nextVideoTitle': nextVideo.title,
+            if (hasNextVideo && nextVideo != null) 'nextVideoUrl': nextVideo.hlsUrl ?? '',
           },
         );
       }
     }
   } else if (kind == 'download') {
     final firstCertificate = module.certificates.firstOrNull;
-
     if (firstCertificate != null) {
       context.push('/certificates/${firstCertificate.id}');
     } else {
@@ -70,7 +74,6 @@ void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
     }
   } else if (kind == 'document') {
     final firstEbook = module.ebooks.firstOrNull;
-
     if (firstEbook != null) {
       context.push('/ebooks/${firstEbook.id}');
     }
@@ -82,10 +85,7 @@ void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
 class ModuleDetailScreen extends ConsumerWidget {
   final int moduleId;
 
-  const ModuleDetailScreen({
-    super.key,
-    required this.moduleId,
-  });
+  const ModuleDetailScreen({super.key, required this.moduleId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -100,10 +100,7 @@ class ModuleDetailScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(moduleDetailProvider(moduleId)),
           onBack: () => context.pop(),
         ),
-        data: (module) => _ModuleDetailContent(
-          moduleId: moduleId,
-          module: module,
-        ),
+        data: (module) => _ModuleDetailContent(moduleId: moduleId, module: module),
       ),
     );
   }
@@ -115,10 +112,7 @@ class _ModuleDetailContent extends StatefulWidget {
   final int moduleId;
   final ModuleDetail module;
 
-  const _ModuleDetailContent({
-    required this.moduleId,
-    required this.module,
-  });
+  const _ModuleDetailContent({required this.moduleId, required this.module});
 
   @override
   State<_ModuleDetailContent> createState() => _ModuleDetailContentState();
@@ -138,10 +132,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   void initState() {
     super.initState();
 
-    _heroCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
+    _heroCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _heroFade = CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOut);
     _heroCtrl.forward();
 
@@ -154,10 +145,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
 
     _itemCtrlList = List.generate(
       itemCount,
-      (i) => AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 400),
-      ),
+          (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 400)),
     );
 
     _itemFades = _itemCtrlList
@@ -165,19 +153,13 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         .toList();
 
     _itemSlides = _itemCtrlList
-        .map(
-          (c) => Tween<Offset>(
-            begin: const Offset(0, 0.08),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: c, curve: Curves.easeOut)),
-        )
+        .map((c) => Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
 
     for (int i = 0; i < itemCount; i++) {
       Future.delayed(Duration(milliseconds: 120 + 55 * i), () {
-        if (mounted) {
-          _itemCtrlList[i].forward();
-        }
+        if (mounted) _itemCtrlList[i].forward();
       });
     }
   }
@@ -185,27 +167,16 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   @override
   void dispose() {
     _heroCtrl.dispose();
-
-    for (final c in _itemCtrlList) {
-      c.dispose();
-    }
-
+    for (final c in _itemCtrlList) c.dispose();
     super.dispose();
   }
 
   Widget _buildAnimated(Widget child) {
     final index = _animIndex++;
-
-    if (index >= _itemFades.length) {
-      return child;
-    }
-
+    if (index >= _itemFades.length) return child;
     return FadeTransition(
       opacity: _itemFades[index],
-      child: SlideTransition(
-        position: _itemSlides[index],
-        child: child,
-      ),
+      child: SlideTransition(position: _itemSlides[index], child: child),
     );
   }
 
@@ -236,20 +207,17 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
             pinned: true,
             backgroundColor: _kHeaderBg.withOpacity(0.95),
             elevation: 0,
+            scrolledUnderElevation: 0,
             leading: Padding(
               padding: const EdgeInsets.all(8),
               child: GestureDetector(
                 onTap: () => context.pop(),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
+                    color: Colors.black.withOpacity(0.6),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Icon(
-                    Icons.arrow_back,
-                    color: _kTextPrimary,
-                    size: 20,
-                  ),
+                  child: const Icon(Icons.arrow_back, color: _kTextPrimary, size: 20),
                 ),
               ),
             ),
@@ -283,12 +251,9 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
                   if (module.viewTypes.contains('video_lecturer'))
                     ..._buildVideoLecturerList(module),
                   if (module.viewTypes.contains('ebook')) ..._buildEbookList(module),
-                  if (module.viewTypes.contains('certificate'))
-                    ..._buildCertificateInfo(module),
-                  if (module.viewTypes.contains('lesson'))
-                    ..._buildLessonList(module),
-                  if (module.viewTypes.contains('assignment'))
-                    ..._buildAssignmentList(assignments),
+                  if (module.viewTypes.contains('certificate')) ..._buildCertificateInfo(module),
+                  if (module.viewTypes.contains('lesson')) ..._buildLessonList(module),
+                  if (module.viewTypes.contains('assignment')) ..._buildAssignmentList(assignments),
                 ],
               ),
             ),
@@ -299,147 +264,80 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   }
 
   List<Widget> _buildLessonList(ModuleDetail module) {
-    if (module.lessons.isEmpty) {
-      return [];
-    }
-
+    if (module.lessons.isEmpty) return [];
     return [
-      _buildAnimated(
-        _SectionHeader(
-          title: 'Lessons',
-          count: module.lessons.length,
+      _buildAnimated(_SectionHeader(title: 'Lessons', count: module.lessons.length)),
+      const SizedBox(height: 12),
+      ...module.lessons.asMap().entries.map((entry) => _buildAnimated(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _LessonRow(lesson: entry.value, index: entry.key),
         ),
-      ),
-      const SizedBox(height: 16),
-      ...module.lessons.asMap().entries.map(
-            (entry) => _buildAnimated(
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _LessonRow(
-                  lesson: entry.value,
-                  index: entry.key,
-                ),
-              ),
-            ),
-          ),
+      )),
       const SizedBox(height: 16),
     ];
   }
 
   List<Widget> _buildEbookList(ModuleDetail module) {
-    if (module.ebooks.isEmpty) {
-      return [];
-    }
-
+    if (module.ebooks.isEmpty) return [];
     return [
-      _buildAnimated(
-        _SectionHeader(
-          title: 'Ebooks',
-          count: module.ebooks.length,
+      _buildAnimated(_SectionHeader(title: 'Ebooks', count: module.ebooks.length)),
+      const SizedBox(height: 12),
+      ...module.ebooks.asMap().entries.map((entry) => _buildAnimated(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _EbookRow(ebook: entry.value, index: entry.key),
         ),
-      ),
-      const SizedBox(height: 16),
-      ...module.ebooks.asMap().entries.map(
-            (entry) => _buildAnimated(
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _EbookRow(
-                  ebook: entry.value,
-                  index: entry.key,
-                ),
-              ),
-            ),
-          ),
+      )),
       const SizedBox(height: 16),
     ];
   }
 
   List<Widget> _buildCertificateInfo(ModuleDetail module) {
-    if (module.certificates.isEmpty) {
-      return [];
-    }
-
+    if (module.certificates.isEmpty) return [];
     return [
-      _buildAnimated(
-        _SectionHeader(
-          title: 'Certificates',
-          count: module.certificates.length,
+      _buildAnimated(_SectionHeader(title: 'Certificates', count: module.certificates.length)),
+      const SizedBox(height: 12),
+      ...module.certificates.asMap().entries.map((entry) => _buildAnimated(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _CertificateRow(certificate: entry.value, index: entry.key),
         ),
-      ),
-      const SizedBox(height: 16),
-      ...module.certificates.asMap().entries.map(
-            (entry) => _buildAnimated(
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _CertificateRow(
-                  certificate: entry.value,
-                  index: entry.key,
-                ),
-              ),
-            ),
-          ),
+      )),
       const SizedBox(height: 16),
     ];
   }
 
   List<Widget> _buildAssignmentList(List<_ModuleAssignmentItem> assignments) {
-    if (assignments.isEmpty) {
-      return [];
-    }
-
+    if (assignments.isEmpty) return [];
     return [
-      _buildAnimated(
-        _SectionHeader(
-          title: 'Assignments',
-          count: assignments.length,
+      _buildAnimated(_SectionHeader(title: 'Assignments', count: assignments.length)),
+      const SizedBox(height: 12),
+      ...assignments.asMap().entries.map((entry) => _buildAnimated(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _AssignmentRow(assignment: entry.value, index: entry.key),
         ),
-      ),
-      const SizedBox(height: 16),
-      ...assignments.asMap().entries.map(
-            (entry) => _buildAnimated(
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _AssignmentRow(
-                  assignment: entry.value,
-                  index: entry.key,
-                ),
-              ),
-            ),
-          ),
+      )),
       const SizedBox(height: 16),
     ];
   }
 
   List<Widget> _buildVideoLecturerList(ModuleDetail module) {
-    if (module.videoLecturers.isEmpty) {
-      return [];
-    }
-
+    if (module.videoLecturers.isEmpty) return [];
     return [
-      _buildAnimated(
-        _SectionHeader(
-          title: 'Video Lecturer',
-          count: module.videoLecturers.length,
-        ),
-      ),
-      const SizedBox(height: 16),
-      ...module.videoLecturers.asMap().entries.map(
-        (entry) {
-          final isLast = entry.key == module.videoLecturers.length - 1;
-          final nextVideo = !isLast ? module.videoLecturers[entry.key + 1] : null;
-
-          return _buildAnimated(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _VideoLecturerRow(
-                video: entry.value,
-                nextVideo: nextVideo,
-                index: entry.key,
-              ),
-            ),
-          );
-        },
-      ),
+      _buildAnimated(_SectionHeader(title: 'Video Lecturer', count: module.videoLecturers.length)),
+      const SizedBox(height: 12),
+      ...module.videoLecturers.asMap().entries.map((entry) {
+        final isLast = entry.key == module.videoLecturers.length - 1;
+        final nextVideo = !isLast ? module.videoLecturers[entry.key + 1] : null;
+        return _buildAnimated(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _VideoLecturerRow(video: entry.value, nextVideo: nextVideo, index: entry.key),
+          ),
+        );
+      }),
       const SizedBox(height: 16),
     ];
   }
@@ -454,75 +352,58 @@ class _HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    IconData centerIcon = Icons.play_arrow_rounded;
-
-    if (module.primaryCtaKind == 'document') {
-      centerIcon = Icons.menu_book_rounded;
-    }
-
-    if (module.primaryCtaKind == 'download') {
-      centerIcon = Icons.workspace_premium_outlined;
-    }
+    final isVideoLike = module.viewTypes.contains('lesson') || _isVideoLecturerModule(module);
+    final heroIcon = _moduleHeroIcon(module);
 
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Thumbnail
         module.thumbnailUrl != null
             ? AuthNetworkImage(
-                imageUrl: module.thumbnailUrl!,
-                fit: BoxFit.cover,
-                placeholderBuilder: (_) => Container(
-                  color: _kSurfaceElevated,
-                  child: const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: _kTextMuted,
-                      ),
-                    ),
-                  ),
-                ),
-                errorBuilderWidget: (_, __) => Container(
-                  color: _kSurfaceElevated,
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: _kTextMuted,
-                      size: 32,
-                    ),
-                  ),
-                ),
-              )
-            : Container(
-                color: _kSurfaceElevated,
-                child: const Center(
-                  child: Icon(
-                    Icons.image_not_supported_rounded,
-                    color: _kTextMuted,
-                    size: 32,
-                  ),
-                ),
+          imageUrl: module.thumbnailUrl!,
+          fit: BoxFit.cover,
+          placeholderBuilder: (_) => Container(
+            color: _kElevated,
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: _kTextMuted),
               ),
+            ),
+          ),
+          errorBuilderWidget: (_, __) => Container(
+            color: _kElevated,
+            child: const Center(
+              child: Icon(Icons.broken_image_rounded, color: _kTextMuted, size: 32),
+            ),
+          ),
+        )
+            : Container(
+          color: _kElevated,
+          child: const Center(
+            child: Icon(Icons.image_not_supported_rounded, color: _kTextMuted, size: 32),
+          ),
+        ),
+
+        // Gradient overlay — DS §9 Hero Banner
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.4),
-                Colors.black.withOpacity(0.15),
-                _kBg,
+                Colors.black.withOpacity(0.45),   // DS: Transparent Black 45%
+                Colors.black.withOpacity(0.10),   // tengah tipis
+                _kBg,                              // fade ke background
               ],
-              stops: const [0.0, 0.5, 1.0],
+              stops: const [0.0, 0.45, 1.0],
             ),
           ),
         ),
-        if (module.primaryCtaLabel != null &&
-            !module.viewTypes.contains('certificate') &&
-            !module.viewTypes.contains('ebook') &&
-            !module.viewTypes.contains('video_lecturer'))
+
+        if (isVideoLike && module.primaryCtaLabel != null)
           Center(
             child: GestureDetector(
               onTap: () => _openPrimaryModuleContent(context, module),
@@ -530,21 +411,76 @@ class _HeroBanner extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.45),
+                  // DS §Media Control Buttons: rgba(0,0,0,0.6), border putih tipis
+                  color: Colors.black.withOpacity(0.60),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.8),
-                    width: 1.5,
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
                 ),
-                child: Icon(
-                  centerIcon,
-                  color: Colors.white,
-                  size: 36,
-                ),
+                child: Icon(heroIcon, color: Colors.white, size: 36),
               ),
             ),
           ),
+
+        if (!isVideoLike)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 28,
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.38),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.10)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: _kRedSoft,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _kRedBorder, width: 0.8),
+                    ),
+                    child: Icon(heroIcon, color: _kRed, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _moduleEyebrow(module).toUpperCase(),
+                          style: const TextStyle(
+                            color: _kTextSecondary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Montserrat',
+                            letterSpacing: 1.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _primaryActionLabel(module),
+                          style: const TextStyle(
+                            color: _kTextPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Montserrat',
+                            height: 1.15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Status badge — pojok kanan atas
         Positioned(
           top: 52,
           right: 16,
@@ -555,7 +491,7 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-// ─── Action Row (Primary CTA) ─────────────────────────────────────────────────
+// ─── Action Row (Primary CTA) — DS §4 Play + More Info Buttons ───────────────
 
 class _ActionRow extends StatelessWidget {
   final ModuleDetail module;
@@ -564,19 +500,14 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryLabel = module.primaryCtaLabel ?? 'Open Module';
-
-    IconData ctaIcon = Icons.play_arrow_rounded;
-
-    if (module.primaryCtaKind == 'document') {
-      ctaIcon = Icons.menu_book_rounded;
-    }
-
-    if (module.primaryCtaKind == 'download') {
-      ctaIcon = Icons.workspace_premium_outlined;
-    }
+    final primaryLabel = _primaryActionLabel(module);
+    final ctaIcon = _moduleHeroIcon(module);
 
     final hasLessons = module.viewTypes.contains('lesson');
+    final showResume = hasLessons &&
+        module.showProgress &&
+        !module.isComplete &&
+        module.progressPercentage > 0;
 
     return Row(
       children: [
@@ -585,26 +516,23 @@ class _ActionRow extends StatelessWidget {
           child: GestureDetector(
             onTap: () => _openPrimaryModuleContent(context, module),
             child: Container(
-              height: 48,
+              height: 42, // DS: Large/Default ~42px
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(4),
+                boxShadow: _kShadowBtn,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    ctaIcon,
-                    color: Colors.black,
-                    size: 24,
-                  ),
+                    Icon(ctaIcon, color: Colors.black, size: 20),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
                       primaryLabel,
                       style: const TextStyle(
                         color: Colors.black,
-                        fontSize: 16,
+                        fontSize: 16,           // DS: Large Button 16px Bold
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
                       ),
@@ -617,29 +545,24 @@ class _ActionRow extends StatelessWidget {
             ),
           ),
         ),
-        if (hasLessons &&
-            module.showProgress &&
-            !module.isComplete &&
-            module.progressPercentage > 0) ...[
-          const SizedBox(width: 12),
+        if (showResume) ...[
+          const SizedBox(width: 8), // DS: gap antar tombol 8px
           Expanded(
             flex: 3,
             child: GestureDetector(
               onTap: () => _openPrimaryModuleContent(context, module),
               child: Container(
-                height: 48,
+                height: 42,
                 decoration: BoxDecoration(
+                  // DS: §4 Sekunder — rgba(255,255,255,0.2) → tapi di sini merah sesuai konteks "resume"
                   color: _kRed,
                   borderRadius: BorderRadius.circular(4),
+                  boxShadow: _kShadowBtn,
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.play_circle_outline_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                    Icon(Icons.play_circle_outline_rounded, color: Colors.white, size: 20),
                     SizedBox(width: 8),
                     Text(
                       'Resume',
@@ -670,9 +593,22 @@ class _ModuleHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasAssignmentsOnly = _isAssignmentModule(module);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          _moduleEyebrow(module).toUpperCase(),
+          style: const TextStyle(
+            color: _kTextSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Montserrat',
+            letterSpacing: 1.8,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Judul — DS: Semi Bold / Title 2 — 24px
         Text(
           module.title,
           style: const TextStyle(
@@ -683,20 +619,28 @@ class _ModuleHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+        Text(
+          _moduleHeroDescription(module),
+          style: const TextStyle(
+            color: _kTextSecondary,
+            fontSize: 14,
+            fontFamily: 'Montserrat',
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 14),
         Wrap(
-          spacing: 16,
+          spacing: 12,
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            // Status badge — DS §3 Label Konten, border-radius 2px
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
                 color: _kRedSoft,
                 borderRadius: BorderRadius.circular(2),
-                border: Border.all(
-                  color: _kRedBorder,
-                  width: 0.8,
-                ),
+                border: Border.all(color: _kRedBorder, width: 0.8),
               ),
               child: Text(
                 module.status.toUpperCase(),
@@ -705,7 +649,7 @@ class _ModuleHeader extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Montserrat',
-                  letterSpacing: 0.5,
+                  letterSpacing: 1.0, // DS: rapat untuk label kecil
                 ),
               ),
             ),
@@ -716,8 +660,11 @@ class _ModuleHeader extends StatelessWidget {
               ),
             if (module.viewTypes.contains('assignment'))
               _MetaItem(
-                icon: Icons.assignment_outlined,
+                icon: hasAssignmentsOnly
+                    ? Icons.cloud_upload_outlined
+                    : Icons.assignment_outlined,
                 label: '${module.assignmentsCount} assignments',
+                accent: hasAssignmentsOnly,
               ),
             if (module.viewTypes.contains('certificate'))
               const _MetaItem(
@@ -726,15 +673,9 @@ class _ModuleHeader extends StatelessWidget {
                 accent: true,
               ),
             if (module.viewTypes.contains('ebook'))
-              const _MetaItem(
-                icon: Icons.menu_book_rounded,
-                label: 'Ebook',
-              ),
+              const _MetaItem(icon: Icons.menu_book_rounded, label: 'Ebook'),
             if (module.viewTypes.contains('video_lecturer'))
-              const _MetaItem(
-                icon: Icons.play_circle_fill_rounded,
-                label: 'Video Lecturer',
-              ),
+              const _MetaItem(icon: Icons.play_circle_fill_rounded, label: 'Video Lecturer'),
           ],
         ),
       ],
@@ -747,25 +688,18 @@ class _MetaItem extends StatelessWidget {
   final String label;
   final bool accent;
 
-  const _MetaItem({
-    required this.icon,
-    required this.label,
-    this.accent = false,
-  });
+  const _MetaItem({required this.icon, required this.label, this.accent = false});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          color: accent ? _kRed : _kTextMuted,
-          size: 16,
-        ),
+        Icon(icon, color: accent ? _kRed : _kTextMuted, size: 16),
         const SizedBox(width: 4),
         Text(
           label,
+          // DS: Medium / Label — 14px
           style: TextStyle(
             color: accent ? _kRed : _kTextSecondary,
             fontSize: 14,
@@ -794,32 +728,21 @@ class _DescriptionState extends State<_Description> {
 
   @override
   Widget build(BuildContext context) {
+    // DS: Regular / Body 14px, line-height ~1.6, warna teks sekunder 65%
+    const textStyle = TextStyle(
+      color: _kTextSecondary,
+      fontSize: 14,
+      fontFamily: 'Montserrat',
+      height: 1.6,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AnimatedCrossFade(
-          firstChild: Text(
-            widget.text,
-            style: const TextStyle(
-              color: _kTextSecondary,
-              fontSize: 14,
-              fontFamily: 'Montserrat',
-              height: 1.6,
-            ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          secondChild: Text(
-            widget.text,
-            style: const TextStyle(
-              color: _kTextSecondary,
-              fontSize: 14,
-              fontFamily: 'Montserrat',
-              height: 1.6,
-            ),
-          ),
-          crossFadeState:
-              _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          firstChild: Text(widget.text, style: textStyle, maxLines: 3, overflow: TextOverflow.ellipsis),
+          secondChild: Text(widget.text, style: textStyle),
+          crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 200),
         ),
         const SizedBox(height: 8),
@@ -854,14 +777,8 @@ class _ModuleProgress extends StatelessWidget {
       decoration: BoxDecoration(
         color: _kSurface,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: _kDivider, width: 0.8),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: _kBorderSoft, width: 0.8),
+        boxShadow: _kShadowCard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,6 +787,7 @@ class _ModuleProgress extends StatelessWidget {
             children: [
               const Text(
                 'Your progress',
+                // DS: Semi Bold / Headline 2 — 14px
                 style: TextStyle(
                   color: _kTextSecondary,
                   fontSize: 14,
@@ -880,6 +798,7 @@ class _ModuleProgress extends StatelessWidget {
               const Spacer(),
               Text(
                 '${module.completedLessons}/${module.lessonCount} lessons',
+                // DS: Regular / Caption — 12px
                 style: const TextStyle(
                   color: _kTextMuted,
                   fontSize: 12,
@@ -902,9 +821,7 @@ class _ModuleProgress extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            module.isComplete
-                ? '✓ Module completed'
-                : '${module.progressPercentage}% complete',
+            module.isComplete ? '✓ Module completed' : '${module.progressPercentage}% complete',
             style: TextStyle(
               color: module.isComplete ? _kGreen : _kTextMuted,
               fontSize: 12,
@@ -924,17 +841,15 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   final int count;
 
-  const _SectionHeader({
-    required this.title,
-    required this.count,
-  });
+  const _SectionHeader({required this.title, required this.count});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
+        // Garis merah vertikal — aksen merah DS
         Container(
-          width: 4,
+          width: 3,
           height: 16,
           decoration: BoxDecoration(
             color: _kRed,
@@ -944,19 +859,21 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title.toUpperCase(),
+          // DS: Semi Bold / Headline 2, letter-spacing lebih rapat
           style: const TextStyle(
             color: _kTextSecondary,
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             fontFamily: 'Montserrat',
             letterSpacing: 1.5,
           ),
         ),
         const SizedBox(width: 8),
+        // Count badge — DS §3 badge kecil, border-radius 2px
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: _kSurfaceElevated,
+            color: _kElevated,
             borderRadius: BorderRadius.circular(2),
           ),
           child: Text(
@@ -981,11 +898,7 @@ class _VideoLecturerRow extends StatefulWidget {
   final ModuleVideoLecturerItem? nextVideo;
   final int index;
 
-  const _VideoLecturerRow({
-    required this.video,
-    required this.nextVideo,
-    required this.index,
-  });
+  const _VideoLecturerRow({required this.video, required this.nextVideo, required this.index});
 
   @override
   State<_VideoLecturerRow> createState() => _VideoLecturerRowState();
@@ -999,15 +912,9 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
   @override
   void initState() {
     super.initState();
-
-    _pressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 130),
-    );
-
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _pressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -1019,27 +926,22 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
   @override
   Widget build(BuildContext context) {
     final video = widget.video;
-    final isReady = video.status == 'ready';
+    final isReady = _isVideoAccessible(video);
     final nextVideo = widget.nextVideo;
 
     return GestureDetector(
       onTap: isReady
-          ? () {
-              context.pushNamed(
-                'videoLecturer',
-                pathParameters: {
-                  'videoId': video.id.toString(),
-                },
-                queryParameters: {
-                  'title': video.title,
-                  'url': video.hlsUrl ?? '',
-                  if (nextVideo != null)
-                    'nextVideoId': nextVideo.id.toString(),
-                  if (nextVideo != null) 'nextVideoTitle': nextVideo.title,
-                  if (nextVideo != null) 'nextVideoUrl': nextVideo.hlsUrl ?? '',
-                },
-              );
-            }
+          ? () => context.pushNamed(
+        'videoLecturer',
+        pathParameters: {'videoId': video.id.toString()},
+        queryParameters: {
+          'title': video.title,
+          'url': video.hlsUrl ?? '',
+          if (nextVideo != null) 'nextVideoId': nextVideo.id.toString(),
+          if (nextVideo != null) 'nextVideoTitle': nextVideo.title,
+          if (nextVideo != null) 'nextVideoUrl': nextVideo.hlsUrl ?? '',
+        },
+      )
           : null,
       onTapDown: (_) => _pressCtrl.forward(),
       onTapUp: (_) => _pressCtrl.reverse(),
@@ -1051,17 +953,12 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
           decoration: BoxDecoration(
             color: _kSurface,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x66000000),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: _kBorderSoft, width: 0.8),
+            boxShadow: _kShadowCard, // DS: card hover 0 8px 24px rgba(0,0,0,0.8)
           ),
           child: Row(
             children: [
+              // Thumbnail 16:9 — DS: card thumbnail radius 4px
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: SizedBox(
@@ -1069,28 +966,22 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
                   height: 68,
                   child: video.thumbnailUrl != null
                       ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            AuthNetworkImage(
-                              imageUrl: video.thumbnailUrl!,
-                              fit: BoxFit.cover,
-                              placeholderBuilder: (_) =>
-                                  _VideoThumbnailFallback(index: widget.index),
-                              errorBuilderWidget: (_, __) =>
-                                  _VideoThumbnailFallback(index: widget.index),
-                            ),
-                            Container(
-                              color: Colors.black.withOpacity(0.35),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
+                    fit: StackFit.expand,
+                    children: [
+                      AuthNetworkImage(
+                        imageUrl: video.thumbnailUrl!,
+                        fit: BoxFit.cover,
+                        placeholderBuilder: (_) => _VideoThumbnailFallback(index: widget.index),
+                        errorBuilderWidget: (_, __) => _VideoThumbnailFallback(index: widget.index),
+                      ),
+                      Container(
+                        color: Colors.black.withOpacity(0.35),
+                        child: const Center(
+                          child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                        ),
+                      ),
+                    ],
+                  )
                       : _VideoThumbnailFallback(index: widget.index),
                 ),
               ),
@@ -1127,13 +1018,11 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
                       ],
                     ),
                     const SizedBox(height: 8),
+                    // Status badge — DS §3 border-radius 2px
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isReady ? _kRedSoft : _kSurfaceElevated,
+                        color: isReady ? _kRedSoft : _kElevated,
                         borderRadius: BorderRadius.circular(2),
                         border: Border.all(
                           color: isReady ? _kRedBorder : Colors.transparent,
@@ -1141,12 +1030,13 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
                         ),
                       ),
                       child: Text(
-                        isReady ? 'Ready' : 'Unavailable',
+                        _videoStatusLabel(video),
                         style: TextStyle(
                           color: isReady ? _kRed : _kTextMuted,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -1175,7 +1065,7 @@ class _VideoThumbnailFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _kSurfaceElevated,
+      color: _kElevated,
       child: Center(
         child: Text(
           '${index + 1}',
@@ -1191,22 +1081,22 @@ class _VideoThumbnailFallback extends StatelessWidget {
   }
 }
 
+// ─── Assignment Parser ────────────────────────────────────────────────────────
+
 List<_ModuleAssignmentItem> _parseAssignments(List<dynamic> assignments) {
   return assignments
       .whereType<Map>()
       .map((raw) {
-        final data = Map<String, dynamic>.from(raw);
-
-        return _ModuleAssignmentItem(
-          id: data['id'] as int? ?? 0,
-          title: (data['title'] ?? data['name'] ?? 'Assignment').toString(),
-          description: data['description']?.toString(),
-          isLocked: data['is_locked'] as bool? ?? false,
-          lockReason: data['lock_reason']?.toString(),
-          status: (data['status'] ?? data['submission_status'] ?? 'available')
-              .toString(),
-        );
-      })
+    final data = Map<String, dynamic>.from(raw);
+    return _ModuleAssignmentItem(
+      id: data['id'] as int? ?? 0,
+      title: (data['title'] ?? data['name'] ?? 'Assignment').toString(),
+      description: data['description']?.toString(),
+      isLocked: data['is_locked'] as bool? ?? false,
+      lockReason: data['lock_reason']?.toString(),
+      status: (data['status'] ?? data['submission_status'] ?? 'available').toString(),
+    );
+  })
       .where((item) => item.id > 0)
       .toList();
 }
@@ -1235,10 +1125,7 @@ class _EbookRow extends StatefulWidget {
   final ModuleEbookItem ebook;
   final int index;
 
-  const _EbookRow({
-    required this.ebook,
-    required this.index,
-  });
+  const _EbookRow({required this.ebook, required this.index});
 
   @override
   State<_EbookRow> createState() => _EbookRowState();
@@ -1251,15 +1138,9 @@ class _EbookRowState extends State<_EbookRow> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-
-    _pressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 130),
-    );
-
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _pressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -1284,17 +1165,12 @@ class _EbookRowState extends State<_EbookRow> with SingleTickerProviderStateMixi
           decoration: BoxDecoration(
             color: _kSurface,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x66000000),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: _kBorderSoft, width: 0.8),
+            boxShadow: _kShadowCard,
           ),
           child: Row(
             children: [
+              // Ikon kontainer — DS: aksen merah soft, radius 4px
               Container(
                 width: 56,
                 height: 56,
@@ -1303,11 +1179,7 @@ class _EbookRowState extends State<_EbookRow> with SingleTickerProviderStateMixi
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: _kRedBorder, width: 0.8),
                 ),
-                child: const Icon(
-                  Icons.menu_book_rounded,
-                  color: _kRed,
-                  size: 24,
-                ),
+                child: const Icon(Icons.menu_book_rounded, color: _kRed, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1342,11 +1214,7 @@ class _EbookRowState extends State<_EbookRow> with SingleTickerProviderStateMixi
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: _kTextMuted,
-                size: 24,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: _kTextMuted, size: 24),
             ],
           ),
         ),
@@ -1361,10 +1229,7 @@ class _CertificateRow extends StatefulWidget {
   final ModuleCertificateItem certificate;
   final int index;
 
-  const _CertificateRow({
-    required this.certificate,
-    required this.index,
-  });
+  const _CertificateRow({required this.certificate, required this.index});
 
   @override
   State<_CertificateRow> createState() => _CertificateRowState();
@@ -1378,15 +1243,9 @@ class _CertificateRowState extends State<_CertificateRow>
   @override
   void initState() {
     super.initState();
-
-    _pressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 130),
-    );
-
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _pressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -1411,14 +1270,8 @@ class _CertificateRowState extends State<_CertificateRow>
           decoration: BoxDecoration(
             color: _kSurface,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x66000000),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: _kBorderSoft, width: 0.8),
+            boxShadow: _kShadowCard,
           ),
           child: Row(
             children: [
@@ -1430,11 +1283,7 @@ class _CertificateRowState extends State<_CertificateRow>
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: _kRedBorder, width: 0.8),
                 ),
-                child: const Icon(
-                  Icons.workspace_premium_outlined,
-                  color: _kRed,
-                  size: 24,
-                ),
+                child: const Icon(Icons.workspace_premium_outlined, color: _kRed, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1469,11 +1318,7 @@ class _CertificateRowState extends State<_CertificateRow>
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: _kTextMuted,
-                size: 24,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: _kTextMuted, size: 24),
             ],
           ),
         ),
@@ -1488,32 +1333,22 @@ class _LessonRow extends StatefulWidget {
   final ModuleLesson lesson;
   final int index;
 
-  const _LessonRow({
-    required this.lesson,
-    required this.index,
-  });
+  const _LessonRow({required this.lesson, required this.index});
 
   @override
   State<_LessonRow> createState() => _LessonRowState();
 }
 
-class _LessonRowState extends State<_LessonRow>
-    with SingleTickerProviderStateMixin {
+class _LessonRowState extends State<_LessonRow> with SingleTickerProviderStateMixin {
   late AnimationController _pressCtrl;
   late Animation<double> _scaleAnim;
 
   @override
   void initState() {
     super.initState();
-
-    _pressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 130),
-    );
-
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _pressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -1541,17 +1376,12 @@ class _LessonRowState extends State<_LessonRow>
           decoration: BoxDecoration(
             color: _kSurface,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x66000000),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: _kBorderSoft, width: 0.8),
+            boxShadow: _kShadowCard,
           ),
           child: Row(
             children: [
+              // Thumbnail 16:9
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: SizedBox(
@@ -1559,48 +1389,35 @@ class _LessonRowState extends State<_LessonRow>
                   height: 68,
                   child: lesson.thumbnailUrl != null
                       ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            AuthNetworkImage(
-                              imageUrl: lesson.thumbnailUrl!,
-                              fit: BoxFit.cover,
-                              placeholderBuilder: (_) =>
-                                  _LessonThumbnailFallback(
-                                index: widget.index,
-                                isLocked: isLocked,
-                              ),
-                              errorBuilderWidget: (_, __) =>
-                                  _LessonThumbnailFallback(
-                                index: widget.index,
-                                isLocked: isLocked,
-                              ),
-                            ),
-                            if (isLocked)
-                              Container(
-                                color: Colors.black.withOpacity(0.65),
-                                child: const Icon(
-                                  Icons.lock_rounded,
-                                  color: _kTextMuted,
-                                  size: 20,
-                                ),
-                              )
-                            else
-                              Container(
-                                color: Colors.black.withOpacity(0.35),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.play_arrow_rounded,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        )
-                      : _LessonThumbnailFallback(
+                    fit: StackFit.expand,
+                    children: [
+                      AuthNetworkImage(
+                        imageUrl: lesson.thumbnailUrl!,
+                        fit: BoxFit.cover,
+                        placeholderBuilder: (_) => _LessonThumbnailFallback(
                           index: widget.index,
                           isLocked: isLocked,
                         ),
+                        errorBuilderWidget: (_, __) => _LessonThumbnailFallback(
+                          index: widget.index,
+                          isLocked: isLocked,
+                        ),
+                      ),
+                      if (isLocked)
+                        Container(
+                          color: Colors.black.withOpacity(0.65),
+                          child: const Icon(Icons.lock_rounded, color: _kTextMuted, size: 20),
+                        )
+                      else
+                        Container(
+                          color: Colors.black.withOpacity(0.35),
+                          child: const Center(
+                            child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                          ),
+                        ),
+                    ],
+                  )
+                      : _LessonThumbnailFallback(index: widget.index, isLocked: isLocked),
                 ),
               ),
               const SizedBox(width: 16),
@@ -1638,18 +1455,9 @@ class _LessonRowState extends State<_LessonRow>
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        if (lesson.hasVideo)
-                          const _MediaIcon(
-                            icon: Icons.play_circle_outline_rounded,
-                          ),
-                        if (lesson.hasAudio)
-                          const _MediaIcon(
-                            icon: Icons.headphones_rounded,
-                          ),
-                        if (lesson.hasWorkbook)
-                          const _MediaIcon(
-                            icon: Icons.description_rounded,
-                          ),
+                        if (lesson.hasVideo) const _MediaIcon(icon: Icons.play_circle_outline_rounded),
+                        if (lesson.hasAudio) const _MediaIcon(icon: Icons.headphones_rounded),
+                        if (lesson.hasWorkbook) const _MediaIcon(icon: Icons.description_rounded),
                       ],
                     ),
                     if (!isLocked && lesson.progressPercentage > 0) ...[
@@ -1660,7 +1468,7 @@ class _LessonRowState extends State<_LessonRow>
                           value: lesson.progressPercentage / 100,
                           backgroundColor: _kDivider,
                           valueColor: const AlwaysStoppedAnimation<Color>(_kRed),
-                          minHeight: 2.5,
+                          minHeight: 3,
                         ),
                       ),
                     ],
@@ -1687,32 +1495,22 @@ class _AssignmentRow extends StatefulWidget {
   final _ModuleAssignmentItem assignment;
   final int index;
 
-  const _AssignmentRow({
-    required this.assignment,
-    required this.index,
-  });
+  const _AssignmentRow({required this.assignment, required this.index});
 
   @override
   State<_AssignmentRow> createState() => _AssignmentRowState();
 }
 
-class _AssignmentRowState extends State<_AssignmentRow>
-    with SingleTickerProviderStateMixin {
+class _AssignmentRowState extends State<_AssignmentRow> with SingleTickerProviderStateMixin {
   late AnimationController _pressCtrl;
   late Animation<double> _scaleAnim;
 
   @override
   void initState() {
     super.initState();
-
-    _pressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 130),
-    );
-
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _pressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -1731,11 +1529,9 @@ class _AssignmentRowState extends State<_AssignmentRow>
       onTap: isLocked
           ? () => _showLockedDialog(context, assignment.lockReason)
           : () => context.pushNamed(
-                'assignment',
-                pathParameters: {
-                  'assignmentId': assignment.id.toString(),
-                },
-              ),
+        'assignment',
+        pathParameters: {'assignmentId': assignment.id.toString()},
+      ),
       onTapDown: (_) => _pressCtrl.forward(),
       onTapUp: (_) => _pressCtrl.reverse(),
       onTapCancel: () => _pressCtrl.reverse(),
@@ -1746,14 +1542,8 @@ class _AssignmentRowState extends State<_AssignmentRow>
           decoration: BoxDecoration(
             color: _kSurface,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: _kDivider, width: 0.8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x66000000),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: _kBorderSoft, width: 0.8),
+            boxShadow: _kShadowCard,
           ),
           child: Row(
             children: [
@@ -1806,15 +1596,14 @@ class _AssignmentRowState extends State<_AssignmentRow>
                         ),
                       ],
                     ),
-                    if (assignment.description != null &&
-                        assignment.description!.trim().isNotEmpty) ...[
+                    if (assignment.description != null && assignment.description!.trim().isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
                         assignment.description!,
                         style: const TextStyle(
                           color: _kTextMuted,
                           fontSize: 12,
-                          height: 1.45,
+                          height: 1.5,
                           fontFamily: 'Montserrat',
                         ),
                         maxLines: 2,
@@ -1823,13 +1612,14 @@ class _AssignmentRowState extends State<_AssignmentRow>
                     ],
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isLocked ? _kSurfaceElevated : _kRedSoft,
+                        color: isLocked ? _kElevated : _kRedSoft,
                         borderRadius: BorderRadius.circular(2),
+                        border: Border.all(
+                          color: isLocked ? Colors.transparent : _kRedBorder,
+                          width: 0.8,
+                        ),
                       ),
                       child: Text(
                         isLocked ? 'Locked' : statusLabel,
@@ -1838,6 +1628,7 @@ class _AssignmentRowState extends State<_AssignmentRow>
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -1858,15 +1649,22 @@ class _AssignmentRowState extends State<_AssignmentRow>
   }
 }
 
+// ─── Locked Dialog ────────────────────────────────────────────────────────────
+
 void _showLockedDialog(BuildContext context, String? reason) {
   showDialog(
     context: context,
     builder: (ctx) => Dialog(
       backgroundColor: _kSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
+      // DS: Modal border-radius 8px
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _kSurface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _kBorderSoft, width: 0.8),
+          boxShadow: _kShadowModal,
+        ),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1874,14 +1672,11 @@ void _showLockedDialog(BuildContext context, String? reason) {
           children: [
             const Row(
               children: [
-                Icon(
-                  Icons.lock_rounded,
-                  color: _kTextMuted,
-                  size: 24,
-                ),
+                Icon(Icons.lock_rounded, color: _kTextMuted, size: 22),
                 SizedBox(width: 12),
                 Text(
                   'Lesson locked',
+                  // DS: Semi Bold / Title 1 — 28px terlalu besar untuk dialog kecil, pakai 18px Semi Bold
                   style: TextStyle(
                     color: _kTextPrimary,
                     fontSize: 18,
@@ -1907,13 +1702,11 @@ void _showLockedDialog(BuildContext context, String? reason) {
               child: GestureDetector(
                 onTap: () => Navigator.pop(ctx),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   decoration: BoxDecoration(
                     color: _kRed,
                     borderRadius: BorderRadius.circular(4),
+                    boxShadow: _kShadowBtn,
                   ),
                   child: const Text(
                     'Got it',
@@ -1934,39 +1727,36 @@ void _showLockedDialog(BuildContext context, String? reason) {
   );
 }
 
+// ─── Lesson Thumbnail Fallback ────────────────────────────────────────────────
+
 class _LessonThumbnailFallback extends StatelessWidget {
   final int index;
   final bool isLocked;
 
-  const _LessonThumbnailFallback({
-    required this.index,
-    required this.isLocked,
-  });
+  const _LessonThumbnailFallback({required this.index, required this.isLocked});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _kSurfaceElevated,
+      color: _kElevated,
       child: Center(
         child: isLocked
-            ? const Icon(
-                Icons.lock_rounded,
-                color: _kTextMuted,
-                size: 24,
-              )
+            ? const Icon(Icons.lock_rounded, color: _kTextMuted, size: 24)
             : Text(
-                '${index + 1}',
-                style: const TextStyle(
-                  color: _kTextSecondary,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
+          '${index + 1}',
+          style: const TextStyle(
+            color: _kTextSecondary,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Montserrat',
+          ),
+        ),
       ),
     );
   }
 }
+
+// ─── Media Icon ───────────────────────────────────────────────────────────────
 
 class _MediaIcon extends StatelessWidget {
   final IconData icon;
@@ -1977,11 +1767,7 @@ class _MediaIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 12),
-      child: Icon(
-        icon,
-        color: _kTextMuted,
-        size: 18,
-      ),
+      child: Icon(icon, color: _kTextMuted, size: 16),
     );
   }
 }
@@ -1996,7 +1782,6 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color color;
-
     switch (status.toLowerCase()) {
       case 'active':
         color = _kRed;
@@ -2012,12 +1797,10 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
+        // DS: Transparent Black 65%
         color: Colors.black.withOpacity(0.65),
         borderRadius: BorderRadius.circular(2),
-        border: Border.all(
-          color: color.withOpacity(0.5),
-          width: 0.8,
-        ),
+        border: Border.all(color: color.withOpacity(0.5), width: 0.8),
       ),
       child: Text(
         status.toUpperCase(),
@@ -2026,7 +1809,7 @@ class _StatusBadge extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w700,
           fontFamily: 'Montserrat',
-          letterSpacing: 1,
+          letterSpacing: 1.0,
         ),
       ),
     );
@@ -2050,15 +1833,10 @@ class _ModuleDetailSkeletonState extends State<_ModuleDetailSkeleton>
   @override
   void initState() {
     super.initState();
-
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..repeat(reverse: true);
-
-    _anim = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
+      ..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.3, end: 0.7)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -2072,59 +1850,128 @@ class _ModuleDetailSkeletonState extends State<_ModuleDetailSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (context, _) {
-        final c = Color.lerp(_kSurface, _kSurfaceElevated, _anim.value)!;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Bone(
-              width: double.infinity,
-              height: 280,
-              color: c,
-              radius: 0,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Bone(
-                    width: double.infinity,
-                    height: 48,
-                    color: c,
-                  ),
-                  const SizedBox(height: 24),
-                  _Bone(
-                    width: 80,
-                    height: 20,
-                    color: c,
-                  ),
-                  const SizedBox(height: 12),
-                  _Bone(
-                    width: 240,
-                    height: 28,
-                    color: c,
-                  ),
-                  const SizedBox(height: 24),
-                  ...List.generate(
-                    4,
-                    (_) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _Bone(
-                        width: double.infinity,
-                        height: 92,
-                        color: c,
+        final c = Color.lerp(_kSurface, _kElevated, _anim.value)!;
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Bone(width: double.infinity, height: 280, color: c, radius: 0),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Bone(width: double.infinity, height: 42, color: c),
+                    const SizedBox(height: 24),
+                    _Bone(width: 64, height: 20, color: c),
+                    const SizedBox(height: 12),
+                    _Bone(width: 220, height: 28, color: c),
+                    const SizedBox(height: 24),
+                    ...List.generate(
+                      4,
+                      (_) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _Bone(
+                          width: double.infinity,
+                          height: 92,
+                          color: c,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
   }
+}
+
+bool _isVideoAccessible(ModuleVideoLecturerItem video) {
+  final status = video.status.trim().toLowerCase();
+  if (status == 'locked' || status == 'hidden' || status == 'unavailable') {
+    return false;
+  }
+  return (video.hlsUrl ?? '').trim().isNotEmpty;
+}
+
+String _videoStatusLabel(ModuleVideoLecturerItem video) {
+  if (_isVideoAccessible(video)) return 'Ready';
+  final status = video.status.trim();
+  if (status.isEmpty) return 'Unavailable';
+  return status.replaceAll('_', ' ');
+}
+
+bool _isAssignmentModule(ModuleDetail module) {
+  return module.viewTypes.contains('assignment') &&
+      !module.viewTypes.contains('lesson') &&
+      !module.viewTypes.contains('ebook') &&
+      !module.viewTypes.contains('certificate') &&
+      !module.viewTypes.contains('video_lecturer');
+}
+
+bool _isEbookModule(ModuleDetail module) {
+  return module.viewTypes.contains('ebook') &&
+      !module.viewTypes.contains('lesson') &&
+      !module.viewTypes.contains('assignment') &&
+      !module.viewTypes.contains('certificate') &&
+      !module.viewTypes.contains('video_lecturer');
+}
+
+bool _isCertificateModule(ModuleDetail module) {
+  return module.viewTypes.contains('certificate') &&
+      !module.viewTypes.contains('lesson') &&
+      !module.viewTypes.contains('assignment') &&
+      !module.viewTypes.contains('ebook') &&
+      !module.viewTypes.contains('video_lecturer');
+}
+
+bool _isVideoLecturerModule(ModuleDetail module) {
+  return module.viewTypes.contains('video_lecturer') &&
+      !module.viewTypes.contains('lesson');
+}
+
+IconData _moduleHeroIcon(ModuleDetail module) {
+  if (_isAssignmentModule(module)) return Icons.cloud_upload_rounded;
+  if (_isCertificateModule(module)) return Icons.workspace_premium_rounded;
+  if (_isEbookModule(module)) return Icons.menu_book_rounded;
+  if (_isVideoLecturerModule(module)) return Icons.ondemand_video_rounded;
+  return Icons.play_arrow_rounded;
+}
+
+String _moduleEyebrow(ModuleDetail module) {
+  if (_isAssignmentModule(module)) return 'Final Assignment';
+  if (_isCertificateModule(module)) return 'Certificate Access';
+  if (_isEbookModule(module)) return 'Learning Material';
+  if (_isVideoLecturerModule(module)) return 'Video Lecturer';
+  return 'Learning Module';
+}
+
+String _moduleHeroDescription(ModuleDetail module) {
+  if (_isAssignmentModule(module)) {
+    return 'Upload your work, review submission progress, and track feedback from the academy.';
+  }
+  if (_isCertificateModule(module)) {
+    return 'Open and download your certificate when it is available for this module.';
+  }
+  if (_isEbookModule(module)) {
+    return 'Read the supporting material for this module and open each ebook from the list below.';
+  }
+  if (_isVideoLecturerModule(module)) {
+    return 'Watch each lecturer video in sequence and continue with the next session when ready.';
+  }
+  return 'Open the learning content for this module and continue your progress from where you left off.';
+}
+
+String _primaryActionLabel(ModuleDetail module) {
+  if (_isAssignmentModule(module)) return 'Open Assignments';
+  if (_isCertificateModule(module)) return 'View Certificate';
+  if (_isEbookModule(module)) return 'Open Ebook';
+  if (_isVideoLecturerModule(module)) return 'Watch Video';
+  return module.primaryCtaLabel ?? 'Open Module';
 }
 
 class _Bone extends StatelessWidget {
@@ -2153,7 +2000,7 @@ class _Bone extends StatelessWidget {
   }
 }
 
-// ─── Error ────────────────────────────────────────────────────────────────────
+// ─── Error Screen ─────────────────────────────────────────────────────────────
 
 class _ModuleDetailError extends StatelessWidget {
   final String message;
@@ -2182,11 +2029,7 @@ class _ModuleDetailError extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: _kRedBorder),
               ),
-              child: const Icon(
-                Icons.wifi_off_rounded,
-                color: _kRed,
-                size: 28,
-              ),
+              child: const Icon(Icons.wifi_off_rounded, color: _kRed, size: 28),
             ),
             const SizedBox(height: 20),
             Text(
@@ -2195,6 +2038,7 @@ class _ModuleDetailError extends StatelessWidget {
                 color: _kTextSecondary,
                 fontSize: 14,
                 fontFamily: 'Montserrat',
+                height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
@@ -2205,14 +2049,12 @@ class _ModuleDetailError extends StatelessWidget {
                 GestureDetector(
                   onTap: onBack,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: _kSurfaceElevated,
+                      // DS: Sekunder — rgba(255,255,255,0.2)
+                      color: const Color(0x33FFFFFF),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: _kDivider, width: 0.8),
+                      border: Border.all(color: _kBorderSoft, width: 0.8),
                     ),
                     child: const Text(
                       'Back',
@@ -2220,28 +2062,20 @@ class _ModuleDetailError extends StatelessWidget {
                         color: _kTextSecondary,
                         fontFamily: 'Montserrat',
                         fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: onRetry,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
                       color: _kRed,
                       borderRadius: BorderRadius.circular(4),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: _kRedBorder,
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                      boxShadow: _kShadowBtn,
                     ),
                     child: const Text(
                       'Try again',
@@ -2249,6 +2083,7 @@ class _ModuleDetailError extends StatelessWidget {
                         color: Colors.white,
                         fontFamily: 'Montserrat',
                         fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
                   ),
