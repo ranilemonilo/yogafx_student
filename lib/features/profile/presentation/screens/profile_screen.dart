@@ -276,8 +276,8 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
             leading: IconButton(
               onPressed: () => _handleProfileBack(context),
               icon: const Icon(
-                Icons.arrow_back_ios_new,
-                size: 18,
+                Icons.arrow_back,
+                size: 24,
                 color: AppColors.textPrimary,
               ),
             ),
@@ -285,8 +285,8 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
               'My Profile',
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
                 fontFamily: 'Montserrat',
                 letterSpacing: 0.2,
               ),

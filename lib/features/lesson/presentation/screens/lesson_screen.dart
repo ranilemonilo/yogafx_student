@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -124,6 +126,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   int _lastReportedProgress = 0;
   int? _autoNextRemainingSeconds;
   bool _isAutoNavigating = false;
+  bool _showNextLessonPrompt = false;
+  bool _autoNextCancelled = false;
+  Timer? _autoNextTimer;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -262,33 +267,94 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             widget.lesson.assessment == null;
 
     if (!shouldAutoNavigate) {
-      if (_autoNextRemainingSeconds != null && mounted) {
-        setState(() => _autoNextRemainingSeconds = null);
-      }
+      _resetAutoNextState();
       return;
     }
 
     final remaining = value.duration - value.position;
     final remainingSeconds = remaining.inSeconds;
+    final isNearEnd = remainingSeconds <= 10;
+    final isCompleted =
+        value.duration.inMilliseconds > 0 &&
+        value.position >= value.duration - const Duration(milliseconds: 300);
 
-    if (remainingSeconds > 10 || remainingSeconds <= 0) {
-      if (_autoNextRemainingSeconds != null && mounted) {
-        setState(() => _autoNextRemainingSeconds = null);
+    if (!isNearEnd) {
+      _resetAutoNextState();
+      return;
+    }
+
+    if (!_showNextLessonPrompt && mounted) {
+      setState(() => _showNextLessonPrompt = true);
+    }
+
+    if (!isCompleted) {
+      if (_autoNextRemainingSeconds != null) {
+        _cancelAutoNextCountdown(keepPromptVisible: true);
       }
       return;
     }
 
-    if (_autoNextRemainingSeconds != remainingSeconds && mounted) {
-      setState(() => _autoNextRemainingSeconds = remainingSeconds);
-    }
+    if (_autoNextCancelled || _autoNextRemainingSeconds != null) return;
+    _startAutoNextCountdown(nextLesson.id);
+  }
 
-    if (remainingSeconds <= 1 && !_isAutoNavigating) {
-      _isAutoNavigating = true;
-      Future.microtask(() async {
-        if (!mounted) return;
-        await _navigateToLesson(context, nextLesson.id, autoPlayVideo: true);
+  void _startAutoNextCountdown(int lessonId) {
+    _autoNextTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _showNextLessonPrompt = true;
+        _autoNextRemainingSeconds = 10;
       });
     }
+
+    _autoNextTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      final remaining = _autoNextRemainingSeconds;
+      if (remaining == null) {
+        timer.cancel();
+        return;
+      }
+
+      if (remaining <= 1) {
+        timer.cancel();
+        _isAutoNavigating = true;
+        await _navigateToLesson(context, lessonId, autoPlayVideo: true);
+        return;
+      }
+
+      setState(() => _autoNextRemainingSeconds = remaining - 1);
+    });
+  }
+
+  void _cancelAutoNextCountdown({bool keepPromptVisible = true}) {
+    _autoNextTimer?.cancel();
+    _autoNextTimer = null;
+    if (!mounted) return;
+    setState(() {
+      _autoNextCancelled = true;
+      _autoNextRemainingSeconds = null;
+      _showNextLessonPrompt = keepPromptVisible;
+    });
+  }
+
+  void _resetAutoNextState() {
+    _autoNextTimer?.cancel();
+    _autoNextTimer = null;
+    if (!mounted) return;
+    if (!_showNextLessonPrompt &&
+        _autoNextRemainingSeconds == null &&
+        !_autoNextCancelled) {
+      return;
+    }
+    setState(() {
+      _showNextLessonPrompt = false;
+      _autoNextRemainingSeconds = null;
+      _autoNextCancelled = false;
+    });
   }
 
   void _refreshLearningState() {
@@ -418,6 +484,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   @override
   void dispose() {
+    _autoNextTimer?.cancel();
     _videoController?.removeListener(_onVideoProgress);
     _videoController?.dispose();
     _videoController = null;
@@ -438,6 +505,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     } else {
       await controller.play();
     }
+  }
+
+  Future<void> _skipVideoBy(int seconds) async {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return;
+    await _seekVideo(controller.value.position + Duration(seconds: seconds));
   }
 
   Future<void> _seekVideo(Duration position) async {
@@ -465,9 +538,26 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       MaterialPageRoute<void>(
         builder: (_) => _FullscreenVideoScreen(
           controller: controller,
+          nextLesson: widget.lesson.nextLesson,
+          showNextLessonPrompt: _showNextLessonPrompt,
+          autoNextRemainingSeconds: _autoNextRemainingSeconds,
+          autoNextCancelled: _autoNextCancelled,
           onTogglePlayback: _toggleVideoPlayback,
           onSeek: _seekVideo,
           onToggleMute: _toggleMute,
+          onSkipForward: () => _skipVideoBy(30),
+          onSkipBackward: () => _skipVideoBy(-30),
+          onPlayNextLesson: () async {
+            final nextLesson = widget.lesson.nextLesson;
+            if (nextLesson == null) return;
+            _isAutoNavigating = true;
+            await _navigateToLesson(
+              context,
+              nextLesson.id,
+              autoPlayVideo: true,
+            );
+          },
+          onCancelAutoNext: () => _cancelAutoNextCountdown(),
         ),
       ),
     );
@@ -503,6 +593,22 @@ class _LessonContentState extends ConsumerState<_LessonContent>
               onTogglePlayback: _toggleVideoPlayback,
               onSeek: _seekVideo,
               onToggleMute: _toggleMute,
+              onSkipForward: () => _skipVideoBy(30),
+              onSkipBackward: () => _skipVideoBy(-30),
+              showNextLessonPrompt: _showNextLessonPrompt,
+              autoNextRemainingSeconds: _autoNextRemainingSeconds,
+              autoNextCancelled: _autoNextCancelled,
+              onPlayNextLesson: () async {
+                final nextLesson = lesson.nextLesson;
+                if (nextLesson == null) return;
+                _isAutoNavigating = true;
+                await _navigateToLesson(
+                  context,
+                  nextLesson.id,
+                  autoPlayVideo: true,
+                );
+              },
+              onCancelAutoNext: () => _cancelAutoNextCountdown(),
               onOpenFullscreen: _openFullscreen,
             ),
           ),
@@ -610,6 +716,13 @@ class _VideoSection extends StatelessWidget {
   final Future<void> Function() onTogglePlayback;
   final Future<void> Function(Duration position) onSeek;
   final Future<void> Function() onToggleMute;
+  final Future<void> Function() onSkipForward;
+  final Future<void> Function() onSkipBackward;
+  final bool showNextLessonPrompt;
+  final int? autoNextRemainingSeconds;
+  final bool autoNextCancelled;
+  final Future<void> Function() onPlayNextLesson;
+  final VoidCallback onCancelAutoNext;
   final Future<void> Function() onOpenFullscreen;
 
   const _VideoSection({
@@ -626,6 +739,13 @@ class _VideoSection extends StatelessWidget {
     required this.onTogglePlayback,
     required this.onSeek,
     required this.onToggleMute,
+    required this.onSkipForward,
+    required this.onSkipBackward,
+    required this.showNextLessonPrompt,
+    required this.autoNextRemainingSeconds,
+    required this.autoNextCancelled,
+    required this.onPlayNextLesson,
+    required this.onCancelAutoNext,
     required this.onOpenFullscreen,
   });
 
@@ -731,100 +851,406 @@ class _VideoSection extends StatelessWidget {
       onTogglePlayback: onTogglePlayback,
       onSeek: onSeek,
       onToggleMute: onToggleMute,
+      onSkipForward: onSkipForward,
+      onSkipBackward: onSkipBackward,
+      nextLesson: lesson.nextLesson,
+      showNextLessonPrompt: showNextLessonPrompt,
+      autoNextRemainingSeconds: autoNextRemainingSeconds,
+      autoNextCancelled: autoNextCancelled,
+      onPlayNextLesson: onPlayNextLesson,
+      onCancelAutoNext: onCancelAutoNext,
       onOpenFullscreen: onOpenFullscreen,
     );
   }
 }
 
-class _InlineVideoPlayer extends StatelessWidget {
+class _InlineVideoPlayer extends StatefulWidget {
   final VideoPlayerController controller;
+  final NextLesson? nextLesson;
   final Future<void> Function() onTogglePlayback;
   final Future<void> Function(Duration position) onSeek;
   final Future<void> Function() onToggleMute;
+  final Future<void> Function() onSkipForward;
+  final Future<void> Function() onSkipBackward;
+  final bool showNextLessonPrompt;
+  final int? autoNextRemainingSeconds;
+  final bool autoNextCancelled;
+  final Future<void> Function() onPlayNextLesson;
+  final VoidCallback onCancelAutoNext;
   final Future<void> Function() onOpenFullscreen;
 
   const _InlineVideoPlayer({
     required this.controller,
+    required this.nextLesson,
     required this.onTogglePlayback,
     required this.onSeek,
     required this.onToggleMute,
+    required this.onSkipForward,
+    required this.onSkipBackward,
+    required this.showNextLessonPrompt,
+    required this.autoNextRemainingSeconds,
+    required this.autoNextCancelled,
+    required this.onPlayNextLesson,
+    required this.onCancelAutoNext,
     required this.onOpenFullscreen,
   });
 
   @override
+  State<_InlineVideoPlayer> createState() => _InlineVideoPlayerState();
+}
+
+class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
+  static const _controlsAutoHideDelay = Duration(seconds: 3);
+
+  Timer? _controlsTimer;
+  bool _controlsVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleControllerUpdate);
+    _syncWakelock();
+    _scheduleControlsHide();
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlineVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleControllerUpdate);
+      widget.controller.addListener(_handleControllerUpdate);
+    }
+    _syncWakelock();
+  }
+
+  @override
+  void dispose() {
+    _controlsTimer?.cancel();
+    widget.controller.removeListener(_handleControllerUpdate);
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  void _handleControllerUpdate() {
+    _syncWakelock();
+    if (!mounted) return;
+
+    if (!widget.controller.value.isPlaying && !_controlsVisible) {
+      setState(() => _controlsVisible = true);
+      return;
+    }
+
+    if (widget.controller.value.isPlaying && _controlsVisible) {
+      _scheduleControlsHide();
+    }
+  }
+
+  Future<void> _syncWakelock() async {
+    if (widget.controller.value.isPlaying) {
+      await WakelockPlus.enable();
+    } else {
+      await WakelockPlus.disable();
+    }
+  }
+
+  void _scheduleControlsHide() {
+    _controlsTimer?.cancel();
+    if (!widget.controller.value.isPlaying) return;
+
+    _controlsTimer = Timer(_controlsAutoHideDelay, () {
+      if (!mounted || !widget.controller.value.isPlaying) return;
+      setState(() => _controlsVisible = false);
+    });
+  }
+
+  void _showControls() {
+    if (!_controlsVisible) {
+      setState(() => _controlsVisible = true);
+    }
+    _scheduleControlsHide();
+  }
+
+  void _toggleControlsVisibility() {
+    if (_controlsVisible) {
+      _controlsTimer?.cancel();
+      setState(() => _controlsVisible = false);
+      return;
+    }
+
+    _showControls();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<VideoPlayerValue>(
-      valueListenable: controller,
+      valueListenable: widget.controller,
       builder: (context, value, _) {
         final duration = value.duration;
         final position = value.position > duration ? duration : value.position;
         final isMuted = value.volume == 0;
 
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: value.size.width,
-                height: value.size.height,
-                child: VideoPlayer(controller),
-              ),
-            ),
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x66000000),
-                    Color(0x11000000),
-                    Color(0x77000000),
-                  ],
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggleControlsVisibility,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: value.size.width,
+                  height: value.size.height,
+                  child: VideoPlayer(widget.controller),
                 ),
               ),
-            ),
-            Center(
-              child: GestureDetector(
-                onTap: onTogglePlayback,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.45),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.16),
-                    ),
-                  ),
-                  child: Icon(
-                    value.isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 34,
+              IgnorePointer(
+                ignoring: !_controlsVisible,
+                child: AnimatedOpacity(
+                  opacity: _controlsVisible ? 1 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0x66000000),
+                              Color(0x11000000),
+                              Color(0x77000000),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _BigVideoActionButton(
+                              icon: Icons.replay_30_rounded,
+                              onTap: widget.onSkipBackward,
+                            ),
+                            const SizedBox(width: 18),
+                            _BigVideoActionButton(
+                              icon: value.isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              size: 64,
+                              iconSize: 34,
+                              onTap: widget.onTogglePlayback,
+                            ),
+                            const SizedBox(width: 18),
+                            _BigVideoActionButton(
+                              icon: Icons.forward_30_rounded,
+                              onTap: widget.onSkipForward,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 10,
+                        child: _VideoControlsBar(
+                          duration: duration,
+                          position: position,
+                          isPlaying: value.isPlaying,
+                          isMuted: isMuted,
+                          onTogglePlayback: widget.onTogglePlayback,
+                          onSeek: widget.onSeek,
+                          onToggleMute: widget.onToggleMute,
+                          onOpenFullscreen: widget.onOpenFullscreen,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 10,
-              child: _VideoControlsBar(
-                duration: duration,
-                position: position,
-                isPlaying: value.isPlaying,
-                isMuted: isMuted,
-                onTogglePlayback: onTogglePlayback,
-                onSeek: onSeek,
-                onToggleMute: onToggleMute,
-                onOpenFullscreen: onOpenFullscreen,
-              ),
-            ),
-          ],
+              if (widget.nextLesson != null && widget.showNextLessonPrompt)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 88,
+                  child: _VideoNextLessonOverlay(
+                    nextLesson: widget.nextLesson!,
+                    countdownSeconds: widget.autoNextRemainingSeconds,
+                    wasCancelled: widget.autoNextCancelled,
+                    onPlayNow: widget.onPlayNextLesson,
+                    onCancel: widget.onCancelAutoNext,
+                  ),
+                ),
+            ],
+          ),
         );
       },
+    );
+  }
+}
+
+class _BigVideoActionButton extends StatelessWidget {
+  final IconData icon;
+  final Future<void> Function() onTap;
+  final double size;
+  final double iconSize;
+
+  const _BigVideoActionButton({
+    required this.icon,
+    required this.onTap,
+    this.size = 52,
+    this.iconSize = 28,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.45),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.16)),
+        ),
+        child: Icon(icon, color: Colors.white, size: iconSize),
+      ),
+    );
+  }
+}
+
+class _VideoNextLessonOverlay extends StatelessWidget {
+  final NextLesson nextLesson;
+  final int? countdownSeconds;
+  final bool wasCancelled;
+  final Future<void> Function() onPlayNow;
+  final VoidCallback onCancel;
+
+  const _VideoNextLessonOverlay({
+    required this.nextLesson,
+    required this.countdownSeconds,
+    required this.wasCancelled,
+    required this.onPlayNow,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final countdownText = countdownSeconds != null
+        ? 'Next lesson starts in ${countdownSeconds}s...'
+        : wasCancelled
+            ? 'Auto-play cancelled'
+            : 'Up next: Lesson ${nextLesson.sortOrder}';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.72),
+        borderRadius: BorderRadius.circular(AppRadius.modal),
+        border: Border.all(color: Colors.white.withOpacity(0.12), width: 0.8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+            ),
+            child: const Icon(
+              Icons.skip_next_rounded,
+              color: AppColors.primary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'NEXT LESSON',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Montserrat',
+                    letterSpacing: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  nextLesson.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  countdownText,
+                  style: TextStyle(
+                    color: countdownSeconds != null
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: onPlayNow,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                  ),
+                  child: const Text(
+                    'Play Now',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ),
+              ),
+              if (countdownSeconds != null) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: onCancel,
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -938,15 +1364,31 @@ class _VideoControlButton extends StatelessWidget {
 
 class _FullscreenVideoScreen extends StatefulWidget {
   final VideoPlayerController controller;
+  final NextLesson? nextLesson;
+  final bool showNextLessonPrompt;
+  final int? autoNextRemainingSeconds;
+  final bool autoNextCancelled;
   final Future<void> Function() onTogglePlayback;
   final Future<void> Function(Duration position) onSeek;
   final Future<void> Function() onToggleMute;
+  final Future<void> Function() onSkipForward;
+  final Future<void> Function() onSkipBackward;
+  final Future<void> Function() onPlayNextLesson;
+  final VoidCallback onCancelAutoNext;
 
   const _FullscreenVideoScreen({
     required this.controller,
+    required this.nextLesson,
+    required this.showNextLessonPrompt,
+    required this.autoNextRemainingSeconds,
+    required this.autoNextCancelled,
     required this.onTogglePlayback,
     required this.onSeek,
     required this.onToggleMute,
+    required this.onSkipForward,
+    required this.onSkipBackward,
+    required this.onPlayNextLesson,
+    required this.onCancelAutoNext,
   });
 
   @override
@@ -954,6 +1396,11 @@ class _FullscreenVideoScreen extends StatefulWidget {
 }
 
 class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
+  Timer? _autoNextTimer;
+  bool _showNextLessonPrompt = false;
+  bool _autoNextCancelled = false;
+  int? _autoNextRemainingSeconds;
+
   @override
   void initState() {
     super.initState();
@@ -962,13 +1409,111 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    WakelockPlus.enable();
+    widget.controller.addListener(_handleAutoNextOverlay);
   }
 
   @override
   void dispose() {
+    _autoNextTimer?.cancel();
+    widget.controller.removeListener(_handleAutoNextOverlay);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    WakelockPlus.disable();
     super.dispose();
+  }
+
+  void _handleAutoNextOverlay() {
+    final nextLesson = widget.nextLesson;
+    if (nextLesson == null || !nextLesson.isUnlocked) {
+      _resetAutoNextOverlay();
+      return;
+    }
+
+    final value = widget.controller.value;
+    final remaining = value.duration - value.position;
+    final remainingSeconds = remaining.inSeconds;
+    final isNearEnd = remainingSeconds <= 10;
+    final isCompleted =
+        value.duration.inMilliseconds > 0 &&
+        value.position >= value.duration - const Duration(milliseconds: 300);
+
+    if (!isNearEnd) {
+      _resetAutoNextOverlay();
+      return;
+    }
+
+    if (!_showNextLessonPrompt && mounted) {
+      setState(() => _showNextLessonPrompt = true);
+    }
+
+    if (!isCompleted) {
+      if (_autoNextRemainingSeconds != null) {
+        _cancelAutoNextOverlay(keepPromptVisible: true);
+      }
+      return;
+    }
+
+    if (_autoNextCancelled || _autoNextRemainingSeconds != null) return;
+    _startAutoNextOverlayCountdown();
+  }
+
+  void _startAutoNextOverlayCountdown() {
+    _autoNextTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _showNextLessonPrompt = true;
+        _autoNextRemainingSeconds = 10;
+      });
+    }
+
+    _autoNextTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      final remaining = _autoNextRemainingSeconds;
+      if (remaining == null) {
+        timer.cancel();
+        return;
+      }
+
+      if (remaining <= 1) {
+        timer.cancel();
+        await widget.onPlayNextLesson();
+        return;
+      }
+
+      setState(() => _autoNextRemainingSeconds = remaining - 1);
+    });
+  }
+
+  void _cancelAutoNextOverlay({bool keepPromptVisible = true}) {
+    _autoNextTimer?.cancel();
+    _autoNextTimer = null;
+    if (!mounted) return;
+    setState(() {
+      _autoNextCancelled = true;
+      _autoNextRemainingSeconds = null;
+      _showNextLessonPrompt = keepPromptVisible;
+    });
+  }
+
+  void _resetAutoNextOverlay() {
+    _autoNextTimer?.cancel();
+    _autoNextTimer = null;
+    if (!mounted) return;
+    if (!_showNextLessonPrompt &&
+        _autoNextRemainingSeconds == null &&
+        !_autoNextCancelled) {
+      return;
+    }
+    setState(() {
+      _showNextLessonPrompt = false;
+      _autoNextRemainingSeconds = null;
+      _autoNextCancelled = false;
+    });
   }
 
   @override
@@ -990,13 +1535,34 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                       : widget.controller.value.aspectRatio,
                   child: _InlineVideoPlayer(
                     controller: widget.controller,
+                    nextLesson: widget.nextLesson,
+                    showNextLessonPrompt: false,
+                    autoNextRemainingSeconds: null,
+                    autoNextCancelled: false,
                     onTogglePlayback: widget.onTogglePlayback,
                     onSeek: widget.onSeek,
                     onToggleMute: widget.onToggleMute,
+                    onSkipForward: widget.onSkipForward,
+                    onSkipBackward: widget.onSkipBackward,
+                    onPlayNextLesson: widget.onPlayNextLesson,
+                    onCancelAutoNext: widget.onCancelAutoNext,
                     onOpenFullscreen: () async => Navigator.of(context).pop(),
                   ),
                 ),
               ),
+              if (widget.nextLesson != null && _showNextLessonPrompt)
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: 92,
+                  child: _VideoNextLessonOverlay(
+                    nextLesson: widget.nextLesson!,
+                    countdownSeconds: _autoNextRemainingSeconds,
+                    wasCancelled: _autoNextCancelled,
+                    onPlayNow: widget.onPlayNextLesson,
+                    onCancel: () => _cancelAutoNextOverlay(),
+                  ),
+                ),
               Positioned(
                 top: 12,
                 left: 12,

@@ -6,6 +6,8 @@ import '../../../../core/router/app_router.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
+import '../../../lesson/data/models/lesson_model.dart';
+import '../../../lesson/presentation/providers/lesson_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/running_login_time_provider.dart';
@@ -352,7 +354,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
                 const SizedBox(height: 32),
                 _animated(
                     3, _ModulesSection(section: data.availableModulesSection)),
-                const SizedBox(height: 56),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -721,7 +723,7 @@ class _HeroSectionState extends State<_HeroSection>
         // §1: background gradient dari overlayDark → background
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -736,51 +738,49 @@ class _HeroSectionState extends State<_HeroSection>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Tier badge — §3: badge radius 2px
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(AppRadius.badge),
-                  border: Border.all(
-                      color: AppColors.primary.withOpacity(0.5), width: 0.8),
-                ),
-                child: Text(
-                  tier.name.toUpperCase(),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 2,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(AppRadius.badge),
+                      border: Border.all(
+                        color: AppColors.primary.withOpacity(0.5),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      tier.name.toUpperCase(),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                        letterSpacing: 2,
+                      ),
+                    ),
                   ),
-                ),
+                  const Spacer(),
+                  const RunningLoginTimeCard(compact: true),
+                ],
               ),
               const SizedBox(height: 14),
               // Welcome line — §2: Caption 10px textMuted
-              const Text(
-                'SELAMAT DATANG KEMBALI',
-                style: TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Montserrat',
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              // Name — §2: Header 36px Bold
               _ShimmerText(
-                text: student.firstName,
+                text: 'Welcome, ${student.firstName}',
                 style: const TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 36,
+                  fontSize: 30,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'Montserrat',
                   height: 1.1,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 6),
+              // Name — §2: Header 36px Bold
               // Animated red accent line
               AnimatedBuilder(
                 animation: _glowAnim,
@@ -803,11 +803,6 @@ class _HeroSectionState extends State<_HeroSection>
               ),
             ],
           ),
-        ),
-        const Positioned(
-          top: 110,
-          right: 20,
-          child: RunningLoginTimeCard(),
         ),
         Positioned.fill(
           child: IgnorePointer(
@@ -919,19 +914,21 @@ class _ContinueLearningSection extends StatelessWidget {
   }
 }
 
-class _ContinueCard extends StatefulWidget {
+class _ContinueCard extends ConsumerStatefulWidget {
   final ContinueLearningSection section;
   const _ContinueCard({required this.section});
 
   @override
-  State<_ContinueCard> createState() => _ContinueCardState();
+  ConsumerState<_ContinueCard> createState() => _ContinueCardState();
 }
 
-class _ContinueCardState extends State<_ContinueCard>
+class _ContinueCardState extends ConsumerState<_ContinueCard>
     with TickerProviderStateMixin {
   late AnimationController _scaleCtrl;
   late AnimationController _progressCtrl;
   late Animation<double> _scaleAnim;
+  late Animation<Offset> _liftAnim; // Netflix-style lift on press
+  late Animation<double> _glowAnim; // deeper shadow on press
   late Animation<double> _progressAnim;
 
   @override
@@ -939,9 +936,27 @@ class _ContinueCardState extends State<_ContinueCard>
     super.initState();
     _scaleCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 220),
+      reverseDuration: const Duration(milliseconds: 260),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 1.015).animate(
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.04).animate(
+      CurvedAnimation(
+        parent: _scaleCtrl,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeIn,
+      ),
+    );
+    _liftAnim = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0, -8),
+    ).animate(
+      CurvedAnimation(
+        parent: _scaleCtrl,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeIn,
+      ),
+    );
+    _glowAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOut),
     );
 
@@ -969,143 +984,197 @@ class _ContinueCardState extends State<_ContinueCard>
   @override
   Widget build(BuildContext context) {
     final section = widget.section;
+    final currentLesson = section.lesson;
+    final lessonDetailAsync = currentLesson == null
+        ? null
+        : ref.watch(lessonDetailProvider(currentLesson.id));
+    final nextLesson = lessonDetailAsync?.value?.nextLesson;
+    final hasUnlockedNextLesson = nextLesson != null && nextLesson.isUnlocked;
+    final destinationLessonId =
+        hasUnlockedNextLesson ? nextLesson.id : currentLesson?.id;
+    final statusText = hasUnlockedNextLesson
+        ? _nextLessonStatusLabel(nextLesson)
+        : section.status;
+    final ctaLabel =
+        hasUnlockedNextLesson ? 'Start Next Lesson' : section.ctaLabel;
 
     return GestureDetector(
-      onTap: () => context.push('/lessons/${section.lesson!.id}'),
+      onTap: destinationLessonId == null
+          ? null
+          : () => _openContinueLesson(
+                context,
+                lessonId: destinationLessonId,
+                autoPlayVideo: hasUnlockedNextLesson,
+              ),
       onTapDown: (_) => _scaleCtrl.forward(),
       onTapUp: (_) => _scaleCtrl.reverse(),
       onTapCancel: () => _scaleCtrl.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: Container(
-          width: double.infinity,
-          height: 220,
-          decoration: BoxDecoration(
-            // §1: surface = Neutral Black 2 untuk card
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.hardEdge,
-          child: Stack(
-            children: [
-              if (section.thumbnailUrl != null)
-                Positioned.fill(
-                  child: AuthNetworkImage(
-                    imageUrl: section.thumbnailUrl!,
-                    fit: BoxFit.cover,
-                    placeholderBuilder: (_) =>
-                        Container(color: AppColors.surface),
-                    errorBuilderWidget: (_, __) =>
-                        Container(color: AppColors.surface),
-                  ),
-                ),
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withOpacity(0.5),
-                ),
-              ),
-              Container(
+      child: AnimatedBuilder(
+        animation: _scaleCtrl,
+        builder: (_, child) {
+          return Transform.translate(
+            offset: _liftAnim.value,
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              child: Container(
+                width: double.infinity,
+                height: 220,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.95),
-                    ],
-                    stops: const [0.2, 1.0],
-                  ),
-                ),
-              ),
-              // Left red accent stripe
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: Container(width: 3, color: AppColors.primary),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      (section.module?.title ?? '').toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
-                        letterSpacing: 2,
-                      ),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                      Colors.black.withOpacity(0.5 + _glowAnim.value * 0.2),
+                      blurRadius: 20 + _glowAnim.value * 16,
+                      offset: Offset(0, 8 + _glowAnim.value * 8),
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      section.lesson?.title ?? '',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'Montserrat',
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 14),
-                    AnimatedBuilder(
-                      animation: _progressAnim,
-                      builder: (_, __) => ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          value: _progressAnim.value,
-                          backgroundColor:
-                          AppColors.textPrimary.withOpacity(0.12),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppColors.primary),
-                          minHeight: 2.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Text(
-                          section.status,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 11,
-                            fontFamily: 'Montserrat',
-                          ),
-                        ),
-                        const Spacer(),
-                        _RedButton(
-                          label: section.ctaLabel,
-                          icon: Icons.play_arrow_rounded,
-                          onTap: () {
-                            final id = section.lesson?.id;
-                            if (id != null) context.push('/lessons/$id');
-                          },
-                        ),
-                      ],
+                    BoxShadow(
+                      color: AppColors.primary
+                          .withOpacity(_glowAnim.value * 0.15),
+                      blurRadius: 20 + _glowAnim.value * 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
+                clipBehavior: Clip.hardEdge,
+                child: child,
               ),
-            ],
-          ),
+            ),
+          );
+        },
+        child: Stack(
+          children: [
+            if (section.thumbnailUrl != null)
+              Positioned.fill(
+                child: AuthNetworkImage(
+                  imageUrl: section.thumbnailUrl!,
+                  fit: BoxFit.cover,
+                  placeholderBuilder: (_) =>
+                      Container(color: AppColors.surface),
+                  errorBuilderWidget: (_, __) =>
+                      Container(color: AppColors.surface),
+                ),
+              ),
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.95),
+                  ],
+                  stops: const [0.2, 1.0],
+                ),
+              ),
+            ),
+            // Left red accent stripe
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(width: 3, color: AppColors.primary),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (section.module?.title ?? '').toUpperCase(),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    section.lesson?.title ?? '',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'Montserrat',
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 14),
+                  AnimatedBuilder(
+                    animation: _progressAnim,
+                    builder: (_, __) => ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: _progressAnim.value,
+                        backgroundColor:
+                        AppColors.textPrimary.withOpacity(0.12),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary),
+                        minHeight: 2.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text(
+                        statusText,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                      const Spacer(),
+                      _RedButton(
+                        label: ctaLabel,
+                        icon: Icons.play_arrow_rounded,
+                        onTap: () {
+                          if (destinationLessonId == null) return;
+                          _openContinueLesson(
+                            context,
+                            lessonId: destinationLessonId,
+                            autoPlayVideo: hasUnlockedNextLesson,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+String _nextLessonStatusLabel(NextLesson nextLesson) {
+  return 'Next up: Lesson ${nextLesson.sortOrder}';
+}
+
+void _openContinueLesson(
+  BuildContext context, {
+  required int lessonId,
+  bool autoPlayVideo = false,
+}) {
+  context.pushNamed(
+    'lesson',
+    pathParameters: {'lessonId': lessonId.toString()},
+    queryParameters: autoPlayVideo ? {'autoplay': '1'} : <String, String>{},
+  );
 }
 
 // ─── Progress Section ─────────────────────────────────────────────────────────
@@ -1632,7 +1701,7 @@ class _ModulesSectionState extends State<_ModulesSection>
           )
         else
           SizedBox(
-            height: 270,
+            height: 220,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -1663,16 +1732,32 @@ class _ModuleCardState extends State<_ModuleCard>
   late AnimationController _hoverCtrl;
   late Animation<double> _scaleAnim;
   late Animation<double> _glowAnim;
+  late Animation<Offset> _liftAnim; // Netflix-style lift on press
 
   @override
   void initState() {
     super.initState();
     _hoverCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 220),
+      reverseDuration: const Duration(milliseconds: 260),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _hoverCtrl, curve: Curves.easeOut),
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(
+        parent: _hoverCtrl,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeIn,
+      ),
+    );
+    _liftAnim = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0, -6),
+    ).animate(
+      CurvedAnimation(
+        parent: _hoverCtrl,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeIn,
+      ),
     );
     _glowAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _hoverCtrl, curve: Curves.easeOut),
@@ -1703,32 +1788,43 @@ class _ModuleCardState extends State<_ModuleCard>
       onTapCancel: canOpen ? () => _hoverCtrl.reverse() : null,
       child: AnimatedBuilder(
         animation: _hoverCtrl,
-        builder: (_, child) => Transform.scale(
-          scale: _scaleAnim.value,
-          child: Container(
-            width: 200,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
+        builder: (_, child) {
+          return Align(
+            alignment: Alignment.topLeft,
+            child: Transform.translate(
+              offset: _liftAnim.value,
+              child: Transform.scale(
+                scale: _scaleAnim.value,
+                alignment: Alignment.topCenter,
+                child: Container(
+                  width: 200,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black
+                            .withOpacity(0.4 + _glowAnim.value * 0.25),
+                        blurRadius: 12 + _glowAnim.value * 18,
+                        offset: Offset(0, 6 + _glowAnim.value * 10),
+                      ),
+                      BoxShadow(
+                        color: AppColors.primary
+                            .withOpacity(_glowAnim.value * 0.18),
+                        blurRadius: 16 + _glowAnim.value * 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.hardEdge,
+                  child: child,
                 ),
-                BoxShadow(
-                  color: AppColors.primary
-                      .withOpacity(_glowAnim.value * 0.15),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              ),
             ),
-            clipBehavior: Clip.hardEdge,
-            child: child,
-          ),
-        ),
+          );
+        },
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AspectRatio(
@@ -1794,8 +1890,9 @@ class _ModuleCardState extends State<_ModuleCard>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -1969,14 +2066,17 @@ class _SectionLabel extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          text.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Montserrat',
-            letterSpacing: 2,
+        Expanded(
+          child: Text(
+            text.toUpperCase(),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 2,
+            ),
           ),
         ),
       ],
@@ -2113,13 +2213,13 @@ class _DashboardSkeletonState extends State<_DashboardSkeleton>
               _Bone(width: 100, height: 10, color: shimmerColor),
               const SizedBox(height: 14),
               SizedBox(
-                height: 270,
+                height: 212,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: 3,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (_, __) =>
-                      _Bone(width: 200, height: 270, color: shimmerColor),
+                      _Bone(width: 200, height: 212, color: shimmerColor),
                 ),
               ),
             ],

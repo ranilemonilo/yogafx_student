@@ -155,17 +155,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
 
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: FadeTransition(
-                  opacity: _fadeAnim,
-                  child: SlideTransition(
-                    position: _slideAnim,
-                    child: _buildContent(isLoading, error),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: FadeTransition(
+                        opacity: _fadeAnim,
+                        child: SlideTransition(
+                          position: _slideAnim,
+                          child: _buildContent(isLoading, error),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -177,10 +184,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 360),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
-          const SizedBox(height: 48),
 
           // ── Logo ──
           ScaleTransition(
@@ -188,24 +195,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: _buildLogo(),
           ),
 
-          const SizedBox(height: 40),
+          const SizedBox(height: 24),
 
           // ── Title — §2: Title 1 = 28px SemiBold ──
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Sign In',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-                letterSpacing: -0.5,
-              ),
+          const Text(
+            'Sign in to Your Account',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: -0.5,
             ),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
           // ── Error banner ──
           if (error != null) ...[
@@ -281,8 +286,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ],
             ),
           ),
-
-          const SizedBox(height: 48),
         ],
       ),
     );

@@ -155,11 +155,11 @@ class ModuleListScreen extends ConsumerWidget {
 }
 
 void _handleModuleBack(BuildContext context) {
-  if (Navigator.of(context).canPop()) {
+  if (context.canPop()) {
     context.pop();
-    return;
+  } else {
+    context.go(AppRoutes.dashboard);
   }
-  context.go(AppRoutes.dashboard);
 }
 
 // ─── App Bar ──────────────────────────────────────────────────────────────────
@@ -226,7 +226,11 @@ class _ModuleListContentState extends State<_ModuleListContent>
 
     for (int i = 0; i < count; i++) {
       Future.delayed(Duration(milliseconds: 60 * i), () {
-        if (mounted) _controllers[i].forward();
+        if (!mounted) return;
+
+        if (i < _controllers.length) {
+          _controllers[i].forward();
+        }
       });
     }
   }

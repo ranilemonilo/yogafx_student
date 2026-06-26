@@ -6,14 +6,61 @@ import '../../features/dashboard/presentation/utils/access_time_helper.dart';
 import '../theme/app_theme.dart';
 
 class RunningLoginTimeCard extends ConsumerWidget {
-  const RunningLoginTimeCard({super.key});
+  final bool compact;
+
+  const RunningLoginTimeCard({
+    super.key,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final durationAsync = ref.watch(runningLoginTimeProvider);
+    final verticalPadding = compact ? 6.0 : 8.0;
+    final horizontalPadding = compact ? 10.0 : 12.0;
+    final iconSize = compact ? 12.0 : 14.0;
+    final labelFontSize = compact ? 10.0 : 11.0;
+    final valueFontSize = compact ? 12.0 : 14.0;
+    final gap = compact ? 6.0 : 8.0;
+
+    Widget buildContent(String value) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_outlined,
+            color: AppColors.textMuted,
+            size: iconSize,
+          ),
+          SizedBox(width: gap),
+          Text(
+            'Running time',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: labelFontSize,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          SizedBox(width: gap),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: valueFontSize,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+        ],
+      );
+    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF141414),
         borderRadius: BorderRadius.circular(999),
@@ -23,88 +70,9 @@ class RunningLoginTimeCard extends ConsumerWidget {
         ),
       ),
       child: durationAsync.when(
-        data: (duration) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.timer_outlined,
-              color: AppColors.textMuted,
-              size: 14,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Running time',
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              formatAccessDuration(duration),
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ],
-        ),
-        loading: () => const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.timer_outlined, color: AppColors.textMuted, size: 14),
-            SizedBox(width: 8),
-            Text(
-              'Running time',
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-            SizedBox(width: 8),
-            Text(
-              '--:--:--',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ],
-        ),
-        error: (_, __) => const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.timer_outlined, color: AppColors.textMuted, size: 14),
-            SizedBox(width: 8),
-            Text(
-              'Running time',
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-            SizedBox(width: 8),
-            Text(
-              '--:--:--',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ],
-        ),
+        data: (duration) => buildContent(formatAccessDuration(duration)),
+        loading: () => buildContent('--:--:--'),
+        error: (_, __) => buildContent('--:--:--'),
       ),
     );
   }

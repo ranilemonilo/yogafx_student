@@ -51,6 +51,7 @@ dependencies:
   url_launcher: ^6.3.0
   flutter_html: ^3.0.0-beta.2
   app_links: ^6.3.2
+  wakelock_plus: ^1.2.8
 
 dev_dependencies:
   flutter_test:
@@ -94,6 +95,6 @@ flutter_launcher_icons:
   image_path: "assets/images/yogafx_logo.png"
 
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/yogafx_logo.png"
+  adaptive_icon_foreground: "assets/images/ic_launcher.png"
 
   remove_alpha_ios: true
