@@ -128,7 +128,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _isAutoNavigating = false;
   bool _showNextLessonPrompt = false;
   bool _autoNextCancelled = false;
-  Timer? _autoNextTimer;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -272,67 +271,40 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     }
 
     final remaining = value.duration - value.position;
-    final remainingSeconds = remaining.inSeconds;
-    final isNearEnd = remainingSeconds <= 10;
-    final isCompleted =
-        value.duration.inMilliseconds > 0 &&
-        value.position >= value.duration - const Duration(milliseconds: 300);
+    final rawRemainingMillis = remaining.inMilliseconds;
+    final isNearEnd = rawRemainingMillis <= 10000;
+    final remainingMillis = rawRemainingMillis.clamp(0, 10000);
+    final remainingSeconds = (remainingMillis / 1000).ceil().clamp(0, 10);
+
+    if (remainingSeconds <= 0) {
+      if (_isAutoNavigating || _autoNextCancelled) return;
+      _isAutoNavigating = true;
+      unawaited(
+        _navigateToLesson(context, nextLesson.id, autoPlayVideo: true),
+      );
+      return;
+    }
 
     if (!isNearEnd) {
       _resetAutoNextState();
       return;
     }
 
-    if (!_showNextLessonPrompt && mounted) {
-      setState(() => _showNextLessonPrompt = true);
-    }
+    if (_autoNextCancelled || !value.isPlaying) return;
 
-    if (!isCompleted) {
-      if (_autoNextRemainingSeconds != null) {
-        _cancelAutoNextCountdown(keepPromptVisible: true);
-      }
+    if (!mounted) return;
+    if (_showNextLessonPrompt &&
+        _autoNextRemainingSeconds == remainingSeconds) {
       return;
     }
 
-    if (_autoNextCancelled || _autoNextRemainingSeconds != null) return;
-    _startAutoNextCountdown(nextLesson.id);
-  }
-
-  void _startAutoNextCountdown(int lessonId) {
-    _autoNextTimer?.cancel();
-    if (mounted) {
-      setState(() {
-        _showNextLessonPrompt = true;
-        _autoNextRemainingSeconds = 10;
-      });
-    }
-
-    _autoNextTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      final remaining = _autoNextRemainingSeconds;
-      if (remaining == null) {
-        timer.cancel();
-        return;
-      }
-
-      if (remaining <= 1) {
-        timer.cancel();
-        _isAutoNavigating = true;
-        await _navigateToLesson(context, lessonId, autoPlayVideo: true);
-        return;
-      }
-
-      setState(() => _autoNextRemainingSeconds = remaining - 1);
+    setState(() {
+      _showNextLessonPrompt = true;
+      _autoNextRemainingSeconds = remainingSeconds;
     });
   }
 
   void _cancelAutoNextCountdown({bool keepPromptVisible = true}) {
-    _autoNextTimer?.cancel();
-    _autoNextTimer = null;
     if (!mounted) return;
     setState(() {
       _autoNextCancelled = true;
@@ -342,8 +314,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   void _resetAutoNextState() {
-    _autoNextTimer?.cancel();
-    _autoNextTimer = null;
     if (!mounted) return;
     if (!_showNextLessonPrompt &&
         _autoNextRemainingSeconds == null &&
@@ -484,7 +454,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   @override
   void dispose() {
-    _autoNextTimer?.cancel();
     _videoController?.removeListener(_onVideoProgress);
     _videoController?.dispose();
     _videoController = null;
@@ -904,10 +873,12 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
 
   Timer? _controlsTimer;
   bool _controlsVisible = true;
+  late bool _wasPlaying;
 
   @override
   void initState() {
     super.initState();
+    _wasPlaying = widget.controller.value.isPlaying;
     widget.controller.addListener(_handleControllerUpdate);
     _syncWakelock();
     _scheduleControlsHide();
@@ -919,6 +890,7 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_handleControllerUpdate);
       widget.controller.addListener(_handleControllerUpdate);
+      _wasPlaying = widget.controller.value.isPlaying;
     }
     _syncWakelock();
   }
@@ -935,12 +907,19 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
     _syncWakelock();
     if (!mounted) return;
 
-    if (!widget.controller.value.isPlaying && !_controlsVisible) {
+    final isPlaying = widget.controller.value.isPlaying;
+    if (_wasPlaying == isPlaying) {
+      return;
+    }
+    _wasPlaying = isPlaying;
+
+    if (!isPlaying && !_controlsVisible) {
+      _controlsTimer?.cancel();
       setState(() => _controlsVisible = true);
       return;
     }
 
-    if (widget.controller.value.isPlaying && _controlsVisible) {
+    if (isPlaying && _controlsVisible) {
       _scheduleControlsHide();
     }
   }
@@ -970,14 +949,16 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
     _scheduleControlsHide();
   }
 
-  void _toggleControlsVisibility() {
-    if (_controlsVisible) {
-      _controlsTimer?.cancel();
-      setState(() => _controlsVisible = false);
-      return;
-    }
-
+  void _handleSurfaceTap() {
     _showControls();
+  }
+
+  Future<void> _runControlAction(Future<void> Function() action) async {
+    _showControls();
+    await action();
+    if (mounted && widget.controller.value.isPlaying) {
+      _scheduleControlsHide();
+    }
   }
 
   @override
@@ -991,7 +972,7 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: _toggleControlsVisibility,
+          onTap: _handleSurfaceTap,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -1030,7 +1011,9 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
                           children: [
                             _BigVideoActionButton(
                               icon: Icons.replay_30_rounded,
-                              onTap: widget.onSkipBackward,
+                              onTap: () => _runControlAction(
+                                widget.onSkipBackward,
+                              ),
                             ),
                             const SizedBox(width: 18),
                             _BigVideoActionButton(
@@ -1039,12 +1022,16 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
                                   : Icons.play_arrow_rounded,
                               size: 64,
                               iconSize: 34,
-                              onTap: widget.onTogglePlayback,
+                              onTap: () => _runControlAction(
+                                widget.onTogglePlayback,
+                              ),
                             ),
                             const SizedBox(width: 18),
                             _BigVideoActionButton(
                               icon: Icons.forward_30_rounded,
-                              onTap: widget.onSkipForward,
+                              onTap: () => _runControlAction(
+                                widget.onSkipForward,
+                              ),
                             ),
                           ],
                         ),
@@ -1058,25 +1045,30 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
                           position: position,
                           isPlaying: value.isPlaying,
                           isMuted: isMuted,
-                          onTogglePlayback: widget.onTogglePlayback,
-                          onSeek: widget.onSeek,
-                          onToggleMute: widget.onToggleMute,
-                          onOpenFullscreen: widget.onOpenFullscreen,
+                          onTogglePlayback: () =>
+                              _runControlAction(widget.onTogglePlayback),
+                          onSeek: (position) => _runControlAction(
+                            () => widget.onSeek(position),
+                          ),
+                          onToggleMute: () =>
+                              _runControlAction(widget.onToggleMute),
+                          onOpenFullscreen: () =>
+                              _runControlAction(widget.onOpenFullscreen),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              if (widget.nextLesson != null && widget.showNextLessonPrompt)
+              if (widget.nextLesson != null &&
+                  widget.showNextLessonPrompt &&
+                  widget.autoNextRemainingSeconds != null)
                 Positioned(
-                  left: 16,
                   right: 16,
                   bottom: 88,
                   child: _VideoNextLessonOverlay(
                     nextLesson: widget.nextLesson!,
                     countdownSeconds: widget.autoNextRemainingSeconds,
-                    wasCancelled: widget.autoNextCancelled,
                     onPlayNow: widget.onPlayNextLesson,
                     onCancel: widget.onCancelAutoNext,
                   ),
@@ -1123,133 +1115,153 @@ class _BigVideoActionButton extends StatelessWidget {
 class _VideoNextLessonOverlay extends StatelessWidget {
   final NextLesson nextLesson;
   final int? countdownSeconds;
-  final bool wasCancelled;
   final Future<void> Function() onPlayNow;
   final VoidCallback onCancel;
 
   const _VideoNextLessonOverlay({
     required this.nextLesson,
     required this.countdownSeconds,
-    required this.wasCancelled,
     required this.onPlayNow,
     required this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
-    final countdownText = countdownSeconds != null
-        ? 'Next lesson starts in ${countdownSeconds}s...'
-        : wasCancelled
-            ? 'Auto-play cancelled'
-            : 'Up next: Lesson ${nextLesson.sortOrder}';
+    final countdownText = 'Next lesson starts in ${countdownSeconds ?? 0}s...';
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.72),
-        borderRadius: BorderRadius.circular(AppRadius.modal),
-        border: Border.all(color: Colors.white.withOpacity(0.12), width: 0.8),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxWidth: 220,
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(AppRadius.card),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.78),
+          borderRadius: BorderRadius.circular(AppRadius.modal),
+          border: Border.all(color: Colors.white.withOpacity(0.12), width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.28),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
-            child: const Icon(
-              Icons.skip_next_rounded,
-              color: AppColors.primary,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                const Text(
-                  'NEXT LESSON',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                    letterSpacing: 1.4,
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                  ),
+                  child: const Icon(
+                    Icons.skip_next_rounded,
+                    color: AppColors.primary,
+                    size: 16,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  nextLesson.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  countdownText,
-                  style: TextStyle(
-                    color: countdownSeconds != null
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Montserrat',
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'NEXT LESSON',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 7,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        nextLesson.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: onPlayNow,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(AppRadius.button),
-                  ),
-                  child: const Text(
-                    'Play Now',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
+            const SizedBox(height: 6),
+            Text(
+              countdownText,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Montserrat',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onPlayNow,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(AppRadius.button),
+                      ),
+                      child: const Text(
+                        'Play Now',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (countdownSeconds != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(width: 6),
                 GestureDetector(
                   onTap: onCancel,
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Montserrat',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                      ),
                     ),
                   ),
                 ),
               ],
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1396,9 +1408,9 @@ class _FullscreenVideoScreen extends StatefulWidget {
 }
 
 class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
-  Timer? _autoNextTimer;
   bool _showNextLessonPrompt = false;
   bool _autoNextCancelled = false;
+  bool _isAutoNavigating = false;
   int? _autoNextRemainingSeconds;
 
   @override
@@ -1415,7 +1427,6 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
 
   @override
   void dispose() {
-    _autoNextTimer?.cancel();
     widget.controller.removeListener(_handleAutoNextOverlay);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
@@ -1432,66 +1443,38 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
 
     final value = widget.controller.value;
     final remaining = value.duration - value.position;
-    final remainingSeconds = remaining.inSeconds;
-    final isNearEnd = remainingSeconds <= 10;
-    final isCompleted =
-        value.duration.inMilliseconds > 0 &&
-        value.position >= value.duration - const Duration(milliseconds: 300);
+    final rawRemainingMillis = remaining.inMilliseconds;
+    final isNearEnd = rawRemainingMillis <= 10000;
+    final remainingMillis = rawRemainingMillis.clamp(0, 10000);
+    final remainingSeconds = (remainingMillis / 1000).ceil().clamp(0, 10);
+
+    if (remainingSeconds <= 0) {
+      if (_isAutoNavigating || _autoNextCancelled) return;
+      _isAutoNavigating = true;
+      unawaited(widget.onPlayNextLesson());
+      return;
+    }
 
     if (!isNearEnd) {
       _resetAutoNextOverlay();
       return;
     }
 
-    if (!_showNextLessonPrompt && mounted) {
-      setState(() => _showNextLessonPrompt = true);
-    }
+    if (_autoNextCancelled || !value.isPlaying) return;
 
-    if (!isCompleted) {
-      if (_autoNextRemainingSeconds != null) {
-        _cancelAutoNextOverlay(keepPromptVisible: true);
-      }
+    if (!mounted) return;
+    if (_showNextLessonPrompt &&
+        _autoNextRemainingSeconds == remainingSeconds) {
       return;
     }
 
-    if (_autoNextCancelled || _autoNextRemainingSeconds != null) return;
-    _startAutoNextOverlayCountdown();
-  }
-
-  void _startAutoNextOverlayCountdown() {
-    _autoNextTimer?.cancel();
-    if (mounted) {
-      setState(() {
-        _showNextLessonPrompt = true;
-        _autoNextRemainingSeconds = 10;
-      });
-    }
-
-    _autoNextTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      final remaining = _autoNextRemainingSeconds;
-      if (remaining == null) {
-        timer.cancel();
-        return;
-      }
-
-      if (remaining <= 1) {
-        timer.cancel();
-        await widget.onPlayNextLesson();
-        return;
-      }
-
-      setState(() => _autoNextRemainingSeconds = remaining - 1);
+    setState(() {
+      _showNextLessonPrompt = true;
+      _autoNextRemainingSeconds = remainingSeconds;
     });
   }
 
   void _cancelAutoNextOverlay({bool keepPromptVisible = true}) {
-    _autoNextTimer?.cancel();
-    _autoNextTimer = null;
     if (!mounted) return;
     setState(() {
       _autoNextCancelled = true;
@@ -1501,8 +1484,6 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   }
 
   void _resetAutoNextOverlay() {
-    _autoNextTimer?.cancel();
-    _autoNextTimer = null;
     if (!mounted) return;
     if (!_showNextLessonPrompt &&
         _autoNextRemainingSeconds == null &&
@@ -1550,15 +1531,15 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                   ),
                 ),
               ),
-              if (widget.nextLesson != null && _showNextLessonPrompt)
+              if (widget.nextLesson != null &&
+                  _showNextLessonPrompt &&
+                  _autoNextRemainingSeconds != null)
                 Positioned(
-                  left: 20,
                   right: 20,
                   bottom: 92,
                   child: _VideoNextLessonOverlay(
                     nextLesson: widget.nextLesson!,
                     countdownSeconds: _autoNextRemainingSeconds,
-                    wasCancelled: _autoNextCancelled,
                     onPlayNow: widget.onPlayNextLesson,
                     onCancel: () => _cancelAutoNextOverlay(),
                   ),

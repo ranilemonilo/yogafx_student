@@ -1654,7 +1654,7 @@ class _ModulesSectionState extends State<_ModulesSection>
                           mainAxisSize: MainAxisSize.min,
                           children: const [
                             Text(
-                              'Lihat semua',
+                              'View all',
                               style: TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 11,
@@ -1688,7 +1688,7 @@ class _ModulesSectionState extends State<_ModulesSection>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Tidak ada modul untuk "$_query"',
+                    'No modules found for "$_query"',
                     style: const TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 13,
@@ -2019,7 +2019,7 @@ class _AccessTimeSection extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'TOTAL WAKTU BELAJAR',
+                  'TOTAL STUDY TIME',
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 9,

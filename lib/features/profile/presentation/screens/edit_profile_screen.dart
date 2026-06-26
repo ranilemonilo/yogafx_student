@@ -6,11 +6,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/data/country_options.dart';
+import '../../../../core/error/app_exception.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/country_picker_field.dart';
 import '../../data/models/profile_model.dart';
 import '../providers/profile_provider.dart';
+
+class _ProfileChoiceOption {
+  final String value;
+  final String label;
+
+  const _ProfileChoiceOption({
+    required this.value,
+    required this.label,
+  });
+}
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -21,6 +32,32 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   static const int _maxProfilePhotoBytes = 5 * 1024 * 1024;
+  static const List<_ProfileChoiceOption> _genderOptions = [
+    _ProfileChoiceOption(value: 'male', label: 'Male'),
+    _ProfileChoiceOption(value: 'female', label: 'Female'),
+  ];
+  static const List<_ProfileChoiceOption> _practicingYogaOptions = [
+    _ProfileChoiceOption(value: 'beginner', label: 'Beginner'),
+    _ProfileChoiceOption(value: '0_to_3_years', label: '0 to 3 years'),
+    _ProfileChoiceOption(value: '4_to_6_years', label: '4 to 6 years'),
+    _ProfileChoiceOption(value: '6_plus_years', label: '6+ years'),
+  ];
+  static const List<_ProfileChoiceOption> _hoursPerWeekOptions = [
+    _ProfileChoiceOption(value: '0_3', label: '0-3'),
+    _ProfileChoiceOption(value: '4_7', label: '4-7'),
+    _ProfileChoiceOption(value: '7_10', label: '7-10'),
+    _ProfileChoiceOption(value: '10_plus', label: '10+'),
+  ];
+  static const List<_ProfileChoiceOption> _fitnessLevelOptions = [
+    _ProfileChoiceOption(value: 'poor', label: 'Poor'),
+    _ProfileChoiceOption(value: 'average', label: 'Average'),
+    _ProfileChoiceOption(value: 'good', label: 'Good'),
+  ];
+  static const List<_ProfileChoiceOption> _flexibilityOptions = [
+    _ProfileChoiceOption(value: 'poor', label: 'Poor'),
+    _ProfileChoiceOption(value: 'average', label: 'Average'),
+    _ProfileChoiceOption(value: 'good', label: 'Good'),
+  ];
 
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
@@ -42,6 +79,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _initialized = false;
   bool _saving = false;
   String? _error;
+  final Map<String, String> _fieldErrors = {};
   CountryOption? _selectedCountry;
   CountryOption? _selectedDialCountry;
   File? _selectedProfilePhoto;
@@ -187,9 +225,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           labelBuilder: (option) => option.name,
                         ),
                         const SizedBox(height: 14),
-                        _buildField(_birthDateController, 'Birth date'),
+                        _buildField(
+                          _birthDateController,
+                          'Birth date',
+                          fieldKey: 'birth_date',
+                        ),
                         const SizedBox(height: 14),
-                        _buildField(_genderController, 'Gender'),
+                        _buildChoiceField(
+                          controller: _genderController,
+                          label: 'Gender',
+                          fieldKey: 'gender',
+                          options: _genderOptions,
+                        ),
                       ],
                     ),
                   ),
@@ -199,26 +246,38 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     icon: Icons.self_improvement_outlined,
                     child: Column(
                       children: [
-                        _buildField(
-                          _practicingController,
-                          'Practicing yoga for',
+                        _buildChoiceField(
+                          controller: _practicingController,
+                          label: 'Practicing yoga for',
+                          fieldKey: 'practicing_yoga_for',
+                          options: _practicingYogaOptions,
                         ),
                         const SizedBox(height: 14),
                         _buildField(
                           _sequenceController,
                           'Yoga sequence experience',
+                          fieldKey: 'yoga_sequence_experience',
                         ),
                         const SizedBox(height: 14),
-                        _buildField(_hoursPerWeekController, 'Hours per week'),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          _fitnessLevelController,
-                          'Current fitness level',
+                        _buildChoiceField(
+                          controller: _hoursPerWeekController,
+                          label: 'Hours per week',
+                          fieldKey: 'hours_per_week',
+                          options: _hoursPerWeekOptions,
                         ),
                         const SizedBox(height: 14),
-                        _buildField(
-                          _flexibilityController,
-                          'Flexibility rating',
+                        _buildChoiceField(
+                          controller: _fitnessLevelController,
+                          label: 'Current fitness level',
+                          fieldKey: 'current_fitness_level',
+                          options: _fitnessLevelOptions,
+                        ),
+                        const SizedBox(height: 14),
+                        _buildChoiceField(
+                          controller: _flexibilityController,
+                          label: 'Flexibility rating',
+                          fieldKey: 'flexibility_rating',
+                          options: _flexibilityOptions,
                         ),
                       ],
                     ),
@@ -233,18 +292,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           _motivationController,
                           'Motivation',
                           maxLines: 4,
+                          fieldKey: 'motivation',
                         ),
                         const SizedBox(height: 14),
                         _buildField(
                           _whyYogaFxController,
                           'Why YogaFX',
                           maxLines: 4,
+                          fieldKey: 'why_yogafx',
                         ),
                         const SizedBox(height: 14),
                         _buildField(
                           _findUsController,
                           'How did you find us',
                           maxLines: 4,
+                          fieldKey: 'how_did_you_find_us',
                         ),
                       ],
                     ),
@@ -330,6 +392,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     TextEditingController controller,
     String label, {
     int maxLines = 1,
+    String? fieldKey,
   }) {
     return TextFormField(
       controller: controller,
@@ -337,6 +400,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       decoration: InputDecoration(
         labelText: label,
         alignLabelWithHint: maxLines > 1,
+        errorText: fieldKey == null ? null : _fieldErrors[fieldKey],
       ),
       style: const TextStyle(
         color: AppColors.textPrimary,
@@ -350,7 +414,74 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         }
         return null;
       },
+      onChanged: (_) {
+        if (fieldKey != null && _fieldErrors.containsKey(fieldKey)) {
+          setState(() => _fieldErrors.remove(fieldKey));
+        }
+      },
     );
+  }
+
+  Widget _buildChoiceField({
+    required TextEditingController controller,
+    required String label,
+    required String fieldKey,
+    required List<_ProfileChoiceOption> options,
+  }) {
+    final normalizedValue = _normalizeChoiceValue(controller.text);
+    final selectedValue =
+        options.any((option) => option.value == normalizedValue)
+            ? normalizedValue
+            : null;
+
+    return DropdownButtonFormField<String>(
+      value: selectedValue,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        errorText: _fieldErrors[fieldKey],
+      ),
+      dropdownColor: AppColors.surfaceElevated,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 14,
+        fontFamily: 'Montserrat',
+      ),
+      items: options
+          .map(
+            (option) => DropdownMenuItem<String>(
+              value: option.value,
+              child: Text(
+                option.label,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        controller.text = value ?? '';
+        if (_fieldErrors.containsKey(fieldKey)) {
+          setState(() => _fieldErrors.remove(fieldKey));
+          return;
+        }
+        setState(() {});
+      },
+    );
+  }
+
+  String _normalizeChoiceValue(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    return trimmed
+        .toLowerCase()
+        .replaceAll('&', 'and')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
   }
 
   Widget _buildWhatsAppField() {
@@ -430,6 +561,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() {
       _saving = true;
       _error = null;
+      _fieldErrors.clear();
     });
     try {
       await ref.read(profileRepositoryProvider).updateProfile(
@@ -442,12 +574,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           'instagram': _instagramController.text.trim(),
           'country': _selectedCountry?.name ?? '',
           'birth_date': _birthDateController.text.trim(),
-          'gender': _genderController.text.trim(),
+          'gender': _normalizeChoiceValue(_genderController.text),
           'practicing_yoga_for': _practicingController.text.trim(),
           'yoga_sequence_experience': _sequenceController.text.trim(),
-          'hours_per_week': _hoursPerWeekController.text.trim(),
-          'current_fitness_level': _fitnessLevelController.text.trim(),
-          'flexibility_rating': _flexibilityController.text.trim(),
+          'hours_per_week': _normalizeChoiceValue(_hoursPerWeekController.text),
+          'current_fitness_level': _normalizeChoiceValue(
+            _fitnessLevelController.text,
+          ),
+          'flexibility_rating': _normalizeChoiceValue(
+            _flexibilityController.text,
+          ),
           'motivation': _motivationController.text.trim(),
           'why_yogafx': _whyYogaFxController.text.trim(),
           'how_did_you_find_us': _findUsController.text.trim(),
@@ -458,7 +594,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ref.invalidate(profileProvider);
       if (mounted) context.pop();
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (e is ValidationException) {
+        final fieldErrors = <String, String>{};
+        e.errors?.forEach((key, value) {
+          if (value is List && value.isNotEmpty) {
+            fieldErrors[key] = value.first.toString();
+          } else if (value != null) {
+            fieldErrors[key] = value.toString();
+          }
+        });
+        setState(() {
+          _fieldErrors
+            ..clear()
+            ..addAll(fieldErrors);
+          _error = 'Please review the highlighted fields and try again.';
+        });
+      } else {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
