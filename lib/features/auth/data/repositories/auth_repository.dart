@@ -9,7 +9,9 @@ import '../models/login_otp_challenge.dart';
 class AuthRepository {
   final Dio _dio;
 
-  AuthRepository() : _dio = ApiClient.create();
+  AuthRepository({
+    Dio? dio,
+  }) : _dio = dio ?? ApiClient.create();
 
   Future<LoginOtpChallenge> requestLoginOtp({
     required String email,

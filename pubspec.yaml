@@ -70,6 +70,10 @@ dev_dependencies:
   # App Icon
   flutter_launcher_icons: ^0.14.4
 
+  # Testing
+  mocktail: ^1.0.4
+
+
 flutter:
   uses-material-design: true
 

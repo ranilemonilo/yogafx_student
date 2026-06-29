@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/router/app_router.dart';
@@ -15,7 +14,6 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../module/presentation/providers/module_provider.dart';
 import '../../data/models/lesson_model.dart';
@@ -151,8 +149,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (!hasPlayableVideo) return true;
     return widget.lesson.progress.watchProgress >= 95;
   }
-
-  String? get _studentEmail => ref.read(authProvider).user?.email;
 
   @override
   void initState() {
@@ -555,7 +551,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
               videoErrorMessage: _videoErrorMessage,
               videoController: _videoController,
               videoUnlocked: _isVideoUnlocked,
-              studentEmail: _studentEmail,
               onWorkbookDismissed: _refreshLesson,
               onRetry: _initVideo,
               onBack: () => _handleBack(context),
@@ -613,7 +608,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                       lesson: lesson,
                       isAssessmentUnlocked: _isAssessmentUnlocked,
                       onWorkbookDismissed: _refreshLesson,
-                      studentEmail: _studentEmail,
                       audioLoading: _audioLoading,
                       audioReady: _audioReady,
                       audioError: _audioError,
@@ -628,7 +622,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                     if (lesson.workbook.isAvailable) ...[
                       _WorkbookSection(
                         workbook: lesson.workbook,
-                        studentEmail: _studentEmail,
                         onDismissed: _refreshLesson,
                       ),
                       const SizedBox(height: 28),
@@ -678,7 +671,6 @@ class _VideoSection extends StatelessWidget {
   final String? videoErrorMessage;
   final VideoPlayerController? videoController;
   final bool videoUnlocked;
-  final String? studentEmail;
   final Future<void> Function() onWorkbookDismissed;
   final VoidCallback onRetry;
   final VoidCallback onBack;
@@ -701,7 +693,6 @@ class _VideoSection extends StatelessWidget {
     required this.videoErrorMessage,
     required this.videoController,
     required this.videoUnlocked,
-    required this.studentEmail,
     required this.onWorkbookDismissed,
     required this.onRetry,
     required this.onBack,
@@ -766,7 +757,6 @@ class _VideoSection extends StatelessWidget {
             ? () => _showWorkbookOptions(
                   context: context,
                   workbook: lesson.workbook,
-                  studentEmail: studentEmail,
                   onDismissed: onWorkbookDismissed,
                 )
             : null,
@@ -1812,7 +1802,6 @@ class _ActionRow extends StatelessWidget {
   final LessonDetail lesson;
   final bool isAssessmentUnlocked;
   final Future<void> Function() onWorkbookDismissed;
-  final String? studentEmail;
   final bool audioLoading;
   final bool audioReady;
   final String? audioError;
@@ -1823,7 +1812,6 @@ class _ActionRow extends StatelessWidget {
     required this.lesson,
     required this.isAssessmentUnlocked,
     required this.onWorkbookDismissed,
-    required this.studentEmail,
     required this.audioLoading,
     required this.audioReady,
     required this.audioError,
@@ -1835,7 +1823,6 @@ class _ActionRow extends StatelessWidget {
     _showWorkbookOptions(
       context: context,
       workbook: lesson.workbook,
-      studentEmail: studentEmail,
       onDismissed: onWorkbookDismissed,
     );
   }
@@ -2002,12 +1989,10 @@ class _ContentSection extends StatelessWidget {
 
 class _WorkbookSection extends StatelessWidget {
   final LessonWorkbook workbook;
-  final String? studentEmail;
   final Future<void> Function() onDismissed;
 
   const _WorkbookSection({
     required this.workbook,
-    required this.studentEmail,
     required this.onDismissed,
   });
 
@@ -2022,7 +2007,6 @@ class _WorkbookSection extends StatelessWidget {
           onTap: () => _showWorkbookOptions(
             context: context,
             workbook: workbook,
-            studentEmail: studentEmail,
             onDismissed: onDismissed,
           ),
           child: Container(
@@ -2088,7 +2072,6 @@ class _WorkbookSection extends StatelessWidget {
 void _showWorkbookOptions({
   required BuildContext context,
   required LessonWorkbook workbook,
-  required String? studentEmail,
   required Future<void> Function() onDismissed,
 }) {
   showModalBottomSheet(
@@ -2097,21 +2080,14 @@ void _showWorkbookOptions({
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
-    builder: (_) => _WorkbookSheet(
-      workbook: workbook,
-      studentEmail: studentEmail,
-    ),
+    builder: (_) => _WorkbookSheet(workbook: workbook),
   ).whenComplete(onDismissed);
 }
 
 class _WorkbookSheet extends StatelessWidget {
   final LessonWorkbook workbook;
-  final String? studentEmail;
 
-  const _WorkbookSheet({
-    required this.workbook,
-    required this.studentEmail,
-  });
+  const _WorkbookSheet({required this.workbook});
 
   Future<void> _downloadWorkbook(BuildContext context, String url) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -2154,46 +2130,6 @@ class _WorkbookSheet extends StatelessWidget {
     return baseName.toLowerCase().endsWith('.pdf')
         ? baseName
         : '$baseName.pdf';
-  }
-
-  Future<void> _sendWorkbookEmail(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    final recipient = studentEmail?.trim() ?? '';
-    final workbookLink = (workbook.downloadUrl ?? workbook.url)?.trim();
-
-    if (recipient.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Student email is not available.')),
-      );
-      return;
-    }
-
-    if (workbookLink == null || workbookLink.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Workbook link is not available.')),
-      );
-      return;
-    }
-
-    final subject = Uri.encodeComponent('Your YogaFX workbook');
-    final body = Uri.encodeComponent(
-      'Hi,\n\nHere is your workbook link:\n$workbookLink\n\nRegards,\nYogaFX',
-    );
-    final mailUri = Uri.parse(
-      'mailto:$recipient?subject=$subject&body=$body',
-    );
-
-    navigator.pop();
-
-    if (await canLaunchUrl(mailUri)) {
-      await launchUrl(mailUri, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Could not open the email app.')),
-    );
   }
 
   @override
@@ -2257,15 +2193,6 @@ class _WorkbookSheet extends StatelessWidget {
                   },
                 );
               },
-            ),
-          ],
-          if ((workbook.downloadUrl ?? workbook.url) != null) ...[
-            const SizedBox(height: 10),
-            _SheetButton(
-              label: 'Send Email',
-              icon: Icons.email_outlined,
-              isPrimary: false,
-              onTap: () => _sendWorkbookEmail(context),
             ),
           ],
         ],

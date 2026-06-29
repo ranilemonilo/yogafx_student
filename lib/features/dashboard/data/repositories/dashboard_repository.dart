@@ -6,7 +6,10 @@ import '../models/dashboard_model.dart';
 class DashboardRepository {
   final Dio _dio;
 
-  DashboardRepository() : _dio = ApiClient.create();
+  DashboardRepository({
+    Dio? dio,
+  }) : _dio = dio ?? ApiClient.create();
+
 
   Future<DashboardData> getDashboard() async {
     try {
@@ -23,32 +26,25 @@ class DashboardRepository {
 
   void _normalizeThumbnailUrls(Map<String, dynamic> data) {
     final continueLearningRaw = data['continue_learning_section'];
-    final continueLearning = continueLearningRaw is Map
-        ? Map<String, dynamic>.from(continueLearningRaw)
-        : null;
-    if (continueLearning != null) {
-      continueLearning['thumbnail_url'] =
-          ApiClient.resolveUrl(continueLearning['thumbnail_url'] as String?);
-      data['continue_learning_section'] = continueLearning;
+    if (continueLearningRaw is Map) {
+      continueLearningRaw['thumbnail_url'] = ApiClient.resolveUrl(
+        continueLearningRaw['thumbnail_url'] as String?,
+      );
     }
 
     final modulesSectionRaw = data['available_modules_section'];
-    final modulesSection = modulesSectionRaw is Map
-        ? Map<String, dynamic>.from(modulesSectionRaw)
+    final items = modulesSectionRaw is Map
+        ? modulesSectionRaw['items'] as List<dynamic>?
         : null;
-    final items = modulesSection?['items'] as List<dynamic>?;
     if (items != null) {
-      for (final item in items) {
+      for (var index = 0; index < items.length; index++) {
+        final item = items[index];
         if (item is Map) {
-          final normalizedItem = Map<String, dynamic>.from(item);
-          normalizedItem['thumbnail_url'] =
-              ApiClient.resolveUrl(normalizedItem['thumbnail_url'] as String?);
-          items[items.indexOf(item)] = normalizedItem;
+          item['thumbnail_url'] = ApiClient.resolveUrl(
+            item['thumbnail_url'] as String?,
+          );
         }
       }
-    }
-    if (modulesSection != null) {
-      data['available_modules_section'] = modulesSection;
     }
   }
 }
