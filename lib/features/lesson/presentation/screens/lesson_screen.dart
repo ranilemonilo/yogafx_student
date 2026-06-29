@@ -646,6 +646,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (result == _FullscreenExitAction.playNextLesson) {
       final nextLesson = _autoNextTarget;
       if (nextLesson != null && mounted) {
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        await SystemChrome.setPreferredOrientations(
+          const [DeviceOrientation.portraitUp],
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 150));
         _isAutoNavigating = true;
         await _navigateToLesson(
           context,
