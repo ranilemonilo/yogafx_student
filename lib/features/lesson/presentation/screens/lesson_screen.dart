@@ -21,8 +21,6 @@ import '../../data/models/lesson_model.dart';
 import '../providers/lesson_provider.dart';
 import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
-final _lessonContentKey = GlobalKey<_LessonContentState>();
-
 class _AutoNextTarget {
   final int lessonId;
   final String title;
@@ -51,7 +49,7 @@ class _AutoNextTarget {
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
-class LessonScreen extends ConsumerWidget {
+class LessonScreen extends ConsumerStatefulWidget {
   final int lessonId;
   final bool autoPlayVideo;
 
@@ -62,8 +60,16 @@ class LessonScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final lessonAsync = ref.watch(lessonDetailProvider(lessonId));
+  ConsumerState<LessonScreen> createState() => _LessonScreenState();
+}
+
+class _LessonScreenState extends ConsumerState<LessonScreen> {
+  final GlobalKey<_LessonContentState> _lessonContentKey =
+      GlobalKey<_LessonContentState>();
+
+  @override
+  Widget build(BuildContext context) {
+    final lessonAsync = ref.watch(lessonDetailProvider(widget.lessonId));
 
     return PopScope(
       canPop: false,
@@ -83,13 +89,13 @@ class LessonScreen extends ConsumerWidget {
           loading: () => const _LessonSkeleton(),
           error: (e, _) => _LessonError(
             message: e.toString(),
-            onRetry: () => ref.invalidate(lessonDetailProvider(lessonId)),
+            onRetry: () => ref.invalidate(lessonDetailProvider(widget.lessonId)),
             onBack: () => _handleLessonBack(context),
           ),
           data: (lesson) => _LessonContent(
             key: _lessonContentKey,
             lesson: lesson,
-            autoPlayVideo: autoPlayVideo,
+            autoPlayVideo: widget.autoPlayVideo,
           ),
         ),
       ),
