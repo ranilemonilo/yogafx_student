@@ -340,14 +340,24 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
   }
 
   Widget _buildNormalBody() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxVideoHeight = constraints.maxHeight * 0.52;
+        final widthBasedHeight = constraints.maxWidth * 9 / 16;
+        final videoHeight =
+            widthBasedHeight < maxVideoHeight ? widthBasedHeight : maxVideoHeight;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
         // Video player di atas — background hitam penuh
-        Container(
-          color: Colors.black,
+        SizedBox(
+          height: videoHeight,
           width: double.infinity,
-          child: _buildVideoPlayer(isFullScreen: false),
+          child: Container(
+            color: Colors.black,
+            child: _buildVideoPlayer(isFullScreen: false),
+          ),
         ),
         // Info panel
         Expanded(
@@ -449,7 +459,9 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
             ],
           ),
         ),
-      ],
+          ],
+        );
+      },
     );
   }
 

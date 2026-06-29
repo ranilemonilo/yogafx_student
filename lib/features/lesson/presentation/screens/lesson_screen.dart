@@ -47,6 +47,11 @@ class _AutoNextTarget {
   }
 }
 
+enum _FullscreenExitAction {
+  none,
+  playNextLesson,
+}
+
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
 class LessonScreen extends ConsumerStatefulWidget {
@@ -619,8 +624,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (controller == null || !controller.value.isInitialized) return;
     if (!mounted) return;
 
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final result = await Navigator.of(context).push<_FullscreenExitAction>(
+      MaterialPageRoute<_FullscreenExitAction>(
         builder: (_) => _FullscreenVideoScreen(
           controller: controller,
           nextLesson: _autoNextTarget,
@@ -633,20 +638,23 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           onToggleMute: _toggleMute,
           onSkipForward: () => _skipVideoBy(30),
           onSkipBackward: () => _skipVideoBy(-30),
-          onPlayNextLesson: () async {
-            final nextLesson = _autoNextTarget;
-            if (nextLesson == null) return;
-            _isAutoNavigating = true;
-            await _navigateToLesson(
-              context,
-              nextLesson.lessonId,
-              autoPlayVideo: true,
-            );
-          },
           onCancelAutoNext: () => _cancelAutoNextCountdown(),
         ),
       ),
     );
+
+    if (result == _FullscreenExitAction.playNextLesson) {
+      final nextLesson = _autoNextTarget;
+      if (nextLesson != null && mounted) {
+        _isAutoNavigating = true;
+        await _navigateToLesson(
+          context,
+          nextLesson.lessonId,
+          autoPlayVideo: true,
+        );
+        return;
+      }
+    }
 
     if (mounted) setState(() {});
   }
@@ -1502,7 +1510,6 @@ class _FullscreenVideoScreen extends StatefulWidget {
   final Future<void> Function() onToggleMute;
   final Future<void> Function() onSkipForward;
   final Future<void> Function() onSkipBackward;
-  final Future<void> Function() onPlayNextLesson;
   final VoidCallback onCancelAutoNext;
 
   const _FullscreenVideoScreen({
@@ -1517,7 +1524,6 @@ class _FullscreenVideoScreen extends StatefulWidget {
     required this.onToggleMute,
     required this.onSkipForward,
     required this.onSkipBackward,
-    required this.onPlayNextLesson,
     required this.onCancelAutoNext,
   });
 
@@ -1530,6 +1536,13 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   bool _autoNextCancelled = false;
   bool _isAutoNavigating = false;
   int? _autoNextRemainingSeconds;
+
+  Future<void> _playNextLessonFromFullscreen() async {
+    if (_isAutoNavigating) return;
+    _isAutoNavigating = true;
+    if (!mounted) return;
+    Navigator.of(context).pop(_FullscreenExitAction.playNextLesson);
+  }
 
   @override
   void initState() {
@@ -1573,8 +1586,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
 
     if (remainingSeconds <= 0) {
       if (_isAutoNavigating || _autoNextCancelled) return;
-      _isAutoNavigating = true;
-      unawaited(widget.onPlayNextLesson());
+      unawaited(_playNextLessonFromFullscreen());
       return;
     }
 
@@ -1648,7 +1660,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                     onToggleMute: widget.onToggleMute,
                     onSkipForward: widget.onSkipForward,
                     onSkipBackward: widget.onSkipBackward,
-                    onPlayNextLesson: widget.onPlayNextLesson,
+                    onPlayNextLesson: _playNextLessonFromFullscreen,
                     onCancelAutoNext: widget.onCancelAutoNext,
                     onOpenFullscreen: () async => Navigator.of(context).pop(),
                   ),
@@ -1663,7 +1675,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                   child: _VideoNextLessonOverlay(
                     nextLesson: widget.nextLesson!,
                     countdownSeconds: _autoNextRemainingSeconds,
-                    onPlayNow: widget.onPlayNextLesson,
+                    onPlayNow: _playNextLessonFromFullscreen,
                     onCancel: () => _cancelAutoNextOverlay(),
                   ),
                 ),

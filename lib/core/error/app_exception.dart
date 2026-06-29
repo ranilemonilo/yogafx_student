@@ -21,6 +21,7 @@ class ForbiddenException extends AppException {
   const ForbiddenException({super.message = 'Access denied.'});
 }
 
+
 class NotFoundException extends AppException {
   const NotFoundException({super.message = 'Resource not found.'});
 }
