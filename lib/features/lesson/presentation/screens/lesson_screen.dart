@@ -527,13 +527,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     _isAutoNavigating = true;
     _refreshLearningState();
 
-    if (context.mounted) {
-      Navigator.of(
-        context,
-        rootNavigator: false,
-      ).popUntil((route) => route.settings.name != null || route.isFirst);
-    }
-
     await _videoController?.pause();
     await _audioPlayer?.pause();
 
@@ -566,6 +559,27 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (!mounted) return;
     final suffix = autoPlayVideo ? '?autoplay=1' : '';
     context.go('/lessons/$lessonId$suffix');
+  }
+
+  Future<void> _navigateToLessonAfterFullscreen(
+    int lessonId, {
+    bool autoPlayVideo = false,
+  }) async {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await SystemChrome.setPreferredOrientations(
+      const [DeviceOrientation.portraitUp],
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+
+    if (!mounted) return;
+    _isAutoNavigating = true;
+    await _navigateToLesson(
+      context,
+      lessonId,
+      autoPlayVideo: autoPlayVideo,
+    );
   }
 
   Future<void> _refreshLesson() async {
@@ -646,14 +660,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (result == _FullscreenExitAction.playNextLesson) {
       final nextLesson = _autoNextTarget;
       if (nextLesson != null && mounted) {
-        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-        await SystemChrome.setPreferredOrientations(
-          const [DeviceOrientation.portraitUp],
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 150));
-        _isAutoNavigating = true;
-        await _navigateToLesson(
-          context,
+        await _navigateToLessonAfterFullscreen(
           nextLesson.lessonId,
           autoPlayVideo: true,
         );
