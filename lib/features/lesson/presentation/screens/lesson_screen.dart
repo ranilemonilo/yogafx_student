@@ -15,12 +15,39 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../module/data/models/module_model.dart';
 import '../../../module/presentation/providers/module_provider.dart';
 import '../../data/models/lesson_model.dart';
 import '../providers/lesson_provider.dart';
 import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
 final _lessonContentKey = GlobalKey<_LessonContentState>();
+
+class _AutoNextTarget {
+  final int lessonId;
+  final String title;
+  final int sortOrder;
+  final String? thumbnailUrl;
+  final bool isFromNextModule;
+
+  const _AutoNextTarget({
+    required this.lessonId,
+    required this.title,
+    required this.sortOrder,
+    required this.thumbnailUrl,
+    required this.isFromNextModule,
+  });
+
+  factory _AutoNextTarget.fromNextLesson(NextLesson lesson) {
+    return _AutoNextTarget(
+      lessonId: lesson.id,
+      title: lesson.title,
+      sortOrder: lesson.sortOrder,
+      thumbnailUrl: lesson.thumbnailUrl,
+      isFromNextModule: false,
+    );
+  }
+}
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
@@ -126,6 +153,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _isAutoNavigating = false;
   bool _showNextLessonPrompt = false;
   bool _autoNextCancelled = false;
+  _AutoNextTarget? _autoNextTarget;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -183,6 +211,65 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (widget.lesson.audio.isAvailable && widget.lesson.audio.url != null) {
       _initAudio();
     }
+    _primeAutoNextTarget();
+  }
+
+  Future<void> _primeAutoNextTarget() async {
+    if (widget.lesson.nextLesson != null) {
+      if (!mounted) return;
+      setState(() {
+        _autoNextTarget = _AutoNextTarget.fromNextLesson(widget.lesson.nextLesson!);
+      });
+      return;
+    }
+
+    final fallbackTarget = await _resolveNextModuleLessonTarget();
+    if (!mounted || fallbackTarget == null) return;
+    setState(() => _autoNextTarget = fallbackTarget);
+  }
+
+  Future<_AutoNextTarget?> _resolveNextModuleLessonTarget() async {
+    try {
+      final moduleList = await ref.read(moduleListProvider.future);
+      final sortedModules = [...moduleList.items]
+        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final currentIndex = sortedModules.indexWhere(
+        (module) => module.id == widget.lesson.module.id,
+      );
+      if (currentIndex == -1) return null;
+
+      for (var i = currentIndex + 1; i < sortedModules.length; i++) {
+        final module = sortedModules[i];
+        if (!_canAutoOpenModule(module)) continue;
+
+        final detail = await ref.read(moduleDetailProvider(module.id).future);
+        final unlockedLessons = detail.lessons.where((lesson) => !lesson.isLocked);
+        final firstLesson =
+            unlockedLessons.isEmpty ? null : unlockedLessons.first;
+        if (firstLesson == null) continue;
+
+        return _AutoNextTarget(
+          lessonId: firstLesson.id,
+          title: firstLesson.title,
+          sortOrder: firstLesson.sortOrder,
+          thumbnailUrl: firstLesson.thumbnailUrl,
+          isFromNextModule: true,
+        );
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  bool _canAutoOpenModule(ModuleItem module) {
+    final status = module.status.toLowerCase();
+    if (!module.isVisible) return false;
+    if (status == 'locked' || status == 'hidden' || status == 'unavailable') {
+      return false;
+    }
+    return module.viewTypes.contains('lesson');
   }
 
   Future<void> _initVideo() async {
@@ -255,10 +342,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   void _handleAutoNext(VideoPlayerValue value) {
-    final nextLesson = widget.lesson.nextLesson;
+    if (widget.lesson.assessment != null) {
+      _handleAssessmentAutoStart(value);
+      return;
+    }
+
+    final nextLesson = _autoNextTarget;
     final shouldAutoNavigate =
         nextLesson != null &&
-            nextLesson.isUnlocked &&
             widget.lesson.assessment == null;
 
     if (!shouldAutoNavigate) {
@@ -276,7 +367,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       if (_isAutoNavigating || _autoNextCancelled) return;
       _isAutoNavigating = true;
       unawaited(
-        _navigateToLesson(context, nextLesson.id, autoPlayVideo: true),
+        _navigateToLesson(context, nextLesson.lessonId, autoPlayVideo: true),
       );
       return;
     }
@@ -298,6 +389,29 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       _showNextLessonPrompt = true;
       _autoNextRemainingSeconds = remainingSeconds;
     });
+  }
+
+  void _handleAssessmentAutoStart(VideoPlayerValue value) {
+    final remaining = value.duration - value.position;
+    final remainingMillis = remaining.inMilliseconds;
+    final remainingSeconds = (remainingMillis.clamp(0, 10000) / 1000)
+        .ceil()
+        .clamp(0, 10);
+
+    if (remainingSeconds > 0 || !_isAssessmentUnlocked || _autoNextCancelled) {
+      _resetAutoNextState();
+      return;
+    }
+
+    if (_isAutoNavigating) return;
+    _isAutoNavigating = true;
+    unawaited(_navigateToAssessmentIntro(context));
+  }
+
+  Future<void> _navigateToAssessmentIntro(BuildContext context) async {
+    await prepareForNavigation(context);
+    if (!mounted) return;
+    context.go('/lessons/${widget.lesson.id}/assessment');
   }
 
   void _cancelAutoNextCountdown({bool keepPromptVisible = true}) {
@@ -503,7 +617,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       MaterialPageRoute<void>(
         builder: (_) => _FullscreenVideoScreen(
           controller: controller,
-          nextLesson: widget.lesson.nextLesson,
+          nextLesson: _autoNextTarget,
+          enableAutoNextOverlay: widget.lesson.assessment == null,
           showNextLessonPrompt: _showNextLessonPrompt,
           autoNextRemainingSeconds: _autoNextRemainingSeconds,
           autoNextCancelled: _autoNextCancelled,
@@ -513,12 +628,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           onSkipForward: () => _skipVideoBy(30),
           onSkipBackward: () => _skipVideoBy(-30),
           onPlayNextLesson: () async {
-            final nextLesson = widget.lesson.nextLesson;
+            final nextLesson = _autoNextTarget;
             if (nextLesson == null) return;
             _isAutoNavigating = true;
             await _navigateToLesson(
               context,
-              nextLesson.id,
+              nextLesson.lessonId,
               autoPlayVideo: true,
             );
           },
@@ -563,17 +678,18 @@ class _LessonContentState extends ConsumerState<_LessonContent>
               autoNextRemainingSeconds: _autoNextRemainingSeconds,
               autoNextCancelled: _autoNextCancelled,
               onPlayNextLesson: () async {
-                final nextLesson = lesson.nextLesson;
+                final nextLesson = _autoNextTarget;
                 if (nextLesson == null) return;
                 _isAutoNavigating = true;
                 await _navigateToLesson(
                   context,
-                  nextLesson.id,
+                  nextLesson.lessonId,
                   autoPlayVideo: true,
                 );
               },
               onCancelAutoNext: () => _cancelAutoNextCountdown(),
               onOpenFullscreen: _openFullscreen,
+              nextLesson: _autoNextTarget,
             ),
           ),
 
@@ -642,9 +758,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                       ),
                       const SizedBox(height: 28),
                     ],
-                    if (lesson.nextLesson != null)
+                    if (_autoNextTarget != null)
                       _NextLessonBanner(
-                        nextLesson: lesson.nextLesson!,
+                        nextLesson: _autoNextTarget!,
                         countdownSeconds: lesson.assessment == null
                             ? _autoNextRemainingSeconds
                             : null,
@@ -666,6 +782,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
 class _VideoSection extends StatelessWidget {
   final LessonDetail lesson;
+  final _AutoNextTarget? nextLesson;
   final bool videoInitialized;
   final bool videoError;
   final String? videoErrorMessage;
@@ -688,6 +805,7 @@ class _VideoSection extends StatelessWidget {
 
   const _VideoSection({
     required this.lesson,
+    required this.nextLesson,
     required this.videoInitialized,
     required this.videoError,
     required this.videoErrorMessage,
@@ -812,7 +930,7 @@ class _VideoSection extends StatelessWidget {
       onToggleMute: onToggleMute,
       onSkipForward: onSkipForward,
       onSkipBackward: onSkipBackward,
-      nextLesson: lesson.nextLesson,
+      nextLesson: nextLesson,
       showNextLessonPrompt: showNextLessonPrompt,
       autoNextRemainingSeconds: autoNextRemainingSeconds,
       autoNextCancelled: autoNextCancelled,
@@ -825,7 +943,7 @@ class _VideoSection extends StatelessWidget {
 
 class _InlineVideoPlayer extends StatefulWidget {
   final VideoPlayerController controller;
-  final NextLesson? nextLesson;
+  final _AutoNextTarget? nextLesson;
   final Future<void> Function() onTogglePlayback;
   final Future<void> Function(Duration position) onSeek;
   final Future<void> Function() onToggleMute;
@@ -1103,7 +1221,7 @@ class _BigVideoActionButton extends StatelessWidget {
 }
 
 class _VideoNextLessonOverlay extends StatelessWidget {
-  final NextLesson nextLesson;
+  final _AutoNextTarget nextLesson;
   final int? countdownSeconds;
   final Future<void> Function() onPlayNow;
   final VoidCallback onCancel;
@@ -1118,6 +1236,8 @@ class _VideoNextLessonOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final countdownText = 'Next lesson starts in ${countdownSeconds ?? 0}s...';
+    final eyebrowText =
+        nextLesson.isFromNextModule ? 'NEXT MODULE' : 'NEXT LESSON';
 
     return ConstrainedBox(
       constraints: const BoxConstraints(
@@ -1162,9 +1282,9 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'NEXT LESSON',
-                        style: TextStyle(
+                      Text(
+                        eyebrowText,
+                        style: const TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 7,
                           fontWeight: FontWeight.w700,
@@ -1366,7 +1486,8 @@ class _VideoControlButton extends StatelessWidget {
 
 class _FullscreenVideoScreen extends StatefulWidget {
   final VideoPlayerController controller;
-  final NextLesson? nextLesson;
+  final _AutoNextTarget? nextLesson;
+  final bool enableAutoNextOverlay;
   final bool showNextLessonPrompt;
   final int? autoNextRemainingSeconds;
   final bool autoNextCancelled;
@@ -1381,6 +1502,7 @@ class _FullscreenVideoScreen extends StatefulWidget {
   const _FullscreenVideoScreen({
     required this.controller,
     required this.nextLesson,
+    required this.enableAutoNextOverlay,
     required this.showNextLessonPrompt,
     required this.autoNextRemainingSeconds,
     required this.autoNextCancelled,
@@ -1425,8 +1547,13 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   }
 
   void _handleAutoNextOverlay() {
+    if (!widget.enableAutoNextOverlay) {
+      _resetAutoNextOverlay();
+      return;
+    }
+
     final nextLesson = widget.nextLesson;
-    if (nextLesson == null || !nextLesson.isUnlocked) {
+    if (nextLesson == null) {
       _resetAutoNextOverlay();
       return;
     }
@@ -2654,7 +2781,7 @@ class _NavLessonRow extends StatelessWidget {
 // ─── Next Lesson Banner ───────────────────────────────────────────────────────
 
 class _NextLessonBanner extends StatefulWidget {
-  final NextLesson nextLesson;
+  final _AutoNextTarget nextLesson;
   final int? countdownSeconds;
   final void Function(int lessonId) onNavigate;
 
@@ -2693,24 +2820,15 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
 
   @override
   Widget build(BuildContext context) {
-    final isUnlocked = widget.nextLesson.isUnlocked;
     final countdownSeconds = widget.countdownSeconds;
 
     return GestureDetector(
       onTap: () {
-        if (isUnlocked) {
-          widget.onNavigate(widget.nextLesson.id);
-          return;
-        }
-        _showLockedSnackBar(
-          context,
-          fallbackMessage: 'You need to complete the previous lesson first.',
-          reason: widget.nextLesson.lockReason,
-        );
+        widget.onNavigate(widget.nextLesson.lessonId);
       },
-      onTapDown: isUnlocked ? (_) => _ctrl.forward() : null,
-      onTapUp: isUnlocked ? (_) => _ctrl.reverse() : null,
-      onTapCancel: isUnlocked ? () => _ctrl.reverse() : null,
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) => _ctrl.reverse(),
+      onTapCancel: () => _ctrl.reverse(),
       child: ScaleTransition(
         scale: _scale,
         child: Container(
@@ -2746,12 +2864,6 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                       )
                     else
                       Container(color: AppColors.overlayDark),
-                    if (!isUnlocked)
-                      Container(
-                        color: Colors.black.withOpacity(0.55),
-                        child: const Icon(Icons.lock_rounded,
-                            color: AppColors.textMuted, size: 18),
-                      ),
                   ],
                 ),
               ),
@@ -2761,7 +2873,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'NEXT LESSON',
+                      'UP NEXT',
                       style: TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 9,
@@ -2773,8 +2885,8 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                     const SizedBox(height: 5),
                     Text(
                       widget.nextLesson.title,
-                      style: TextStyle(
-                        color: isUnlocked ? AppColors.textPrimary : AppColors.textMuted,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
@@ -2782,7 +2894,19 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (isUnlocked && countdownSeconds != null) ...[
+                    if (widget.nextLesson.isFromNextModule) ...[
+                      const SizedBox(height: 4),
+                      const Text(
+                        'From the next module',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ],
+                    if (countdownSeconds != null) ...[
                       const SizedBox(height: 6),
                       Text(
                         'Auto next in ${countdownSeconds}s',
@@ -2799,9 +2923,9 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
               ),
               Padding(
                 padding: const EdgeInsets.only(right: 14),
-                child: Icon(
-                  isUnlocked ? Icons.play_arrow_rounded : Icons.lock_rounded,
-                  color: isUnlocked ? AppColors.primary : AppColors.textMuted,
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: AppColors.primary,
                   size: 22,
                 ),
               ),

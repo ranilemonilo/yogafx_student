@@ -3,8 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../lesson/presentation/providers/lesson_provider.dart';
 import '../../../lesson/data/models/lesson_model.dart';
+import '../../../module/data/models/module_model.dart';
+import '../../../module/presentation/providers/module_provider.dart';
 import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
+
+class _AssessmentNextTarget {
+  final int lessonId;
+  final String label;
+  final bool isFromNextModule;
+
+  const _AssessmentNextTarget({
+    required this.lessonId,
+    required this.label,
+    required this.isFromNextModule,
+  });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design Tokens — Disinkronkan penuh dengan DESIGN_SYSTEM.md
@@ -128,7 +142,7 @@ class AssessmentResultScreen extends ConsumerWidget {
       assessmentResultProvider((lessonId: lessonId, attemptId: attemptId)),
     );
     final lessonAsync = ref.watch(lessonDetailProvider(lessonId));
-    final nextLesson = lessonAsync.valueOrNull?.nextLesson;
+    final lesson = lessonAsync.valueOrNull;
 
     return Scaffold(
       backgroundColor: _DS.background,
@@ -146,7 +160,7 @@ class AssessmentResultScreen extends ConsumerWidget {
             scorePercentage: result.scorePercentage,
             correctAnswers: result.correctAnswers,
             totalQuestions: result.totalQuestions,
-            nextLesson: nextLesson,
+            lesson: lesson,
           ),
         ),
       ),
@@ -157,14 +171,14 @@ class AssessmentResultScreen extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Result Content
 // ─────────────────────────────────────────────────────────────────────────────
-class _ResultContent extends StatefulWidget {
+class _ResultContent extends ConsumerStatefulWidget {
   final int lessonId;
   final int attemptId;
   final String status;
   final double? scorePercentage;
   final int? correctAnswers;
   final int? totalQuestions;
-  final NextLesson? nextLesson;
+  final LessonDetail? lesson;
 
   const _ResultContent({
     required this.lessonId,
@@ -173,14 +187,14 @@ class _ResultContent extends StatefulWidget {
     required this.scorePercentage,
     required this.correctAnswers,
     required this.totalQuestions,
-    required this.nextLesson,
+    required this.lesson,
   });
 
   @override
-  State<_ResultContent> createState() => _ResultContentState();
+  ConsumerState<_ResultContent> createState() => _ResultContentState();
 }
 
-class _ResultContentState extends State<_ResultContent>
+class _ResultContentState extends ConsumerState<_ResultContent>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _iconFade;
@@ -189,6 +203,7 @@ class _ResultContentState extends State<_ResultContent>
   late final Animation<Offset> _textSlide;
   late final Animation<double> _buttonsFade;
   late final Animation<Offset> _buttonsSlide;
+  _AssessmentNextTarget? _nextTarget;
 
   @override
   void initState() {
@@ -236,6 +251,89 @@ class _ResultContentState extends State<_ResultContent>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _controller.forward();
     });
+    _primeNextTarget();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ResultContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldLessonId = oldWidget.lesson?.id;
+    final newLessonId = widget.lesson?.id;
+    final lessonBecameAvailable = oldWidget.lesson == null && widget.lesson != null;
+    final lessonChanged = oldLessonId != newLessonId;
+
+    if (lessonBecameAvailable || lessonChanged) {
+      _primeNextTarget();
+    }
+  }
+
+  Future<void> _primeNextTarget() async {
+    final lesson = widget.lesson;
+    if (lesson == null) {
+      if (!mounted || _nextTarget == null) return;
+      setState(() => _nextTarget = null);
+      return;
+    }
+
+    if (lesson.nextLesson != null && lesson.nextLesson!.isUnlocked) {
+      if (!mounted) return;
+      setState(() {
+        _nextTarget = _AssessmentNextTarget(
+          lessonId: lesson.nextLesson!.id,
+          label: 'Next Lesson',
+          isFromNextModule: false,
+        );
+      });
+      return;
+    }
+
+    final fallback = await _resolveNextModuleTarget(lesson);
+    if (!mounted) return;
+    setState(() => _nextTarget = fallback);
+  }
+
+  Future<_AssessmentNextTarget?> _resolveNextModuleTarget(
+    LessonDetail lesson,
+  ) async {
+    try {
+      final moduleList = await ref.read(moduleListProvider.future);
+      final sortedModules = [...moduleList.items]
+        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final currentIndex = sortedModules.indexWhere(
+        (module) => module.id == lesson.module.id,
+      );
+      if (currentIndex == -1) return null;
+
+      for (var i = currentIndex + 1; i < sortedModules.length; i++) {
+        final module = sortedModules[i];
+        if (!_canAutoOpenModule(module)) continue;
+
+        final detail = await ref.read(moduleDetailProvider(module.id).future);
+        final unlockedLessons = detail.lessons.where((item) => !item.isLocked);
+        final firstLesson =
+            unlockedLessons.isEmpty ? null : unlockedLessons.first;
+        if (firstLesson == null) continue;
+
+        return _AssessmentNextTarget(
+          lessonId: firstLesson.id,
+          label: 'Next Module',
+          isFromNextModule: true,
+        );
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  bool _canAutoOpenModule(ModuleItem module) {
+    final status = module.status.toLowerCase();
+    if (!module.isVisible) return false;
+    if (status == 'locked' || status == 'hidden' || status == 'unavailable') {
+      return false;
+    }
+    return module.viewTypes.contains('lesson');
   }
 
   @override
@@ -328,7 +426,7 @@ class _ResultContentState extends State<_ResultContent>
               position: _buttonsSlide,
               child: _ActionButtons(
                 lessonId: widget.lessonId,
-                nextLesson: widget.nextLesson,
+                nextTarget: _nextTarget,
               ),
             ),
           ),
@@ -483,11 +581,11 @@ class _ResultBadge extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 class _ActionButtons extends StatelessWidget {
   final int lessonId;
-  final NextLesson? nextLesson;
+  final _AssessmentNextTarget? nextTarget;
 
   const _ActionButtons({
     required this.lessonId,
-    required this.nextLesson,
+    required this.nextTarget,
   });
 
   @override
@@ -501,13 +599,13 @@ class _ActionButtons extends StatelessWidget {
           onTap: () => context.go('/lessons/$lessonId'),
         ),
 
-        if (nextLesson != null && nextLesson!.isUnlocked) ...[
+        if (nextTarget != null) ...[
           const SizedBox(height: _DS.sp12),
           _ResultButton(
-            label: 'Next Lesson',
+            label: nextTarget!.label,
             icon: Icons.play_arrow_rounded,
             style: _ButtonStyle.primary,
-            onTap: () => context.go('/lessons/${nextLesson!.id}'),
+            onTap: () => context.go('/lessons/${nextTarget!.lessonId}'),
           ),
         ],
 
