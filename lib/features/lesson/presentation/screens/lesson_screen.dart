@@ -52,11 +52,13 @@ class _AutoNextTarget {
 class LessonScreen extends ConsumerStatefulWidget {
   final int lessonId;
   final bool autoPlayVideo;
+  final bool startInFullscreen;
 
   const LessonScreen({
     super.key,
     required this.lessonId,
     this.autoPlayVideo = false,
+    this.startInFullscreen = false,
   });
 
   @override
@@ -96,6 +98,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             key: _lessonContentKey,
             lesson: lesson,
             autoPlayVideo: widget.autoPlayVideo,
+            startInFullscreen: widget.startInFullscreen,
           ),
         ),
       ),
@@ -133,11 +136,13 @@ void _showLockedSnackBar(
 class _LessonContent extends ConsumerStatefulWidget {
   final LessonDetail lesson;
   final bool autoPlayVideo;
+  final bool startInFullscreen;
 
   const _LessonContent({
     super.key,
     required this.lesson,
     required this.autoPlayVideo,
+    required this.startInFullscreen,
   });
 
   @override
@@ -159,6 +164,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _isAutoNavigating = false;
   bool _showNextLessonPrompt = false;
   bool _autoNextCancelled = false;
+  bool _hasOpenedInitialFullscreen = false;
+  bool _isDisposingVideoController = false;
   _AutoNextTarget? _autoNextTarget;
 
   late AnimationController _fadeCtrl;
@@ -315,6 +322,16 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
       if (widget.autoPlayVideo && mounted) {
         await _videoController!.play();
+      }
+
+      if (widget.startInFullscreen &&
+          !_hasOpenedInitialFullscreen &&
+          mounted) {
+        _hasOpenedInitialFullscreen = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          unawaited(_openFullscreen());
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -532,18 +549,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     await _videoController?.pause();
     await _audioPlayer?.pause();
 
-    if (mounted) {
-      setState(() => _videoInitialized = false);
-    }
-
-    await Future.delayed(Duration.zero);
-
     await _audioPlayer?.dispose();
     _audioPlayer = null;
 
-    _videoController?.removeListener(_onVideoProgress);
-    await _videoController?.dispose();
-    _videoController = null;
+    await _detachAndDisposeVideoController();
   }
 
   Future<void> _handleBack(BuildContext context) async {
@@ -556,11 +565,19 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       BuildContext context,
       int lessonId, {
         bool autoPlayVideo = false,
+        bool startInFullscreen = false,
       }) async {
     await prepareForNavigation(context);
     if (!mounted) return;
-    final suffix = autoPlayVideo ? '?autoplay=1' : '';
-    context.go('/lessons/$lessonId$suffix');
+    final queryParameters = <String, String>{
+      if (autoPlayVideo) 'autoplay': '1',
+      if (startInFullscreen) 'fullscreen': '1',
+    };
+    final uri = Uri(
+      path: '/lessons/$lessonId',
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    );
+    context.go(uri.toString());
   }
 
   Future<void> _refreshLesson() async {
@@ -570,16 +587,52 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   @override
   void dispose() {
-    _videoController?.removeListener(_onVideoProgress);
-    _videoController?.dispose();
+    final controller = _videoController;
+    if (controller != null) {
+      controller.removeListener(_onVideoProgress);
+    }
     _videoController = null;
     _audioPlayer?.dispose();
     _audioPlayer = null;
     _fadeCtrl.dispose();
     _progressCtrl.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    controller?.dispose();
     super.dispose();
+  }
+
+  Future<void> _detachAndDisposeVideoController() async {
+    if (_isDisposingVideoController) return;
+
+    final controller = _videoController;
+    if (controller == null) {
+      if (mounted && _videoInitialized) {
+        setState(() => _videoInitialized = false);
+      } else {
+        _videoInitialized = false;
+      }
+      return;
+    }
+
+    _isDisposingVideoController = true;
+    controller.removeListener(_onVideoProgress);
+
+    if (mounted) {
+      setState(() {
+        _videoController = null;
+        _videoInitialized = false;
+        _showNextLessonPrompt = false;
+        _autoNextRemainingSeconds = null;
+      });
+      await Future<void>.delayed(Duration.zero);
+    } else {
+      _videoController = null;
+      _videoInitialized = false;
+      _showNextLessonPrompt = false;
+      _autoNextRemainingSeconds = null;
+    }
+
+    await controller.dispose();
+    _isDisposingVideoController = false;
   }
 
   Future<void> _toggleVideoPlayback() async {
@@ -619,8 +672,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (controller == null || !controller.value.isInitialized) return;
     if (!mounted) return;
 
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final shouldPlayNextLesson = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
         builder: (_) => _FullscreenVideoScreen(
           controller: controller,
           nextLesson: _autoNextTarget,
@@ -633,20 +686,23 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           onToggleMute: _toggleMute,
           onSkipForward: () => _skipVideoBy(30),
           onSkipBackward: () => _skipVideoBy(-30),
-          onPlayNextLesson: () async {
-            final nextLesson = _autoNextTarget;
-            if (nextLesson == null) return;
-            _isAutoNavigating = true;
-            await _navigateToLesson(
-              context,
-              nextLesson.lessonId,
-              autoPlayVideo: true,
-            );
-          },
           onCancelAutoNext: () => _cancelAutoNextCountdown(),
         ),
       ),
     );
+
+    if (shouldPlayNextLesson == true && mounted) {
+      final nextLesson = _autoNextTarget;
+      if (nextLesson != null) {
+        _isAutoNavigating = true;
+        await _navigateToLesson(
+          context,
+          nextLesson.lessonId,
+          autoPlayVideo: true,
+          startInFullscreen: true,
+        );
+      }
+    }
 
     if (mounted) setState(() {});
   }
@@ -992,7 +1048,7 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _wasPlaying = widget.controller.value.isPlaying;
+    _wasPlaying = _controllerValueOrNull()?.isPlaying ?? false;
     widget.controller.addListener(_handleControllerUpdate);
     _syncWakelock();
     _scheduleControlsHide();
@@ -1004,7 +1060,7 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_handleControllerUpdate);
       widget.controller.addListener(_handleControllerUpdate);
-      _wasPlaying = widget.controller.value.isPlaying;
+      _wasPlaying = _controllerValueOrNull()?.isPlaying ?? false;
     }
     _syncWakelock();
   }
@@ -1021,7 +1077,10 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
     _syncWakelock();
     if (!mounted) return;
 
-    final isPlaying = widget.controller.value.isPlaying;
+    final value = _controllerValueOrNull();
+    if (value == null) return;
+
+    final isPlaying = value.isPlaying;
     if (_wasPlaying == isPlaying) {
       return;
     }
@@ -1039,7 +1098,10 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   }
 
   Future<void> _syncWakelock() async {
-    if (widget.controller.value.isPlaying) {
+    final value = _controllerValueOrNull();
+    if (value == null) return;
+
+    if (value.isPlaying) {
       await WakelockPlus.enable();
     } else {
       await WakelockPlus.disable();
@@ -1048,10 +1110,12 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
 
   void _scheduleControlsHide() {
     _controlsTimer?.cancel();
-    if (!widget.controller.value.isPlaying) return;
+    final value = _controllerValueOrNull();
+    if (value == null || !value.isPlaying) return;
 
     _controlsTimer = Timer(_controlsAutoHideDelay, () {
-      if (!mounted || !widget.controller.value.isPlaying) return;
+      final latestValue = _controllerValueOrNull();
+      if (!mounted || latestValue == null || !latestValue.isPlaying) return;
       setState(() => _controlsVisible = false);
     });
   }
@@ -1070,13 +1134,26 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   Future<void> _runControlAction(Future<void> Function() action) async {
     _showControls();
     await action();
-    if (mounted && widget.controller.value.isPlaying) {
+    final value = _controllerValueOrNull();
+    if (mounted && value != null && value.isPlaying) {
       _scheduleControlsHide();
+    }
+  }
+
+  VideoPlayerValue? _controllerValueOrNull() {
+    try {
+      return widget.controller.value;
+    } catch (_) {
+      return null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_controllerValueOrNull() == null) {
+      return const SizedBox.expand();
+    }
+
     return ValueListenableBuilder<VideoPlayerValue>(
       valueListenable: widget.controller,
       builder: (context, value, _) {
@@ -1502,7 +1579,6 @@ class _FullscreenVideoScreen extends StatefulWidget {
   final Future<void> Function() onToggleMute;
   final Future<void> Function() onSkipForward;
   final Future<void> Function() onSkipBackward;
-  final Future<void> Function() onPlayNextLesson;
   final VoidCallback onCancelAutoNext;
 
   const _FullscreenVideoScreen({
@@ -1517,7 +1593,6 @@ class _FullscreenVideoScreen extends StatefulWidget {
     required this.onToggleMute,
     required this.onSkipForward,
     required this.onSkipBackward,
-    required this.onPlayNextLesson,
     required this.onCancelAutoNext,
   });
 
@@ -1529,6 +1604,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   bool _showNextLessonPrompt = false;
   bool _autoNextCancelled = false;
   bool _isAutoNavigating = false;
+  bool _isClosing = false;
   int? _autoNextRemainingSeconds;
 
   @override
@@ -1546,10 +1622,40 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   @override
   void dispose() {
     widget.controller.removeListener(_handleAutoNextOverlay);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  Future<void> _restorePortraitMode() async {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
+  }
+
+  Future<void> _closeFullscreen() async {
+    if (_isClosing) return;
+    _isClosing = true;
+
+    try {
+      await _restorePortraitMode();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } finally {
+      _isClosing = false;
+    }
+  }
+
+  Future<void> _playNextLessonInFullscreen() async {
+    if (_isAutoNavigating) return;
+    _isAutoNavigating = true;
+
+    if (mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   void _handleAutoNextOverlay() {
@@ -1564,7 +1670,8 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
       return;
     }
 
-    final value = widget.controller.value;
+    final value = _controllerValueOrNull();
+    if (value == null) return;
     final remaining = value.duration - value.position;
     final rawRemainingMillis = remaining.inMilliseconds;
     final isNearEnd = rawRemainingMillis <= 10000;
@@ -1573,8 +1680,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
 
     if (remainingSeconds <= 0) {
       if (_isAutoNavigating || _autoNextCancelled) return;
-      _isAutoNavigating = true;
-      unawaited(widget.onPlayNextLesson());
+      unawaited(_playNextLessonInFullscreen());
       return;
     }
 
@@ -1620,12 +1726,26 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
     });
   }
 
+  VideoPlayerValue? _controllerValueOrNull() {
+    try {
+      return widget.controller.value;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final controllerValue = _controllerValueOrNull();
+    final aspectRatio = controllerValue == null || controllerValue.aspectRatio == 0
+        ? 16 / 9
+        : controllerValue.aspectRatio;
+
     return PopScope(
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        Navigator.of(context).pop();
+        await _closeFullscreen();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -1634,9 +1754,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
             children: [
               Center(
                 child: AspectRatio(
-                  aspectRatio: widget.controller.value.aspectRatio == 0
-                      ? 16 / 9
-                      : widget.controller.value.aspectRatio,
+                  aspectRatio: aspectRatio,
                   child: _InlineVideoPlayer(
                     controller: widget.controller,
                     nextLesson: widget.nextLesson,
@@ -1648,9 +1766,9 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                     onToggleMute: widget.onToggleMute,
                     onSkipForward: widget.onSkipForward,
                     onSkipBackward: widget.onSkipBackward,
-                    onPlayNextLesson: widget.onPlayNextLesson,
+                    onPlayNextLesson: _playNextLessonInFullscreen,
                     onCancelAutoNext: widget.onCancelAutoNext,
-                    onOpenFullscreen: () async => Navigator.of(context).pop(),
+                    onOpenFullscreen: _closeFullscreen,
                   ),
                 ),
               ),
@@ -1663,7 +1781,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                   child: _VideoNextLessonOverlay(
                     nextLesson: widget.nextLesson!,
                     countdownSeconds: _autoNextRemainingSeconds,
-                    onPlayNow: widget.onPlayNextLesson,
+                    onPlayNow: _playNextLessonInFullscreen,
                     onCancel: () => _cancelAutoNextOverlay(),
                   ),
                 ),
@@ -1671,7 +1789,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                 top: 12,
                 left: 12,
                 child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
+                  onTap: _closeFullscreen,
                   child: Container(
                     width: 40,
                     height: 40,

@@ -57,6 +57,7 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
   bool _isInitialized = false;
   bool _hasError = false;
   bool _isFullScreen = false;
+  bool _isClosing = false;
   bool _showControls = true;
 
   double _playbackSpeed = 1.0;
@@ -85,7 +86,6 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
   @override
   void dispose() {
     _hideControlsTimer?.cancel();
-    _restoreSystemUi();
     _disposeCurrentController();
     super.dispose();
   }
@@ -163,7 +163,9 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
     );
-    await SystemChrome.setPreferredOrientations([]);
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
   }
 
   Future<void> _enterFullScreen() async {
@@ -190,6 +192,24 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
 
   Future<void> _toggleFullScreen() async {
     _isFullScreen ? await _exitFullScreen() : await _enterFullScreen();
+  }
+
+  Future<void> _closeScreen() async {
+    if (_isClosing) return;
+    _isClosing = true;
+
+    try {
+      if (_isFullScreen) {
+        await _exitFullScreen();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+
+      if (mounted) {
+        context.pop();
+      }
+    } finally {
+      _isClosing = false;
+    }
   }
 
   // ─── Playback Controls ───
@@ -306,13 +326,11 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (_isFullScreen) {
-          await _exitFullScreen();
-          return false;
-        }
-        return true;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _closeScreen();
       },
       child: Scaffold(
         backgroundColor: _isFullScreen ? Colors.black : _kBg,
@@ -320,6 +338,10 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
         appBar: _isFullScreen
             ? null
             : AppBar(
+          leading: IconButton(
+            onPressed: _closeScreen,
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
           title: const Text(
             'Video Lecture',
             style: TextStyle(
