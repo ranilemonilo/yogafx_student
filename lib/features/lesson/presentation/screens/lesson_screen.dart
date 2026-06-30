@@ -1506,9 +1506,9 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
                         ),
                       ),
                       Positioned(
-                        left: 12,
-                        right: 12,
-                        bottom: 10,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
                         child: _VideoControlsBar(
                           duration: duration,
                           position: position,
@@ -1895,63 +1895,72 @@ class _VideoControlsBar extends StatelessWidget {
     final maxMillis = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
     final currentMillis = position.inMilliseconds.clamp(0, maxMillis);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 2.5,
-            trackShape: const RoundedRectSliderTrackShape(),
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-            activeTrackColor: AppColors.primary,
-            inactiveTrackColor: Colors.white24,
-            thumbColor: AppColors.primary,
-            overlayColor: AppColors.primary.withOpacity(0.18),
-          ),
-          child: Slider(
-            value: currentMillis.toDouble(),
-            max: maxMillis.toDouble(),
-            onChanged: (value) => onSeek(Duration(milliseconds: value.round())),
-          ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.black.withOpacity(0.16),
+            Colors.black.withOpacity(0.56),
+          ],
         ),
-        Container(
-          margin: const EdgeInsets.only(top: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.18),
-            borderRadius: BorderRadius.circular(AppRadius.button),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2.5,
+              trackShape: const RoundedRectSliderTrackShape(),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+              activeTrackColor: AppColors.primary,
+              inactiveTrackColor: Colors.white24,
+              thumbColor: AppColors.primary,
+              overlayColor: AppColors.primary.withOpacity(0.18),
+            ),
+            child: Slider(
+              value: currentMillis.toDouble(),
+              max: maxMillis.toDouble(),
+              onChanged: (value) => onSeek(Duration(milliseconds: value.round())),
+            ),
           ),
-          child: Row(
-            children: [
-              _VideoControlButton(
-                icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                onTap: onTogglePlayback,
-              ),
-              _VideoControlButton(
-                icon: isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                onTap: onToggleMute,
-              ),
-              Expanded(
-                child: Text(
-                  '${_formatVideoDuration(position)} / ${_formatVideoDuration(duration)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Montserrat',
-                  ),
-                  textAlign: TextAlign.center,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            child: Row(
+              children: [
+                _VideoControlButton(
+                  icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  onTap: onTogglePlayback,
                 ),
-              ),
-              _VideoControlButton(
-                icon: Icons.fullscreen_rounded,
-                onTap: onOpenFullscreen,
-              ),
-            ],
+                _VideoControlButton(
+                  icon: isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  onTap: onToggleMute,
+                ),
+                Expanded(
+                  child: Text(
+                    '${_formatVideoDuration(position)} / ${_formatVideoDuration(duration)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Montserrat',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                _VideoControlButton(
+                  icon: Icons.fullscreen_rounded,
+                  onTap: onOpenFullscreen,
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -2793,6 +2802,7 @@ class _InlineAudioControls extends StatelessWidget {
                         );
                       },
                     ),
+                    const SizedBox(width: 8),
                     _AudioIconButton(
                       icon: isPlaying
                           ? Icons.pause_circle_filled_rounded
@@ -2806,6 +2816,7 @@ class _InlineAudioControls extends StatelessWidget {
                         }
                       },
                     ),
+                    const SizedBox(width: 8),
                     _AudioIconButton(
                       icon: Icons.forward_10_rounded,
                       onTap: () {

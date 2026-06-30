@@ -426,6 +426,12 @@ class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderState
                       ),
                     ),
 
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: _StatusBadge(status: module.status),
+                    ),
+
                     if (canOpen && isVideoLike)
                       Center(
                         child: Container(
@@ -496,23 +502,14 @@ class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            module.title,
-                            style: const TextStyle(
-                              color: _kTextPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'Montserrat',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        _StatusBadge(status: module.status),
-                      ],
+                    Text(
+                      module.title,
+                      style: const TextStyle(
+                        color: _kTextPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                      ),
                     ),
 
                     // Description — DS: Regular / Body 14px, White 65%
@@ -741,18 +738,18 @@ _ResolvedStatusBadge _resolveStatusBadge(String status) {
       return const _ResolvedStatusBadge(
         label: 'Completed',
         icon: Icons.check_rounded,
-        foregroundColor: _kGreen,
-        backgroundColor: Color(0x1400B14F),
-        borderColor: Color(0x6600B14F),
+        foregroundColor: Colors.white,
+        backgroundColor: _kGreen,
+        borderColor: _kGreen,
       );
     case 'active':
     case 'available':
       return const _ResolvedStatusBadge(
         label: 'Available',
         icon: Icons.remove_red_eye_rounded,
-        foregroundColor: Colors.white,
-        backgroundColor: Color(0x1FFFFFFF),
-        borderColor: Color(0x66FFFFFF),
+        foregroundColor: Colors.black,
+        backgroundColor: Colors.white,
+        borderColor: Colors.white,
       );
     case 'locked':
     case 'unavailable':
@@ -761,9 +758,9 @@ _ResolvedStatusBadge _resolveStatusBadge(String status) {
       return const _ResolvedStatusBadge(
         label: 'Locked',
         icon: Icons.lock_rounded,
-        foregroundColor: _kRed,
-        backgroundColor: Color(0x1ADB202C),
-        borderColor: Color(0x66DB202C),
+        foregroundColor: Colors.white,
+        backgroundColor: _kRed,
+        borderColor: _kRed,
       );
   }
 }

@@ -183,7 +183,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
-    final assignments = _parseAssignments(module.assignments);
+    final assignments = _parseAssignments(module);
 
     final shouldShowPrimaryCta = module.primaryCtaLabel != null &&
         !module.viewTypes.contains('ebook') &&
@@ -1044,18 +1044,27 @@ class _VideoThumbnailFallback extends StatelessWidget {
 
 // ─── Assignment Parser ────────────────────────────────────────────────────────
 
-List<_ModuleAssignmentItem> _parseAssignments(List<dynamic> assignments) {
-  return assignments
+List<_ModuleAssignmentItem> _parseAssignments(ModuleDetail module) {
+  final unlockAssignmentsWithModule =
+      _isAssignmentModule(module) && _isModuleDetailAccessible(module);
+
+  return module.assignments
       .whereType<Map>()
       .map((raw) {
     final data = Map<String, dynamic>.from(raw);
+    final backendLocked = data['is_locked'] as bool? ?? false;
+    final isLocked = unlockAssignmentsWithModule ? false : backendLocked;
+
     return _ModuleAssignmentItem(
       id: data['id'] as int? ?? 0,
       title: (data['title'] ?? data['name'] ?? 'Assignment').toString(),
       description: data['description']?.toString(),
-      isLocked: data['is_locked'] as bool? ?? false,
-      lockReason: data['lock_reason']?.toString(),
-      status: (data['status'] ?? data['submission_status'] ?? 'available').toString(),
+      isLocked: isLocked,
+      lockReason: isLocked ? data['lock_reason']?.toString() : null,
+      status: isLocked
+          ? (data['status'] ?? data['submission_status'] ?? 'locked').toString()
+          : (data['status'] ?? data['submission_status'] ?? 'available')
+              .toString(),
     );
   })
       .where((item) => item.id > 0)
@@ -1570,8 +1579,6 @@ class _AssignmentRowState extends State<_AssignmentRow> with SingleTickerProvide
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const SizedBox(height: 10),
-                    _StatusBadge(status: isLocked ? 'locked' : assignment.status),
                   ],
                 ),
               ),
@@ -1773,9 +1780,9 @@ _ResolvedStatusBadge _resolveStatusBadge(String status) {
       return const _ResolvedStatusBadge(
         label: 'Completed',
         icon: Icons.check_rounded,
-        foregroundColor: _kGreen,
-        backgroundColor: Color(0x1400B14F),
-        borderColor: Color(0x6600B14F),
+        foregroundColor: Colors.white,
+        backgroundColor: _kGreen,
+        borderColor: _kGreen,
       );
     case 'active':
     case 'available':
@@ -1783,9 +1790,9 @@ _ResolvedStatusBadge _resolveStatusBadge(String status) {
       return const _ResolvedStatusBadge(
         label: 'Available',
         icon: Icons.remove_red_eye_rounded,
-        foregroundColor: Colors.white,
-        backgroundColor: Color(0x1FFFFFFF),
-        borderColor: Color(0x66FFFFFF),
+        foregroundColor: Colors.black,
+        backgroundColor: Colors.white,
+        borderColor: Colors.white,
       );
     case 'locked':
     case 'unavailable':
@@ -1794,9 +1801,9 @@ _ResolvedStatusBadge _resolveStatusBadge(String status) {
       return const _ResolvedStatusBadge(
         label: 'Locked',
         icon: Icons.lock_rounded,
-        foregroundColor: _kRed,
-        backgroundColor: Color(0x1ADB202C),
-        borderColor: Color(0x66DB202C),
+        foregroundColor: Colors.white,
+        backgroundColor: _kRed,
+        borderColor: _kRed,
       );
   }
 }
@@ -1881,6 +1888,18 @@ bool _isVideoAccessible(ModuleVideoLecturerItem video) {
     return false;
   }
   return (video.hlsUrl ?? '').trim().isNotEmpty;
+}
+
+bool _isModuleDetailAccessible(ModuleDetail module) {
+  final status = module.status.trim().toLowerCase();
+  if (!module.isVisible) return false;
+  if (status == 'locked' || status == 'hidden') return false;
+  if (status != 'unavailable') return true;
+
+  return module.viewTypes.contains('assignment') ||
+      module.viewTypes.contains('ebook') ||
+      module.viewTypes.contains('certificate') ||
+      module.viewTypes.contains('video_lecturer');
 }
 
 bool _isAssignmentModule(ModuleDetail module) {

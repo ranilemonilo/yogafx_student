@@ -718,10 +718,10 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
                 top: false,
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
-                    isFullScreen ? 24 : 12,
+                    isFullScreen ? 20 : 8,
                     0,
-                    isFullScreen ? 24 : 12,
-                    isFullScreen ? 12 : 8,
+                    isFullScreen ? 20 : 8,
+                    isFullScreen ? 8 : 4,
                   ),
                   child: Column(
                     children: [
@@ -757,15 +757,15 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
                         ),
                       ),
                       Container(
-                        margin: EdgeInsets.only(top: isFullScreen ? 4 : 2),
+                        margin: EdgeInsets.zero,
                         padding: EdgeInsets.symmetric(
                           horizontal: isFullScreen ? 10 : 6,
-                          vertical: isFullScreen ? 6 : 4,
+                          vertical: isFullScreen ? 4 : 2,
                         ),
                         decoration: BoxDecoration(
                           color: isFullScreen
                               ? Colors.black.withOpacity(0.35)
-                              : Colors.black.withOpacity(0.18),
+                              : Colors.black.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Row(
