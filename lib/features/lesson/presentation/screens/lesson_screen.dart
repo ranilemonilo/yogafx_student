@@ -2017,6 +2017,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   bool _showAssessmentPrompt = false;
   bool _autoNextCancelled = false;
   bool _isAutoNavigating = false;
+  bool _showTransitionLoader = false;
   bool _isClosingScreen = false;
   int? _autoNextRemainingSeconds;
 
@@ -2029,14 +2030,20 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   Future<void> _playNextLessonFromFullscreen() async {
     if (_isAutoNavigating) return;
     if (!mounted) return;
-    _isAutoNavigating = true;
+    setState(() {
+      _isAutoNavigating = true;
+      _showTransitionLoader = true;
+    });
     _closeFullscreen(_FullscreenExitAction.playNextLesson);
   }
 
   Future<void> _startAssessmentFromFullscreen() async {
     if (_isAutoNavigating) return;
     if (!mounted) return;
-    _isAutoNavigating = true;
+    setState(() {
+      _isAutoNavigating = true;
+      _showTransitionLoader = true;
+    });
     _closeFullscreen(_FullscreenExitAction.startAssessment);
   }
 
@@ -2214,7 +2221,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
               top: 12,
               left: 12,
               child: GestureDetector(
-                onTap: () => _closeFullscreen(),
+                onTap: _showTransitionLoader ? null : () => _closeFullscreen(),
                 child: Container(
                   width: 40,
                   height: 40,
@@ -2230,6 +2237,39 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                 ),
               ),
             ),
+            if (_showTransitionLoader)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.78),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                              strokeWidth: 2.6,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading next video...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Montserrat',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
