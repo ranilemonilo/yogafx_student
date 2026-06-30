@@ -634,25 +634,7 @@ class _ModuleHeader extends StatelessWidget {
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            // Status badge — DS §3 Label Konten, border-radius 2px
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: _kRedSoft,
-                borderRadius: BorderRadius.circular(2),
-                border: Border.all(color: _kRedBorder, width: 0.8),
-              ),
-              child: Text(
-                module.status.toUpperCase(),
-                style: const TextStyle(
-                  color: _kRed,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
-                  letterSpacing: 1.0, // DS: rapat untuk label kecil
-                ),
-              ),
-            ),
+            _StatusBadge(status: module.status),
             if (module.viewTypes.contains('lesson'))
               _MetaItem(
                 icon: Icons.play_circle_outline_rounded,
@@ -1018,28 +1000,7 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // Status badge — DS §3 border-radius 2px
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isReady ? _kRedSoft : _kElevated,
-                        borderRadius: BorderRadius.circular(2),
-                        border: Border.all(
-                          color: isReady ? _kRedBorder : Colors.transparent,
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Text(
-                        _videoStatusLabel(video),
-                        style: TextStyle(
-                          color: isReady ? _kRed : _kTextMuted,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
+                    _StatusBadge(status: video.status),
                   ],
                 ),
               ),
@@ -1523,7 +1484,6 @@ class _AssignmentRowState extends State<_AssignmentRow> with SingleTickerProvide
   Widget build(BuildContext context) {
     final assignment = widget.assignment;
     final isLocked = assignment.isLocked;
-    final statusLabel = assignment.status.replaceAll('_', ' ');
 
     return GestureDetector(
       onTap: isLocked
@@ -1611,27 +1571,7 @@ class _AssignmentRowState extends State<_AssignmentRow> with SingleTickerProvide
                       ),
                     ],
                     const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isLocked ? _kElevated : _kRedSoft,
-                        borderRadius: BorderRadius.circular(2),
-                        border: Border.all(
-                          color: isLocked ? Colors.transparent : _kRedBorder,
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Text(
-                        isLocked ? 'Locked' : statusLabel,
-                        style: TextStyle(
-                          color: isLocked ? _kTextMuted : _kRed,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
+                    _StatusBadge(status: isLocked ? 'locked' : assignment.status),
                   ],
                 ),
               ),
@@ -1781,38 +1721,83 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'active':
-        color = _kRed;
-        break;
-      case 'completed':
-        color = _kGreen;
-        break;
-      default:
-        color = _kTextMuted;
-        break;
-    }
+    final resolved = _resolveStatusBadge(status);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        // DS: Transparent Black 65%
-        color: Colors.black.withOpacity(0.65),
-        borderRadius: BorderRadius.circular(2),
-        border: Border.all(color: color.withOpacity(0.5), width: 0.8),
+        color: resolved.backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: resolved.borderColor, width: 0.8),
       ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          fontFamily: 'Montserrat',
-          letterSpacing: 1.0,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(resolved.icon, color: resolved.foregroundColor, size: 12),
+          const SizedBox(width: 5),
+          Text(
+            resolved.label,
+            style: TextStyle(
+              color: resolved.foregroundColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _ResolvedStatusBadge {
+  final String label;
+  final IconData icon;
+  final Color foregroundColor;
+  final Color backgroundColor;
+  final Color borderColor;
+
+  const _ResolvedStatusBadge({
+    required this.label,
+    required this.icon,
+    required this.foregroundColor,
+    required this.backgroundColor,
+    required this.borderColor,
+  });
+}
+
+_ResolvedStatusBadge _resolveStatusBadge(String status) {
+  switch (status.trim().toLowerCase()) {
+    case 'completed':
+      return const _ResolvedStatusBadge(
+        label: 'Completed',
+        icon: Icons.check_rounded,
+        foregroundColor: _kGreen,
+        backgroundColor: Color(0x1400B14F),
+        borderColor: Color(0x6600B14F),
+      );
+    case 'active':
+    case 'available':
+    case 'ready':
+      return const _ResolvedStatusBadge(
+        label: 'Available',
+        icon: Icons.remove_red_eye_rounded,
+        foregroundColor: Colors.white,
+        backgroundColor: Color(0x1FFFFFFF),
+        borderColor: Color(0x66FFFFFF),
+      );
+    case 'locked':
+    case 'unavailable':
+    case 'hidden':
+    default:
+      return const _ResolvedStatusBadge(
+        label: 'Locked',
+        icon: Icons.lock_rounded,
+        foregroundColor: _kRed,
+        backgroundColor: Color(0x1ADB202C),
+        borderColor: Color(0x66DB202C),
+      );
   }
 }
 
@@ -1896,13 +1881,6 @@ bool _isVideoAccessible(ModuleVideoLecturerItem video) {
     return false;
   }
   return (video.hlsUrl ?? '').trim().isNotEmpty;
-}
-
-String _videoStatusLabel(ModuleVideoLecturerItem video) {
-  if (_isVideoAccessible(video)) return 'Ready';
-  final status = video.status.trim();
-  if (status.isEmpty) return 'Unavailable';
-  return status.replaceAll('_', ' ');
 }
 
 bool _isAssignmentModule(ModuleDetail module) {

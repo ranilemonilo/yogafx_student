@@ -17,7 +17,6 @@ import '../../../module/data/models/module_model.dart';
 import '../../../module/presentation/providers/module_provider.dart';
 import '../../data/models/lesson_model.dart';
 import '../widgets/assessment/assessment_banner.dart';
-import '../widgets/audio/audio_sheet.dart';
 import '../providers/lesson_provider.dart';
 import '../widgets/shared/lesson_error.dart';
 import '../widgets/shared/lesson_skeleton.dart';
@@ -1048,13 +1047,19 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                       lesson: lesson,
                       isAssessmentUnlocked: _isAssessmentUnlocked,
                       onWorkbookDismissed: _refreshLesson,
-                      audioLoading: _audioLoading,
-                      audioReady: _audioReady,
-                      audioError: _audioError,
-                      audioPlayer: _audioPlayer,
-                      onRetryAudio: _initAudio,
                       onOpenAssessment: () => _navigateToAssessmentIntro(context),
                     ),
+                    if (lesson.audio.isAvailable) ...[
+                      const SizedBox(height: 16),
+                      _InlineAudioPlayerCard(
+                        title: lesson.title,
+                        audioLoading: _audioLoading,
+                        audioReady: _audioReady,
+                        audioError: _audioError,
+                        audioPlayer: _audioPlayer,
+                        onRetryAudio: _initAudio,
+                      ),
+                    ],
                     const SizedBox(height: 28),
                     if (lesson.content != null && lesson.content!.isNotEmpty) ...[
                       _ContentSection(content: lesson.content!),
@@ -1890,32 +1895,34 @@ class _VideoControlsBar extends StatelessWidget {
     final maxMillis = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
     final currentMillis = position.inMilliseconds.clamp(0, maxMillis);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.58),
-        borderRadius: BorderRadius.circular(AppRadius.modal),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 2.5,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-              activeTrackColor: AppColors.primary,
-              inactiveTrackColor: Colors.white24,
-              thumbColor: AppColors.primary,
-              overlayColor: AppColors.primary.withOpacity(0.18),
-            ),
-            child: Slider(
-              value: currentMillis.toDouble(),
-              max: maxMillis.toDouble(),
-              onChanged: (value) => onSeek(Duration(milliseconds: value.round())),
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 2.5,
+            trackShape: const RoundedRectSliderTrackShape(),
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+            activeTrackColor: AppColors.primary,
+            inactiveTrackColor: Colors.white24,
+            thumbColor: AppColors.primary,
+            overlayColor: AppColors.primary.withOpacity(0.18),
           ),
-          Row(
+          child: Slider(
+            value: currentMillis.toDouble(),
+            max: maxMillis.toDouble(),
+            onChanged: (value) => onSeek(Duration(milliseconds: value.round())),
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.18),
+            borderRadius: BorderRadius.circular(AppRadius.button),
+          ),
+          child: Row(
             children: [
               _VideoControlButton(
                 icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -1943,8 +1950,8 @@ class _VideoControlsBar extends StatelessWidget {
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -2477,22 +2484,12 @@ class _ActionRow extends StatelessWidget {
   final LessonDetail lesson;
   final bool isAssessmentUnlocked;
   final Future<void> Function() onWorkbookDismissed;
-  final bool audioLoading;
-  final bool audioReady;
-  final String? audioError;
-  final AudioPlayer? audioPlayer;
-  final Future<void> Function() onRetryAudio;
   final Future<void> Function() onOpenAssessment;
 
   const _ActionRow({
     required this.lesson,
     required this.isAssessmentUnlocked,
     required this.onWorkbookDismissed,
-    required this.audioLoading,
-    required this.audioReady,
-    required this.audioError,
-    required this.audioPlayer,
-    required this.onRetryAudio,
     required this.onOpenAssessment,
   });
 
@@ -2501,24 +2498,6 @@ class _ActionRow extends StatelessWidget {
       context: context,
       workbook: lesson.workbook,
       onDismissed: onWorkbookDismissed,
-    );
-  }
-
-  void _openAudio(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => LessonAudioSheet(
-        audio: lesson.audio,
-        audioLoading: audioLoading,
-        audioReady: audioReady,
-        audioError: audioError,
-        audioPlayer: audioPlayer,
-        onRetryAudio: onRetryAudio,
-      ),
     );
   }
 
@@ -2533,18 +2512,6 @@ class _ActionRow extends StatelessWidget {
             icon: Icons.description_rounded,
             label: 'Workbook',
             onTap: () => _openWorkbook(context),
-          ),
-        if (lesson.audio.isAvailable)
-          _ActionChip(
-            icon: Icons.headphones_rounded,
-            label: audioLoading
-                ? 'Loading audio...'
-                : audioReady
-                ? 'Audio'
-                : 'Audio Unavailable',
-            onTap: lesson.audio.url == null
-                ? null
-                : () => _openAudio(context),
           ),
         if (lesson.assessment != null)
           _ActionChip(
@@ -2658,6 +2625,244 @@ class _ContentSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _InlineAudioPlayerCard extends StatelessWidget {
+  final String title;
+  final bool audioLoading;
+  final bool audioReady;
+  final String? audioError;
+  final AudioPlayer? audioPlayer;
+  final Future<void> Function() onRetryAudio;
+
+  const _InlineAudioPlayerCard({
+    required this.title,
+    required this.audioLoading,
+    required this.audioReady,
+    required this.audioError,
+    required this.audioPlayer,
+    required this.onRetryAudio,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppRadius.modal),
+        border: Border.all(color: AppColors.divider, width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                ),
+                child: const Icon(
+                  Icons.headphones_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Lesson Audio',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      audioLoading
+                          ? 'Loading audio...'
+                          : audioError != null
+                          ? audioError!
+                          : 'Play the audio for $title',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: audioError != null
+                            ? AppColors.error
+                            : AppColors.textMuted,
+                        fontSize: 12,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (audioReady && audioPlayer != null)
+            _InlineAudioControls(player: audioPlayer!)
+          else if (audioLoading)
+            const SizedBox(
+              height: 44,
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: onRetryAudio,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Try Again'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineAudioControls extends StatelessWidget {
+  final AudioPlayer player;
+
+  const _InlineAudioControls({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<PlayerState>(
+      stream: player.playerStateStream,
+      builder: (context, playerSnapshot) {
+        final isPlaying = playerSnapshot.data?.playing ?? false;
+
+        return StreamBuilder<Duration>(
+          stream: player.positionStream,
+          initialData: player.position,
+          builder: (context, positionSnapshot) {
+            final position = positionSnapshot.data ?? Duration.zero;
+            final duration = player.duration ?? Duration.zero;
+            final safeMaxMillis =
+                duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
+            final safePositionMillis =
+                position.inMilliseconds.clamp(0, safeMaxMillis);
+
+            return Column(
+              children: [
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white24,
+                    thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withOpacity(0.18),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 5),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 10),
+                  ),
+                  child: Slider(
+                    value: safePositionMillis.toDouble(),
+                    max: safeMaxMillis.toDouble(),
+                    onChanged: (value) => player.seek(
+                      Duration(milliseconds: value.round()),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    _AudioIconButton(
+                      icon: Icons.replay_10_rounded,
+                      onTap: () {
+                        final target = position - const Duration(seconds: 10);
+                        return player.seek(
+                          target < Duration.zero ? Duration.zero : target,
+                        );
+                      },
+                    ),
+                    _AudioIconButton(
+                      icon: isPlaying
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.play_circle_fill_rounded,
+                      iconSize: 28,
+                      onTap: () async {
+                        if (isPlaying) {
+                          await player.pause();
+                        } else {
+                          await player.play();
+                        }
+                      },
+                    ),
+                    _AudioIconButton(
+                      icon: Icons.forward_10_rounded,
+                      onTap: () {
+                        final maxDuration = player.duration ?? Duration.zero;
+                        final target = position + const Duration(seconds: 10);
+                        return player.seek(
+                          maxDuration == Duration.zero || target <= maxDuration
+                              ? target
+                              : maxDuration,
+                        );
+                      },
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${_formatVideoDuration(position)} / ${_formatVideoDuration(duration)}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _AudioIconButton extends StatelessWidget {
+  final IconData icon;
+  final Future<void> Function()? onTap;
+  final double iconSize;
+
+  const _AudioIconButton({
+    required this.icon,
+    required this.onTap,
+    this.iconSize = 22,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: Icon(
+          icon,
+          color: AppColors.textPrimary,
+          size: iconSize,
+        ),
+      ),
     );
   }
 }

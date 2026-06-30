@@ -42,9 +42,12 @@ void _showLockedModuleSnackBar(BuildContext context) {
       SnackBar(
         content: const Text(
           _kLockedModuleMessage,
-          style: TextStyle(fontFamily: 'Montserrat'),
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            color: Colors.black,
+          ),
         ),
-        backgroundColor: _kElevated,
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
@@ -251,16 +254,28 @@ class _ModuleListContentState extends State<_ModuleListContent>
 
   @override
   Widget build(BuildContext context) {
+    final summary = widget.data.summary;
+
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
       sliver: SliverList(
         delegate: SliverChildListDelegate([
-          const Align(
-            alignment: Alignment.centerRight,
-            child: RunningLoginTimeCard(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _animated(
+                  0,
+                  _SummaryChip(
+                    label: '${summary.total} modules',
+                    icon: Icons.layers_rounded,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const RunningLoginTimeCard(),
+            ],
           ),
-          const SizedBox(height: 16),
-          _animated(0, _SummaryBar(summary: widget.data.summary)),
           const SizedBox(height: 24),
           ...widget.data.items.asMap().entries.map(
                 (entry) => _animated(
@@ -278,39 +293,6 @@ class _ModuleListContentState extends State<_ModuleListContent>
 }
 
 // ─── Summary Bar ──────────────────────────────────────────────────────────────
-
-class _SummaryBar extends StatelessWidget {
-  final ModuleListSummary summary;
-
-  const _SummaryBar({required this.summary});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          _SummaryChip(
-            label: '${summary.total} modules',
-            icon: Icons.layers_rounded,
-          ),
-          const SizedBox(width: 8),
-          _SummaryChip(
-            label: '${summary.completed} completed',
-            icon: Icons.check_circle_rounded,
-            highlight: true,
-          ),
-          const SizedBox(width: 8),
-          _SummaryChip(
-            label: '${summary.active} active',
-            icon: Icons.play_circle_outline_rounded,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _SummaryChip extends StatelessWidget {
   final String label;
@@ -444,44 +426,6 @@ class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderState
                       ),
                     ),
 
-                    // Status badge — top right
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: _StatusBadge(status: module.status),
-                    ),
-
-                    // Completed badge — top left
-                    if (module.isComplete)
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _kGreen.withOpacity(0.92),
-                            borderRadius: BorderRadius.circular(2), // DS: badge 2px
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.check_rounded, color: Colors.white, size: 12),
-                              SizedBox(width: 4),
-                              Text(
-                                'Completed',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'Montserrat',
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
                     if (canOpen && isVideoLike)
                       Center(
                         child: Container(
@@ -552,14 +496,22 @@ class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title — DS: Semi Bold / Title 2 (24px) terlalu besar untuk card list, pakai 18px SemiBold
-                    Text(
-                      module.title,
-                      style: const TextStyle(
-                        color: _kTextPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Montserrat',
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            module.title,
+                            style: const TextStyle(
+                              color: _kTextPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Montserrat',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _StatusBadge(status: module.status),
                       ),
                     ),
 
@@ -737,36 +689,82 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'active':
-        color = _kRed;
-        break;
-      case 'completed':
-        color = _kGreen;
-        break;
-      default:
-        color = _kTextMuted;
-    }
+    final resolved = _resolveStatusBadge(status);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.65), // DS: Transparent Black 65%
-        borderRadius: BorderRadius.circular(2), // DS: badge 2px
-        border: Border.all(color: color.withOpacity(0.5), width: 0.8),
+        color: resolved.backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: resolved.borderColor, width: 0.8),
       ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          fontFamily: 'Montserrat',
-          letterSpacing: 1.0,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(resolved.icon, color: resolved.foregroundColor, size: 12),
+          const SizedBox(width: 5),
+          Text(
+            resolved.label,
+            style: TextStyle(
+              color: resolved.foregroundColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _ResolvedStatusBadge {
+  final String label;
+  final IconData icon;
+  final Color foregroundColor;
+  final Color backgroundColor;
+  final Color borderColor;
+
+  const _ResolvedStatusBadge({
+    required this.label,
+    required this.icon,
+    required this.foregroundColor,
+    required this.backgroundColor,
+    required this.borderColor,
+  });
+}
+
+_ResolvedStatusBadge _resolveStatusBadge(String status) {
+  switch (status.trim().toLowerCase()) {
+    case 'completed':
+      return const _ResolvedStatusBadge(
+        label: 'Completed',
+        icon: Icons.check_rounded,
+        foregroundColor: _kGreen,
+        backgroundColor: Color(0x1400B14F),
+        borderColor: Color(0x6600B14F),
+      );
+    case 'active':
+    case 'available':
+      return const _ResolvedStatusBadge(
+        label: 'Available',
+        icon: Icons.remove_red_eye_rounded,
+        foregroundColor: Colors.white,
+        backgroundColor: Color(0x1FFFFFFF),
+        borderColor: Color(0x66FFFFFF),
+      );
+    case 'locked':
+    case 'unavailable':
+    case 'hidden':
+    default:
+      return const _ResolvedStatusBadge(
+        label: 'Locked',
+        icon: Icons.lock_rounded,
+        foregroundColor: _kRed,
+        backgroundColor: Color(0x1ADB202C),
+        borderColor: Color(0x66DB202C),
+      );
   }
 }
 

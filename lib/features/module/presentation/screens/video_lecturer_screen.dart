@@ -725,7 +725,7 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Progress slider — DS §7: progress bar merah full width
+                      // Progress slider — for portrait keep it attached to the video frame
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
                           trackHeight: isFullScreen ? 4 : 3,
@@ -756,59 +756,70 @@ class _VideoLecturerScreenState extends State<VideoLecturerScreen> {
                           },
                         ),
                       ),
-                      // Time + speed + fullscreen row
-                      Row(
-                        children: [
-                          Text(
-                            '${_formatDuration(currentPosition)} / ${_formatDuration(duration)}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isFullScreen ? 13 : 11,
-                              fontFamily: 'Montserrat',
+                      Container(
+                        margin: EdgeInsets.only(top: isFullScreen ? 4 : 2),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isFullScreen ? 10 : 6,
+                          vertical: isFullScreen ? 6 : 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isFullScreen
+                              ? Colors.black.withOpacity(0.35)
+                              : Colors.black.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${_formatDuration(currentPosition)} / ${_formatDuration(duration)}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: isFullScreen ? 13 : 11,
+                                fontFamily: 'Montserrat',
+                              ),
                             ),
-                          ),
-                          const Spacer(),
-                          // Speed selector — DS §4 Media Control
-                          PopupMenuButton<double>(
-                            tooltip: 'Playback Speed',
-                            color: _kSurface,
-                            initialValue: _playbackSpeed,
-                            onOpened: () => _hideControlsTimer?.cancel(),
-                            onSelected: _changePlaybackSpeed,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                              side: BorderSide(color: _kBorderSoft, width: 0.8),
-                            ),
-                            itemBuilder: (context) => [
-                              _speedItem(0.5),
-                              _speedItem(0.75),
-                              _speedItem(1.0),
-                              _speedItem(1.25),
-                              _speedItem(1.5),
-                              _speedItem(2.0),
-                            ],
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              child: Text(
-                                _formatPlaybackSpeed(_playbackSpeed),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isFullScreen ? 13 : 11,
-                                  fontFamily: 'Montserrat',
-                                  fontWeight: FontWeight.w600,
+                            const Spacer(),
+                            PopupMenuButton<double>(
+                              tooltip: 'Playback Speed',
+                              color: _kSurface,
+                              initialValue: _playbackSpeed,
+                              onOpened: () => _hideControlsTimer?.cancel(),
+                              onSelected: _changePlaybackSpeed,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                side: BorderSide(color: _kBorderSoft, width: 0.8),
+                              ),
+                              itemBuilder: (context) => [
+                                _speedItem(0.5),
+                                _speedItem(0.75),
+                                _speedItem(1.0),
+                                _speedItem(1.25),
+                                _speedItem(1.5),
+                                _speedItem(2.0),
+                              ],
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                child: Text(
+                                  _formatPlaybackSpeed(_playbackSpeed),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isFullScreen ? 13 : 11,
+                                    fontFamily: 'Montserrat',
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          IconButton(
-                            tooltip: isFullScreen ? 'Exit Fullscreen' : 'Fullscreen',
-                            onPressed: _toggleFullScreen,
-                            icon: Icon(
-                              isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-                              color: Colors.white,
+                            IconButton(
+                              tooltip: isFullScreen ? 'Exit Fullscreen' : 'Fullscreen',
+                              onPressed: _toggleFullScreen,
+                              icon: Icon(
+                                isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
