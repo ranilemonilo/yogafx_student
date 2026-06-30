@@ -6,11 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
@@ -18,7 +16,14 @@ import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../module/data/models/module_model.dart';
 import '../../../module/presentation/providers/module_provider.dart';
 import '../../data/models/lesson_model.dart';
+import '../widgets/assessment/assessment_banner.dart';
+import '../widgets/audio/audio_sheet.dart';
 import '../providers/lesson_provider.dart';
+import '../widgets/shared/lesson_error.dart';
+import '../widgets/shared/lesson_skeleton.dart';
+import '../widgets/shared/locked_snackbar.dart';
+import '../widgets/shared/section_label.dart';
+import '../widgets/workbook/workbook_section.dart';
 import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
 class _AutoNextTarget {
@@ -48,8 +53,8 @@ class _AutoNextTarget {
 }
 
 enum _FullscreenExitAction {
-  none,
   playNextLesson,
+  startAssessment,
 }
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
@@ -57,11 +62,13 @@ enum _FullscreenExitAction {
 class LessonScreen extends ConsumerStatefulWidget {
   final int lessonId;
   final bool autoPlayVideo;
+  final bool autoOpenFullscreen;
 
   const LessonScreen({
     super.key,
     required this.lessonId,
     this.autoPlayVideo = false,
+    this.autoOpenFullscreen = false,
   });
 
   @override
@@ -69,8 +76,26 @@ class LessonScreen extends ConsumerStatefulWidget {
 }
 
 class _LessonScreenState extends ConsumerState<LessonScreen> {
-  final GlobalKey<_LessonContentState> _lessonContentKey =
-      GlobalKey<_LessonContentState>();
+  late GlobalKey<_LessonContentState> _lessonContentKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _lessonContentKey = GlobalKey<_LessonContentState>();
+  }
+
+  Future<void> _replaceLessonRoute(
+    int lessonId, {
+    bool autoPlayVideo = false,
+    bool autoOpenFullscreen = false,
+  }) async {
+    if (!mounted) return;
+    final params = <String>[];
+    if (autoPlayVideo) params.add('autoplay=1');
+    if (autoOpenFullscreen) params.add('fullscreen=1');
+    final suffix = params.isEmpty ? '' : '?${params.join('&')}';
+    context.replace('/lessons/$lessonId$suffix');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,8 +116,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: lessonAsync.when(
-          loading: () => const _LessonSkeleton(),
-          error: (e, _) => _LessonError(
+          loading: () => const LessonSkeleton(),
+          error: (e, _) => LessonError(
             message: e.toString(),
             onRetry: () => ref.invalidate(lessonDetailProvider(widget.lessonId)),
             onBack: () => _handleLessonBack(context),
@@ -101,6 +126,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             key: _lessonContentKey,
             lesson: lesson,
             autoPlayVideo: widget.autoPlayVideo,
+            autoOpenFullscreen: widget.autoOpenFullscreen,
+            onReplaceLessonRoute: _replaceLessonRoute,
           ),
         ),
       ),
@@ -138,11 +165,19 @@ void _showLockedSnackBar(
 class _LessonContent extends ConsumerStatefulWidget {
   final LessonDetail lesson;
   final bool autoPlayVideo;
+  final bool autoOpenFullscreen;
+  final Future<void> Function(
+    int lessonId, {
+    bool autoPlayVideo,
+    bool autoOpenFullscreen,
+  }) onReplaceLessonRoute;
 
   const _LessonContent({
     super.key,
     required this.lesson,
     required this.autoPlayVideo,
+    required this.autoOpenFullscreen,
+    required this.onReplaceLessonRoute,
   });
 
   @override
@@ -162,7 +197,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   int _lastReportedProgress = 0;
   int? _autoNextRemainingSeconds;
   bool _isAutoNavigating = false;
+  bool _isFullscreenOpen = false;
+  bool _preserveLandscapeOnDispose = false;
+  bool _didAutoOpenFullscreen = false;
   bool _showNextLessonPrompt = false;
+  bool _isAssessmentPromptOpen = false;
   bool _autoNextCancelled = false;
   _AutoNextTarget? _autoNextTarget;
 
@@ -286,6 +325,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Future<void> _initVideo() async {
     if (!_isVideoUnlocked) return;
     final video = widget.lesson.video!;
+    final lessonId = widget.lesson.id;
+    final previousController = _videoController;
+    if (previousController != null) {
+      previousController.removeListener(_onVideoProgress);
+      await previousController.pause();
+      await previousController.dispose();
+      _videoController = null;
+    }
     try {
       final canReachVideoHost = await _canResolveMediaHost(video.hlsUrl);
       if (!canReachVideoHost) {
@@ -298,18 +345,28 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         return;
       }
 
-      _videoController = VideoPlayerController.networkUrl(
+      final controller = VideoPlayerController.networkUrl(
         Uri.parse(video.hlsUrl),
       );
-      await _videoController!.initialize();
+      _videoController = controller;
+      await controller.initialize();
 
-      if (_lastReportedProgress > 0 && _lastReportedProgress < 100) {
-        final duration = _videoController!.value.duration;
-        final seekTo = duration * (_lastReportedProgress / 100);
-        await _videoController!.seekTo(seekTo);
+      if (!mounted || widget.lesson.id != lessonId || _videoController != controller) {
+        controller.removeListener(_onVideoProgress);
+        await controller.dispose();
+        if (_videoController == controller) {
+          _videoController = null;
+        }
+        return;
       }
 
-      _videoController!.addListener(_onVideoProgress);
+      if (_lastReportedProgress > 0 && _lastReportedProgress < 100) {
+        final duration = controller.value.duration;
+        final seekTo = duration * (_lastReportedProgress / 100);
+        await controller.seekTo(seekTo);
+      }
+
+      controller.addListener(_onVideoProgress);
       if (mounted) {
         setState(() {
           _videoInitialized = true;
@@ -319,9 +376,34 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       }
 
       if (widget.autoPlayVideo && mounted) {
-        await _videoController!.play();
+        await controller.play();
+      }
+
+      if (widget.autoOpenFullscreen &&
+          !_didAutoOpenFullscreen &&
+          mounted &&
+          _videoController != null &&
+          _videoController!.value.isInitialized) {
+        _didAutoOpenFullscreen = true;
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+
+          final currentController = _videoController;
+          if (currentController == null || !currentController.value.isInitialized) {
+            return;
+          }
+
+          unawaited(_openFullscreen());
+        });
       }
     } catch (e) {
+      final failedController = _videoController;
+      if (failedController != null) {
+        failedController.removeListener(_onVideoProgress);
+        await failedController.dispose();
+        _videoController = null;
+      }
       if (mounted) {
         setState(() {
           _videoError = true;
@@ -332,8 +414,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   void _onVideoProgress() {
-    if (_videoController == null) return;
-    final value = _videoController!.value;
+    if (_isAutoNavigating) return;
+    final controller = _videoController;
+    if (controller == null) return;
+
+    final value = controller.value;
     if (!value.isInitialized || value.duration.inSeconds == 0) return;
 
     final currentProgress =
@@ -341,14 +426,17 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
       _lastReportedProgress = currentProgress;
-      ref
-          .read(lessonRepositoryProvider)
-          .updateProgress(widget.lesson.id, currentProgress);
+      unawaited(
+        ref
+            .read(lessonRepositoryProvider)
+            .updateProgress(widget.lesson.id, currentProgress),
+      );
       if (currentProgress >= 100) {
         _refreshLearningState();
       }
     }
 
+    if (_isFullscreenOpen) return;
     _handleAutoNext(value);
   }
 
@@ -410,13 +498,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         .clamp(0, 10);
 
     if (remainingSeconds > 0 || !_isAssessmentUnlocked || _autoNextCancelled) {
-      _resetAutoNextState();
       return;
     }
 
-    if (_isAutoNavigating) return;
-    _isAutoNavigating = true;
-    unawaited(_navigateToAssessmentIntro(context));
+    if (!mounted || _isAssessmentPromptOpen) return;
+    _isAssessmentPromptOpen = true;
+    unawaited(_showAssessmentCompletionDialog());
   }
 
   Future<void> _navigateToAssessmentIntro(BuildContext context) async {
@@ -434,6 +521,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     });
   }
 
+  void _cancelAssessmentPrompt() {}
+
   void _resetAutoNextState() {
     if (!mounted) return;
     if (!_showNextLessonPrompt &&
@@ -448,6 +537,60 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     });
   }
 
+  Future<void> _showAssessmentCompletionDialog() async {
+    await _videoController?.pause();
+    if (!mounted) {
+      _isAssessmentPromptOpen = false;
+      return;
+    }
+
+    final shouldStartAssessment = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text(
+            'Continue to Assessment?',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          content: const Text(
+            'This lesson is complete. Do you want to continue to the assessment now?',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Later'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+
+    _isAssessmentPromptOpen = false;
+    if (!mounted) return;
+    if (shouldStartAssessment == true) {
+      await _navigateToAssessmentIntro(context);
+      return;
+    }
+
+    if (_videoController != null && !_isAutoNavigating) {
+      await _videoController!.play();
+    }
+  }
+
   void _refreshLearningState() {
     ref.invalidate(lessonDetailProvider(widget.lesson.id));
     ref.invalidate(moduleDetailProvider(widget.lesson.module.id));
@@ -458,11 +601,50 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   @override
   void didUpdateWidget(covariant _LessonContent oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_hasPlayableVideo &&
-        _isVideoUnlocked &&
-        _videoController == null &&
-        !_videoInitialized) {
-      _initVideo();
+    if (oldWidget.lesson.id != widget.lesson.id) {
+      _isAutoNavigating = true;
+      _didAutoOpenFullscreen = false;
+      _preserveLandscapeOnDispose = false;
+      final oldVideoController = _videoController;
+      if (oldVideoController != null) {
+        oldVideoController.removeListener(_onVideoProgress);
+        unawaited(oldVideoController.pause());
+        unawaited(oldVideoController.dispose());
+      }
+      final oldAudioPlayer = _audioPlayer;
+      if (oldAudioPlayer != null) {
+        unawaited(oldAudioPlayer.pause());
+        unawaited(oldAudioPlayer.dispose());
+      }
+      _videoController = null;
+      _audioPlayer = null;
+      _lastReportedProgress = widget.lesson.progress.watchProgress;
+      _autoNextRemainingSeconds = null;
+      _isFullscreenOpen = false;
+      _showNextLessonPrompt = false;
+      _isAssessmentPromptOpen = false;
+      _autoNextCancelled = false;
+      _autoNextTarget = null;
+      _videoInitialized = false;
+      _videoError = false;
+      _videoErrorMessage = null;
+      _audioLoading = false;
+      _audioReady = false;
+      _audioError = null;
+      _progressCtrl.value = 0;
+      _progressAnim = Tween<double>(
+        begin: 0,
+        end: widget.lesson.progress.watchProgress / 100,
+      ).animate(CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOut));
+      _progressCtrl.forward(from: 0);
+      _isAutoNavigating = false;
+      if (_hasPlayableVideo && _isVideoUnlocked) {
+        unawaited(_initVideo());
+      }
+      if (widget.lesson.audio.isAvailable && widget.lesson.audio.url != null) {
+        unawaited(_initAudio());
+      }
+      _primeAutoNextTarget();
     }
   }
 
@@ -523,25 +705,41 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     }
   }
 
-  Future<void> prepareForNavigation(BuildContext context) async {
+  Future<void> _setLandscapeUi() async {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    await WidgetsBinding.instance.endOfFrame;
+  }
+
+  Future<void> prepareForNavigation(
+    BuildContext context, {
+    bool restorePortrait = true,
+  }) async {
     _isAutoNavigating = true;
+    final videoController = _videoController;
+    final audioPlayer = _audioPlayer;
+    videoController?.removeListener(_onVideoProgress);
     _refreshLearningState();
 
-    await _videoController?.pause();
-    await _audioPlayer?.pause();
+    await videoController?.pause();
+    await audioPlayer?.pause();
 
     if (mounted) {
       setState(() => _videoInitialized = false);
     }
 
-    await Future.delayed(Duration.zero);
-
-    await _audioPlayer?.dispose();
+    await audioPlayer?.dispose();
     _audioPlayer = null;
 
-    _videoController?.removeListener(_onVideoProgress);
-    await _videoController?.dispose();
+    await videoController?.dispose();
     _videoController = null;
+
+    if (restorePortrait) {
+      await _restorePortraitUi();
+    }
   }
 
   Future<void> _handleBack(BuildContext context) async {
@@ -554,32 +752,51 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       BuildContext context,
       int lessonId, {
         bool autoPlayVideo = false,
+        bool autoOpenFullscreen = false,
+        bool restorePortrait = true,
       }) async {
-    await prepareForNavigation(context);
+    _preserveLandscapeOnDispose = !restorePortrait;
+    await prepareForNavigation(
+      context,
+      restorePortrait: restorePortrait,
+    );
     if (!mounted) return;
-    final suffix = autoPlayVideo ? '?autoplay=1' : '';
-    context.go('/lessons/$lessonId$suffix');
+    await widget.onReplaceLessonRoute(
+      lessonId,
+      autoPlayVideo: autoPlayVideo,
+      autoOpenFullscreen: autoOpenFullscreen,
+    );
   }
 
-  Future<void> _navigateToLessonAfterFullscreen(
+  Future<void> _navigateToLessonKeepingFullscreen(
     int lessonId, {
-    bool autoPlayVideo = false,
+    bool autoPlayVideo = true,
   }) async {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    await SystemChrome.setPreferredOrientations(
-      const [DeviceOrientation.portraitUp],
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 180));
-    await WidgetsBinding.instance.endOfFrame;
-    await WidgetsBinding.instance.endOfFrame;
+    _preserveLandscapeOnDispose = true;
+    _isAutoNavigating = true;
+
+    await _setLandscapeUi();
 
     if (!mounted) return;
-    _isAutoNavigating = true;
+
     await _navigateToLesson(
       context,
       lessonId,
       autoPlayVideo: autoPlayVideo,
+      autoOpenFullscreen: true,
+      restorePortrait: false,
     );
+  }
+
+  Future<void> _restorePortraitUi() async {
+    // Pastikan sudah balik portrait sebelum apapun
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await SystemChrome.setPreferredOrientations(
+      const [DeviceOrientation.portraitUp],
+    );
+
+    // Tunggu orientation benar-benar settle — 2 frame tidak cukup di device lambat
+    await WidgetsBinding.instance.endOfFrame;
   }
 
   Future<void> _refreshLesson() async {
@@ -589,6 +806,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   @override
   void dispose() {
+    _isAutoNavigating = true;
     _videoController?.removeListener(_onVideoProgress);
     _videoController?.dispose();
     _videoController = null;
@@ -596,8 +814,16 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     _audioPlayer = null;
     _fadeCtrl.dispose();
     _progressCtrl.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+    if (!_preserveLandscapeOnDispose) {
+      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+      unawaited(
+        SystemChrome.setPreferredOrientations(
+          const [DeviceOrientation.portraitUp],
+        ),
+      );
+    }
+
     super.dispose();
   }
 
@@ -638,14 +864,28 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (controller == null || !controller.value.isInitialized) return;
     if (!mounted) return;
 
-    final result = await Navigator.of(context).push<_FullscreenExitAction>(
+    // Pause countdown sementara masuk fullscreen
+    if (mounted) {
+      setState(() {
+        _showNextLessonPrompt = false;
+        _autoNextRemainingSeconds = null;
+      });
+    }
+
+    _FullscreenExitAction? result;
+    _isFullscreenOpen = true;
+    try {
+      result = await Navigator.of(context).push<_FullscreenExitAction>(
       MaterialPageRoute<_FullscreenExitAction>(
         builder: (_) => _FullscreenVideoScreen(
           controller: controller,
           nextLesson: _autoNextTarget,
           enableAutoNextOverlay: widget.lesson.assessment == null,
-          showNextLessonPrompt: _showNextLessonPrompt,
-          autoNextRemainingSeconds: _autoNextRemainingSeconds,
+          enableAssessmentPrompt: widget.lesson.assessment != null,
+          // Kirim false semua — fullscreen kelola sendiri dari controller listener
+          showNextLessonPrompt: false,
+          showAssessmentPrompt: false,
+          autoNextRemainingSeconds: null,
           autoNextCancelled: _autoNextCancelled,
           onTogglePlayback: _toggleVideoPlayback,
           onSeek: _seekVideo,
@@ -653,21 +893,40 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           onSkipForward: () => _skipVideoBy(30),
           onSkipBackward: () => _skipVideoBy(-30),
           onCancelAutoNext: () => _cancelAutoNextCountdown(),
+          onStartAssessment: () async {},
+          onCancelAssessment: _cancelAssessmentPrompt,
         ),
       ),
     );
-
-    if (result == _FullscreenExitAction.playNextLesson) {
-      final nextLesson = _autoNextTarget;
-      if (nextLesson != null && mounted) {
-        await _navigateToLessonAfterFullscreen(
-          nextLesson.lessonId,
-          autoPlayVideo: true,
-        );
-        return;
+    } finally {
+      _isFullscreenOpen = false;
+      if (result != _FullscreenExitAction.playNextLesson) {
+        await _restorePortraitUi();
       }
     }
 
+    // Fullscreen sudah ditutup
+    if (!mounted) return;
+
+    if (result == _FullscreenExitAction.playNextLesson) {
+      final nextLesson = _autoNextTarget;
+      if (nextLesson == null) return;
+
+      await _navigateToLessonKeepingFullscreen(
+          nextLesson.lessonId,
+          autoPlayVideo: true,
+      );
+      return;
+    }
+
+    if (result == _FullscreenExitAction.startAssessment) {
+      await _restorePortraitUi();
+      if (!mounted) return;
+      await _navigateToAssessmentIntro(context);
+      return;
+    }
+
+    // Kalau tidak navigate, restore state countdown kalau tadi sedang countdown
     if (mounted) setState(() {});
   }
 
@@ -701,6 +960,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
               onSkipForward: () => _skipVideoBy(30),
               onSkipBackward: () => _skipVideoBy(-30),
               showNextLessonPrompt: _showNextLessonPrompt,
+              showAssessmentPrompt: false,
               autoNextRemainingSeconds: _autoNextRemainingSeconds,
               autoNextCancelled: _autoNextCancelled,
               onPlayNextLesson: () async {
@@ -714,6 +974,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                 );
               },
               onCancelAutoNext: () => _cancelAutoNextCountdown(),
+              onStartAssessment: () => _navigateToAssessmentIntro(context),
+              onCancelAssessment: _cancelAssessmentPrompt,
               onOpenFullscreen: _openFullscreen,
               nextLesson: _autoNextTarget,
             ),
@@ -755,6 +1017,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                       audioError: _audioError,
                       audioPlayer: _audioPlayer,
                       onRetryAudio: _initAudio,
+                      onOpenAssessment: () => _navigateToAssessmentIntro(context),
                     ),
                     const SizedBox(height: 28),
                     if (lesson.content != null && lesson.content!.isNotEmpty) ...[
@@ -762,16 +1025,17 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                       const SizedBox(height: 28),
                     ],
                     if (lesson.workbook.isAvailable) ...[
-                      _WorkbookSection(
+                      LessonWorkbookSection(
                         workbook: lesson.workbook,
                         onDismissed: _refreshLesson,
                       ),
                       const SizedBox(height: 28),
                     ],
                     if (lesson.assessment != null) ...[
-                      _AssessmentBanner(
+                      LessonAssessmentBanner(
                         lesson: lesson,
                         isUnlocked: _isAssessmentUnlocked,
+                        onOpenAssessment: () => _navigateToAssessmentIntro(context),
                       ),
                       const SizedBox(height: 28),
                     ],
@@ -823,10 +1087,13 @@ class _VideoSection extends StatelessWidget {
   final Future<void> Function() onSkipForward;
   final Future<void> Function() onSkipBackward;
   final bool showNextLessonPrompt;
+  final bool showAssessmentPrompt;
   final int? autoNextRemainingSeconds;
   final bool autoNextCancelled;
   final Future<void> Function() onPlayNextLesson;
   final VoidCallback onCancelAutoNext;
+  final Future<void> Function() onStartAssessment;
+  final VoidCallback onCancelAssessment;
   final Future<void> Function() onOpenFullscreen;
 
   const _VideoSection({
@@ -846,10 +1113,13 @@ class _VideoSection extends StatelessWidget {
     required this.onSkipForward,
     required this.onSkipBackward,
     required this.showNextLessonPrompt,
+    required this.showAssessmentPrompt,
     required this.autoNextRemainingSeconds,
     required this.autoNextCancelled,
     required this.onPlayNextLesson,
     required this.onCancelAutoNext,
+    required this.onStartAssessment,
+    required this.onCancelAssessment,
     required this.onOpenFullscreen,
   });
 
@@ -898,7 +1168,7 @@ class _VideoSection extends StatelessWidget {
         thumbnailUrl: lesson.thumbnailUrl,
         message: 'Open or download the workbook first to unlock the video.',
         onTap: lesson.workbook.isAvailable
-            ? () => _showWorkbookOptions(
+            ? () => showWorkbookOptions(
                   context: context,
                   workbook: lesson.workbook,
                   onDismissed: onWorkbookDismissed,
@@ -958,10 +1228,13 @@ class _VideoSection extends StatelessWidget {
       onSkipBackward: onSkipBackward,
       nextLesson: nextLesson,
       showNextLessonPrompt: showNextLessonPrompt,
+      showAssessmentPrompt: showAssessmentPrompt,
       autoNextRemainingSeconds: autoNextRemainingSeconds,
       autoNextCancelled: autoNextCancelled,
       onPlayNextLesson: onPlayNextLesson,
       onCancelAutoNext: onCancelAutoNext,
+      onStartAssessment: onStartAssessment,
+      onCancelAssessment: onCancelAssessment,
       onOpenFullscreen: onOpenFullscreen,
     );
   }
@@ -969,6 +1242,7 @@ class _VideoSection extends StatelessWidget {
 
 class _InlineVideoPlayer extends StatefulWidget {
   final VideoPlayerController controller;
+  final BoxFit fit;
   final _AutoNextTarget? nextLesson;
   final Future<void> Function() onTogglePlayback;
   final Future<void> Function(Duration position) onSeek;
@@ -976,14 +1250,18 @@ class _InlineVideoPlayer extends StatefulWidget {
   final Future<void> Function() onSkipForward;
   final Future<void> Function() onSkipBackward;
   final bool showNextLessonPrompt;
+  final bool showAssessmentPrompt;
   final int? autoNextRemainingSeconds;
   final bool autoNextCancelled;
   final Future<void> Function() onPlayNextLesson;
   final VoidCallback onCancelAutoNext;
+  final Future<void> Function() onStartAssessment;
+  final VoidCallback onCancelAssessment;
   final Future<void> Function() onOpenFullscreen;
 
   const _InlineVideoPlayer({
     required this.controller,
+    this.fit = BoxFit.cover,
     required this.nextLesson,
     required this.onTogglePlayback,
     required this.onSeek,
@@ -991,10 +1269,13 @@ class _InlineVideoPlayer extends StatefulWidget {
     required this.onSkipForward,
     required this.onSkipBackward,
     required this.showNextLessonPrompt,
+    required this.showAssessmentPrompt,
     required this.autoNextRemainingSeconds,
     required this.autoNextCancelled,
     required this.onPlayNextLesson,
     required this.onCancelAutoNext,
+    required this.onStartAssessment,
+    required this.onCancelAssessment,
     required this.onOpenFullscreen,
   });
 
@@ -1100,6 +1381,13 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
     return ValueListenableBuilder<VideoPlayerValue>(
       valueListenable: widget.controller,
       builder: (context, value, _) {
+        if (!value.isInitialized ||
+            value.size.width <= 0 ||
+            value.size.height <= 0) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          );
+        }
         final duration = value.duration;
         final position = value.position > duration ? duration : value.position;
         final isMuted = value.volume == 0;
@@ -1111,7 +1399,7 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
             fit: StackFit.expand,
             children: [
               FittedBox(
-                fit: BoxFit.cover,
+                fit: widget.fit,
                 child: SizedBox(
                   width: value.size.width,
                   height: value.size.height,
@@ -1205,6 +1493,15 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
                     countdownSeconds: widget.autoNextRemainingSeconds,
                     onPlayNow: widget.onPlayNextLesson,
                     onCancel: widget.onCancelAutoNext,
+                  ),
+                ),
+              if (widget.showAssessmentPrompt)
+                Positioned(
+                  right: 16,
+                  bottom: 88,
+                  child: _VideoAssessmentOverlay(
+                    onStartAssessment: widget.onStartAssessment,
+                    onCancel: widget.onCancelAssessment,
                   ),
                 ),
             ],
@@ -1403,6 +1700,128 @@ class _VideoNextLessonOverlay extends StatelessWidget {
   }
 }
 
+class _VideoAssessmentOverlay extends StatelessWidget {
+  final Future<void> Function() onStartAssessment;
+  final VoidCallback onCancel;
+
+  const _VideoAssessmentOverlay({
+    required this.onStartAssessment,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 240),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.78),
+          borderRadius: BorderRadius.circular(AppRadius.modal),
+          border: Border.all(color: Colors.white.withOpacity(0.12), width: 0.8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                  ),
+                  child: const Icon(
+                    Icons.quiz_outlined,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'ASSESSMENT READY',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This lesson is finished. Continue to the assessment?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Montserrat',
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onStartAssessment,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(AppRadius.button),
+                      ),
+                      child: const Text(
+                        'Start Now',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: onCancel,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    ),
+                    child: const Text(
+                      'Later',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _VideoControlsBar extends StatelessWidget {
   final Duration duration;
   final Duration position;
@@ -1514,7 +1933,9 @@ class _FullscreenVideoScreen extends StatefulWidget {
   final VideoPlayerController controller;
   final _AutoNextTarget? nextLesson;
   final bool enableAutoNextOverlay;
+  final bool enableAssessmentPrompt;
   final bool showNextLessonPrompt;
+  final bool showAssessmentPrompt;
   final int? autoNextRemainingSeconds;
   final bool autoNextCancelled;
   final Future<void> Function() onTogglePlayback;
@@ -1523,12 +1944,16 @@ class _FullscreenVideoScreen extends StatefulWidget {
   final Future<void> Function() onSkipForward;
   final Future<void> Function() onSkipBackward;
   final VoidCallback onCancelAutoNext;
+  final Future<void> Function() onStartAssessment;
+  final VoidCallback onCancelAssessment;
 
   const _FullscreenVideoScreen({
     required this.controller,
     required this.nextLesson,
     required this.enableAutoNextOverlay,
+    required this.enableAssessmentPrompt,
     required this.showNextLessonPrompt,
+    required this.showAssessmentPrompt,
     required this.autoNextRemainingSeconds,
     required this.autoNextCancelled,
     required this.onTogglePlayback,
@@ -1537,6 +1962,8 @@ class _FullscreenVideoScreen extends StatefulWidget {
     required this.onSkipForward,
     required this.onSkipBackward,
     required this.onCancelAutoNext,
+    required this.onStartAssessment,
+    required this.onCancelAssessment,
   });
 
   @override
@@ -1545,39 +1972,72 @@ class _FullscreenVideoScreen extends StatefulWidget {
 
 class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   bool _showNextLessonPrompt = false;
+  bool _showAssessmentPrompt = false;
   bool _autoNextCancelled = false;
   bool _isAutoNavigating = false;
   int? _autoNextRemainingSeconds;
 
   Future<void> _playNextLessonFromFullscreen() async {
     if (_isAutoNavigating) return;
+    if (!mounted) return;
     _isAutoNavigating = true;
+
     if (!mounted) return;
     Navigator.of(context).pop(_FullscreenExitAction.playNextLesson);
   }
 
+  Future<void> _startAssessmentFromFullscreen() async {
+    if (_isAutoNavigating) return;
+    if (!mounted) return;
+    _isAutoNavigating = true;
+    Navigator.of(context).pop(_FullscreenExitAction.startAssessment);
+  }
+
+  bool _mounted = false; // track manual karena async wakelock
+
   @override
   void initState() {
     super.initState();
+    _mounted = true;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
-    ]);
-    WakelockPlus.enable();
+    ]).then((_) {
+      // Tunggu orientation settle baru enable wakelock
+      if (_mounted) WakelockPlus.enable();
+    });
     widget.controller.addListener(_handleAutoNextOverlay);
   }
 
+
   @override
   void dispose() {
+    _mounted = false;
     widget.controller.removeListener(_handleAutoNextOverlay);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    // Jangan set orientation di sini — biarkan parent yang handle
+    // supaya tidak bentrok dengan _navigateToLessonAfterFullscreen
     WakelockPlus.disable();
     super.dispose();
   }
 
   void _handleAutoNextOverlay() {
+    if (widget.enableAssessmentPrompt) {
+      final value = widget.controller.value;
+      final remaining = value.duration - value.position;
+      final remainingMillis = remaining.inMilliseconds;
+      final remainingSeconds = (remainingMillis.clamp(0, 10000) / 1000)
+          .ceil()
+          .clamp(0, 10);
+
+      if (remainingSeconds <= 0 && !_showAssessmentPrompt && mounted) {
+        setState(() => _showAssessmentPrompt = true);
+      } else if (remainingSeconds > 0 && _showAssessmentPrompt && mounted) {
+        setState(() => _showAssessmentPrompt = false);
+      }
+      return;
+    }
+
     if (!widget.enableAutoNextOverlay) {
       _resetAutoNextOverlay();
       return;
@@ -1647,6 +2107,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         Navigator.of(context).pop();
@@ -1658,13 +2119,15 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
             children: [
               Center(
                 child: AspectRatio(
-                  aspectRatio: widget.controller.value.aspectRatio == 0
+                  aspectRatio: widget.controller.value.aspectRatio <= 0
                       ? 16 / 9
                       : widget.controller.value.aspectRatio,
                   child: _InlineVideoPlayer(
                     controller: widget.controller,
+                    fit: BoxFit.contain,
                     nextLesson: widget.nextLesson,
                     showNextLessonPrompt: false,
+                    showAssessmentPrompt: false,
                     autoNextRemainingSeconds: null,
                     autoNextCancelled: false,
                     onTogglePlayback: widget.onTogglePlayback,
@@ -1674,6 +2137,8 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                     onSkipBackward: widget.onSkipBackward,
                     onPlayNextLesson: _playNextLessonFromFullscreen,
                     onCancelAutoNext: widget.onCancelAutoNext,
+                    onStartAssessment: widget.onStartAssessment,
+                    onCancelAssessment: widget.onCancelAssessment,
                     onOpenFullscreen: () async => Navigator.of(context).pop(),
                   ),
                 ),
@@ -1689,6 +2154,18 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                     countdownSeconds: _autoNextRemainingSeconds,
                     onPlayNow: _playNextLessonFromFullscreen,
                     onCancel: () => _cancelAutoNextOverlay(),
+                  ),
+                ),
+              if (_showAssessmentPrompt)
+                Positioned(
+                  right: 20,
+                  bottom: 92,
+                  child: _VideoAssessmentOverlay(
+                    onStartAssessment: _startAssessmentFromFullscreen,
+                    onCancel: () {
+                      setState(() => _showAssessmentPrompt = false);
+                      widget.onCancelAssessment();
+                    },
                   ),
                 ),
               Positioned(
@@ -1964,6 +2441,7 @@ class _ActionRow extends StatelessWidget {
   final String? audioError;
   final AudioPlayer? audioPlayer;
   final Future<void> Function() onRetryAudio;
+  final Future<void> Function() onOpenAssessment;
 
   const _ActionRow({
     required this.lesson,
@@ -1974,10 +2452,11 @@ class _ActionRow extends StatelessWidget {
     required this.audioError,
     required this.audioPlayer,
     required this.onRetryAudio,
+    required this.onOpenAssessment,
   });
 
   void _openWorkbook(BuildContext context) {
-    _showWorkbookOptions(
+    showWorkbookOptions(
       context: context,
       workbook: lesson.workbook,
       onDismissed: onWorkbookDismissed,
@@ -1991,7 +2470,7 @@ class _ActionRow extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => _AudioSheet(
+      builder: (_) => LessonAudioSheet(
         audio: lesson.audio,
         audioLoading: audioLoading,
         audioReady: audioReady,
@@ -2031,7 +2510,7 @@ class _ActionRow extends StatelessWidget {
             icon: Icons.quiz_rounded,
             label: isAssessmentUnlocked ? 'Assessment' : 'Assessment Locked',
             onTap: isAssessmentUnlocked
-                ? () => context.push('/lessons/${lesson.id}/assessment')
+                ? onOpenAssessment
                 : null,
           ),
       ],
@@ -2126,7 +2605,7 @@ class _ContentSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel(text: 'About This Lesson'),
+        const SectionLabel(text: 'About This Lesson'),
         const SizedBox(height: 12),
         Text(
           content,
@@ -2144,525 +2623,23 @@ class _ContentSection extends StatelessWidget {
 
 // ─── Workbook Section ─────────────────────────────────────────────────────────
 
-class _WorkbookSection extends StatelessWidget {
-  final LessonWorkbook workbook;
-  final Future<void> Function() onDismissed;
 
-  const _WorkbookSection({
-    required this.workbook,
-    required this.onDismissed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionLabel(text: 'Workbook'),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () => _showWorkbookOptions(
-            context: context,
-            workbook: workbook,
-            onDismissed: onDismissed,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(AppRadius.modal),
-              border: Border.all(color: AppColors.divider, width: 0.8),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.avatar),
-                    border: Border.all(
-                        color: AppColors.primary.withOpacity(0.22), width: 0.8),
-                  ),
-                  child: const Icon(Icons.description_rounded,
-                      color: AppColors.primary, size: 18),
-                ),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Lesson Workbook',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        'Open or download the workbook',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 11,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textMuted, size: 18),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 // ─── Workbook Sheet ───────────────────────────────────────────────────────────
 
-void _showWorkbookOptions({
-  required BuildContext context,
-  required LessonWorkbook workbook,
-  required Future<void> Function() onDismissed,
-}) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (_) => _WorkbookSheet(workbook: workbook),
-  ).whenComplete(onDismissed);
-}
 
-class _WorkbookSheet extends StatelessWidget {
-  final LessonWorkbook workbook;
-
-  const _WorkbookSheet({required this.workbook});
-
-  Future<void> _downloadWorkbook(BuildContext context, String url) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Downloading workbook...')),
-    );
-    navigator.pop();
-    try {
-      final fileName = _buildFileName(workbook.fileName);
-      final directory = await _resolveDownloadDirectory();
-      final targetPath = '${directory.path}${Platform.pathSeparator}$fileName';
-      final dio = ApiClient.create();
-      await dio.download(url, targetPath);
-      messenger.showSnackBar(
-        SnackBar(content: Text('Saved to $targetPath')),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Download failed: $e')),
-      );
-    }
-  }
-
-  Future<Directory> _resolveDownloadDirectory() async {
-    if (Platform.isAndroid) {
-      final publicDownloads = Directory('/storage/emulated/0/Download');
-      if (await publicDownloads.exists()) return publicDownloads;
-      throw const FileSystemException('Download folder not found');
-    }
-    final downloadsDir = await getDownloadsDirectory();
-    if (downloadsDir != null) return downloadsDir;
-    throw const FileSystemException('Download folder not found');
-  }
-
-  String _buildFileName(String? rawName) {
-    final baseName = (rawName == null || rawName.trim().isEmpty)
-        ? 'workbook_${DateTime.now().millisecondsSinceEpoch}.pdf'
-        : rawName.trim();
-    return baseName.toLowerCase().endsWith('.pdf')
-        ? baseName
-        : '$baseName.pdf';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 3,
-              decoration: BoxDecoration(
-                color: AppColors.divider,
-                borderRadius: BorderRadius.circular(AppRadius.badge),
-              ),
-            ),
-          ),
-          const SizedBox(height: 22),
-          const Text(
-            'Workbook',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            workbook.fileName ?? 'Lesson file',
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (workbook.downloadUrl != null)
-            _SheetButton(
-              label: 'Download',
-              icon: Icons.download_rounded,
-              isPrimary: true,
-              onTap: () => _downloadWorkbook(context, workbook.downloadUrl!),
-            ),
-          if (workbook.url != null) ...[
-            if (workbook.downloadUrl != null) const SizedBox(height: 10),
-            _SheetButton(
-              label: 'Open Workbook',
-              icon: Icons.open_in_new_rounded,
-              isPrimary: workbook.downloadUrl == null,
-              onTap: () {
-                Navigator.pop(context);
-                context.push(
-                  AppRoutes.workbookViewer,
-                  extra: {
-                    'url': workbook.url!,
-                    'title': workbook.fileName ?? 'Workbook',
-                  },
-                );
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 // ─── Audio Sheet ──────────────────────────────────────────────────────────────
 
-class _AudioSheet extends StatelessWidget {
-  final LessonAudio audio;
-  final bool audioLoading;
-  final bool audioReady;
-  final String? audioError;
-  final AudioPlayer? audioPlayer;
-  final Future<void> Function() onRetryAudio;
 
-  const _AudioSheet({
-    required this.audio,
-    required this.audioLoading,
-    required this.audioReady,
-    required this.audioError,
-    required this.audioPlayer,
-    required this.onRetryAudio,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 3,
-              decoration: BoxDecoration(
-                color: AppColors.divider,
-                borderRadius: BorderRadius.circular(AppRadius.badge),
-              ),
-            ),
-          ),
-          const SizedBox(height: 22),
-          const Text(
-            'Audio',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          const SizedBox(height: 6),
-          if (audioLoading)
-            const Text(
-              'Loading audio...',
-              style: TextStyle(
-                  color: AppColors.textMuted, fontSize: 12, fontFamily: 'Montserrat'),
-            )
-          else if (audioError != null)
-            Text(
-              audioError!,
-              style: const TextStyle(
-                  color: AppColors.error,
-                  fontSize: 12,
-                  fontFamily: 'Montserrat'),
-            )
-          else
-            const Text(
-              'Play the audio for this lesson',
-              style: TextStyle(
-                  color: AppColors.textMuted, fontSize: 12, fontFamily: 'Montserrat'),
-            ),
-          const SizedBox(height: 24),
-          if (audioReady && audioPlayer != null)
-            StreamBuilder<PlayerState>(
-              stream: audioPlayer?.playerStateStream ?? const Stream.empty(),
-              builder: (context, snapshot) {
-                final playing = snapshot.data?.playing ?? false;
-                return _SheetButton(
-                  label: playing ? 'Pause Audio' : 'Play Audio',
-                  icon: playing
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
-                  isPrimary: true,
-                  onTap: () async {
-                    if (audioPlayer == null) return;
-                    if (playing) {
-                      await audioPlayer!.pause();
-                    } else {
-                      await audioPlayer!.play();
-                    }
-                  },
-                );
-              },
-            )
-          else
-            _SheetButton(
-              label: 'Try Again',
-              icon: Icons.refresh_rounded,
-              isPrimary: false,
-              onTap: onRetryAudio,
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── Sheet Button ─────────────────────────────────────────────────────────────
 
-class _SheetButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isPrimary;
-  final VoidCallback? onTap;
-  const _SheetButton({
-    required this.label,
-    required this.icon,
-    required this.isPrimary,
-    this.onTap,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isPrimary ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.avatar),
-          border: Border.all(
-            color: isPrimary ? AppColors.primary : AppColors.divider,
-            width: 0.8,
-          ),
-          boxShadow: isPrimary
-              ? [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            )
-          ]
-              : [],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                color: isPrimary ? Colors.white : AppColors.textSecondary,
-                size: 16),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isPrimary ? Colors.white : AppColors.textSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ─── Assessment Banner ────────────────────────────────────────────────────────
 
-class _AssessmentBanner extends StatefulWidget {
-  final LessonDetail lesson;
-  final bool isUnlocked;
-  const _AssessmentBanner({
-    required this.lesson,
-    required this.isUnlocked,
-  });
 
-  @override
-  State<_AssessmentBanner> createState() => _AssessmentBannerState();
-}
-
-class _AssessmentBannerState extends State<_AssessmentBanner>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseCtrl;
-  late Animation<double> _pulseAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
-    _pulseAnim = CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
-  }
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasWorkbookGate =
-        widget.lesson.workbook.isAvailable &&
-            !widget.lesson.progress.isWorkbookDownloaded;
-    final hasPlayableVideo =
-        widget.lesson.video != null && widget.lesson.video!.isReady;
-    final isUnlocked = widget.isUnlocked;
-    final lockMessage = hasWorkbookGate
-        ? 'Open or download the workbook first to unlock the video and assessment.'
-        : hasPlayableVideo
-        ? 'Watch at least 95% of the video to unlock it.'
-        : 'Complete the lesson materials to unlock it.';
-
-    return AnimatedBuilder(
-      animation: _pulseAnim,
-      builder: (_, __) => GestureDetector(
-        onTap: () {
-          if (isUnlocked) {
-            context.push('/lessons/${widget.lesson.id}/assessment');
-            return;
-          }
-          _showLockedSnackBar(
-            context,
-            fallbackMessage:
-            'You need to complete this lesson before accessing the assessment.',
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isUnlocked ? const Color(0xFF130A08) : AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(AppRadius.modal),
-            border: Border.all(
-              color: isUnlocked
-                  ? AppColors.primary.withOpacity(0.25 + _pulseAnim.value * 0.2)
-                  : AppColors.divider,
-              width: 0.8,
-            ),
-            boxShadow: isUnlocked
-                ? [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.05 + _pulseAnim.value * 0.07),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              )
-            ]
-                : [],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isUnlocked
-                      ? AppColors.primary.withOpacity(0.12)
-                      : AppColors.overlayDark,
-                  borderRadius: BorderRadius.circular(AppRadius.avatar),
-                ),
-                child: Icon(
-                  isUnlocked ? Icons.quiz_rounded : Icons.lock_rounded,
-                  color: isUnlocked ? AppColors.primary : AppColors.textMuted,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isUnlocked ? 'Assessment Available' : 'Assessment Locked',
-                      style: TextStyle(
-                        color: isUnlocked ? AppColors.textPrimary : AppColors.textMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      isUnlocked ? 'Start the assessment now' : lockMessage,
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 11,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isUnlocked)
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.primary.withOpacity(0.7),
-                  size: 20,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ─── Navigation Section ───────────────────────────────────────────────────────
 
@@ -2682,7 +2659,7 @@ class _NavigationSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel(text: 'All Lessons'),
+        const SectionLabel(text: 'All Lessons'),
         const SizedBox(height: 12),
         ...navigation.map(
               (item) => Padding(
@@ -2969,231 +2946,11 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
 
 // ─── Shared Widgets ───────────────────────────────────────────────────────────
 
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel({required this.text});
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 12,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(AppRadius.badge),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Montserrat',
-            letterSpacing: 2,
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-class _LessonSkeleton extends StatefulWidget {
-  const _LessonSkeleton();
 
-  @override
-  State<_LessonSkeleton> createState() => _LessonSkeletonState();
-}
-
-class _LessonSkeletonState extends State<_LessonSkeleton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) {
-        final shimmer =
-        Color.lerp(AppColors.shimmer, AppColors.shimmerHighlight, _anim.value)!;
-        return Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Container(color: Colors.black),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Bone(width: 100, height: 10, color: shimmer),
-                  const SizedBox(height: 12),
-                  _Bone(width: 260, height: 26, color: shimmer),
-                  const SizedBox(height: 18),
-                  _Bone(width: double.infinity, height: 2.5, color: shimmer),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      _Bone(width: 90, height: 36, color: shimmer),
-                      const SizedBox(width: 8),
-                      _Bone(width: 70, height: 36, color: shimmer),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  _Bone(width: double.infinity, height: 80, color: shimmer),
-                  const SizedBox(height: 14),
-                  _Bone(width: double.infinity, height: 80, color: shimmer),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _Bone extends StatelessWidget {
-  final double width;
-  final double height;
-  final Color color;
-  const _Bone({required this.width, required this.height, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppRadius.avatar),
-      ),
-    );
-  }
-}
 
 // ─── Error ────────────────────────────────────────────────────────────────────
 
-class _LessonError extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-  final VoidCallback onBack;
-  const _LessonError(
-      {required this.message, required this.onRetry, required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary.withOpacity(0.25)),
-              ),
-              child: const Icon(Icons.wifi_off_rounded,
-                  color: AppColors.primary, size: 28),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              message,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                fontFamily: 'Montserrat',
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: onBack,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(AppRadius.button),
-                      border: Border.all(color: AppColors.divider, width: 0.8),
-                    ),
-                    child: const Text(
-                      'Back',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: onRetry,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(AppRadius.button),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Text(
-                      'Try again',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

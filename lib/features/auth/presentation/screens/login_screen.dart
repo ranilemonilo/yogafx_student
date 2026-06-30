@@ -133,6 +133,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final isLoading =
         _isSubmitting || authState.status == AuthStatus.loading;
     final error = _requestError ?? authState.error;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 768;
+    final horizontalPadding = isTablet ? 48.0 : 32.0;
 
     return Scaffold(
       // ── §1: background utama = Neutral Black 1 ──
@@ -158,7 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minHeight: constraints.maxHeight),
                     child: Center(
@@ -166,7 +169,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         opacity: _fadeAnim,
                         child: SlideTransition(
                           position: _slideAnim,
-                          child: _buildContent(isLoading, error),
+                          child: _buildContent(
+                            isLoading,
+                            error,
+                            isTablet: isTablet,
+                          ),
                         ),
                       ),
                     ),
@@ -180,9 +187,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildContent(bool isLoading, String? error) {
+  Widget _buildContent(
+    bool isLoading,
+    String? error, {
+    required bool isTablet,
+  }) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 360),
+      constraints: BoxConstraints(maxWidth: isTablet ? double.infinity : 360),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,

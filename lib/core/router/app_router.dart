@@ -235,6 +235,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => LessonScreen(
           lessonId: int.parse(state.pathParameters['lessonId']!),
           autoPlayVideo: state.uri.queryParameters['autoplay'] == '1',
+          autoOpenFullscreen: state.uri.queryParameters['fullscreen'] == '1',
         ),
         routes: [
           GoRoute(
