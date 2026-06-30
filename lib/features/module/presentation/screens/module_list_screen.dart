@@ -512,7 +512,7 @@ class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderState
                         ),
                         const SizedBox(width: 12),
                         _StatusBadge(status: module.status),
-                      ),
+                      ],
                     ),
 
                     // Description — DS: Regular / Body 14px, White 65%
