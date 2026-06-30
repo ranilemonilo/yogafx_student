@@ -278,13 +278,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.overallProgress,
         name: 'overallProgress',
         builder: (context, state) {
-          final extra = state.extra! as Map<String, int>;
+          int parseInt(String key) =>
+              int.tryParse(state.uri.queryParameters[key] ?? '') ?? 0;
+
           return OverallProgressScreen(
-            modulesCompleted: extra['modulesCompleted']!,
-            modulesTotal: extra['modulesTotal']!,
-            lessonsCompleted: extra['lessonsCompleted']!,
-            lessonsTotal: extra['lessonsTotal']!,
-            overallProgressPercentage: extra['overallProgressPercentage']!,
+            modulesCompleted: parseInt('modulesCompleted'),
+            modulesTotal: parseInt('modulesTotal'),
+            lessonsCompleted: parseInt('lessonsCompleted'),
+            lessonsTotal: parseInt('lessonsTotal'),
+            overallProgressPercentage: parseInt('overallProgressPercentage'),
           );
         },
       ),

@@ -96,9 +96,9 @@ flutter_launcher_icons:
   android: true
   ios: true
 
-  image_path: "assets/images/yogafx_logo.png"
+  image_path: "assets/images/yogafx_app_icon_shortcut.png"
 
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/ic_launcher.png"
+  adaptive_icon_foreground: "assets/images/yogafx_app_icon_shortcut.png"
 
   remove_alpha_ios: true

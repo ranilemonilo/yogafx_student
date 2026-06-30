@@ -37,8 +37,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   String? _emailError;
   String? _passwordError;
   String? _passwordConfirmationError;
+  bool _isHandlingBackNavigation = false;
 
   bool get _isResetMode => widget.token != null && widget.token!.trim().isNotEmpty;
+
+  Future<void> _handleBackToLogin() async {
+    if (_isHandlingBackNavigation || !mounted) return;
+    _isHandlingBackNavigation = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    context.go(AppRoutes.login);
+  }
 
   @override
   void initState() {
@@ -201,14 +209,25 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(_isResetMode ? 'Set New Password' : 'Forgot Password'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: _isResetMode ? _buildResetForm() : _buildForgotForm(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _handleBackToLogin();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: _submitting ? null : _handleBackToLogin,
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          ),
+          title: Text(_isResetMode ? 'Set New Password' : 'Forgot Password'),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: _isResetMode ? _buildResetForm() : _buildForgotForm(),
+        ),
       ),
     );
   }
@@ -264,7 +283,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => context.pop(),
+            onPressed: _submitting ? null : _handleBackToLogin,
             child: const Text('Back to login'),
           ),
         ],
@@ -382,7 +401,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => context.go(AppRoutes.login),
+            onPressed: _submitting ? null : _handleBackToLogin,
             child: const Text('Back to login'),
           ),
         ],

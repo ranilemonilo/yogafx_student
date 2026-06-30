@@ -130,8 +130,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isLoading =
-        _isSubmitting || authState.status == AuthStatus.loading;
+    final isLoading = _isSubmitting;
     final error = _requestError ?? authState.error;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 768;

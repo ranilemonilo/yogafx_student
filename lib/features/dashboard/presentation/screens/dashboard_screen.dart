@@ -1259,15 +1259,15 @@ class _ProgressSectionState extends State<_ProgressSection>
                 icon: Icons.bar_chart_rounded,
                 animation: _anim,
                 highlight: true,
-                onTap: () => context.push(
-                  AppRoutes.overallProgress,
-                  extra: {
-                    'modulesCompleted': widget.section.modulesCompleted,
-                    'modulesTotal': widget.section.modulesTotal,
-                    'lessonsCompleted': widget.section.lessonsCompleted,
-                    'lessonsTotal': widget.section.lessonsTotal,
+                onTap: () => context.pushNamed(
+                  'overallProgress',
+                  queryParameters: {
+                    'modulesCompleted': '${widget.section.modulesCompleted}',
+                    'modulesTotal': '${widget.section.modulesTotal}',
+                    'lessonsCompleted': '${widget.section.lessonsCompleted}',
+                    'lessonsTotal': '${widget.section.lessonsTotal}',
                     'overallProgressPercentage':
-                    widget.section.overallProgressPercentage,
+                        '${widget.section.overallProgressPercentage}',
                   },
                 ),
               ),

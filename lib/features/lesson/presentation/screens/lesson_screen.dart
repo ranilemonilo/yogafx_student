@@ -77,6 +77,7 @@ class LessonScreen extends ConsumerStatefulWidget {
 
 class _LessonScreenState extends ConsumerState<LessonScreen> {
   late GlobalKey<_LessonContentState> _lessonContentKey;
+  bool _isHandlingBackGesture = false;
 
   @override
   void initState() {
@@ -104,13 +105,18 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
+        if (didPop || _isHandlingBackGesture) return;
+        _isHandlingBackGesture = true;
         final state = _lessonContentKey.currentState;
-        if (state != null) {
-          await state.prepareForNavigation(context);
-        }
-        if (context.mounted) {
-          _handleLessonBack(context);
+        try {
+          if (state != null) {
+            await state.prepareForNavigation(context);
+          }
+          if (context.mounted) {
+            _handleLessonBack(context);
+          }
+        } finally {
+          _isHandlingBackGesture = false;
         }
       },
       child: Scaffold(
@@ -200,6 +206,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _isFullscreenOpen = false;
   bool _preserveLandscapeOnDispose = false;
   bool _didAutoOpenFullscreen = false;
+  bool _isPreparingNavigation = false;
   bool _showNextLessonPrompt = false;
   bool _isAssessmentPromptOpen = false;
   bool _autoNextCancelled = false;
@@ -322,16 +329,34 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     return module.viewTypes.contains('lesson');
   }
 
+  Future<void> _disposeVideoControllerSafely(
+    VideoPlayerController? controller,
+  ) async {
+    if (controller == null) return;
+
+    controller.removeListener(_onVideoProgress);
+    try {
+      await controller.pause();
+    } catch (_) {}
+
+    await WidgetsBinding.instance.endOfFrame;
+
+    try {
+      await controller.dispose();
+    } catch (_) {}
+  }
+
   Future<void> _initVideo() async {
     if (!_isVideoUnlocked) return;
     final video = widget.lesson.video!;
     final lessonId = widget.lesson.id;
     final previousController = _videoController;
     if (previousController != null) {
-      previousController.removeListener(_onVideoProgress);
-      await previousController.pause();
-      await previousController.dispose();
       _videoController = null;
+      if (mounted) {
+        setState(() => _videoInitialized = false);
+      }
+      unawaited(_disposeVideoControllerSafely(previousController));
     }
     try {
       final canReachVideoHost = await _canResolveMediaHost(video.hlsUrl);
@@ -352,11 +377,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       await controller.initialize();
 
       if (!mounted || widget.lesson.id != lessonId || _videoController != controller) {
-        controller.removeListener(_onVideoProgress);
-        await controller.dispose();
         if (_videoController == controller) {
           _videoController = null;
         }
+        await _disposeVideoControllerSafely(controller);
         return;
       }
 
@@ -399,11 +423,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       }
     } catch (e) {
       final failedController = _videoController;
-      if (failedController != null) {
-        failedController.removeListener(_onVideoProgress);
-        await failedController.dispose();
-        _videoController = null;
-      }
+      _videoController = null;
+      await _disposeVideoControllerSafely(failedController);
       if (mounted) {
         setState(() {
           _videoError = true;
@@ -606,11 +627,6 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       _didAutoOpenFullscreen = false;
       _preserveLandscapeOnDispose = false;
       final oldVideoController = _videoController;
-      if (oldVideoController != null) {
-        oldVideoController.removeListener(_onVideoProgress);
-        unawaited(oldVideoController.pause());
-        unawaited(oldVideoController.dispose());
-      }
       final oldAudioPlayer = _audioPlayer;
       if (oldAudioPlayer != null) {
         unawaited(oldAudioPlayer.pause());
@@ -638,6 +654,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       ).animate(CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOut));
       _progressCtrl.forward(from: 0);
       _isAutoNavigating = false;
+      unawaited(_disposeVideoControllerSafely(oldVideoController));
       if (_hasPlayableVideo && _isVideoUnlocked) {
         unawaited(_initVideo());
       }
@@ -718,27 +735,31 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     BuildContext context, {
     bool restorePortrait = true,
   }) async {
+    if (_isPreparingNavigation) return;
+    _isPreparingNavigation = true;
     _isAutoNavigating = true;
-    final videoController = _videoController;
-    final audioPlayer = _audioPlayer;
-    videoController?.removeListener(_onVideoProgress);
-    _refreshLearningState();
+    try {
+      final videoController = _videoController;
+      final audioPlayer = _audioPlayer;
+      _refreshLearningState();
 
-    await videoController?.pause();
-    await audioPlayer?.pause();
+      await audioPlayer?.pause();
 
-    if (mounted) {
-      setState(() => _videoInitialized = false);
-    }
+      _videoController = null;
+      if (mounted) {
+        setState(() => _videoInitialized = false);
+      }
 
-    await audioPlayer?.dispose();
-    _audioPlayer = null;
+      await audioPlayer?.dispose();
+      _audioPlayer = null;
 
-    await videoController?.dispose();
-    _videoController = null;
+      await _disposeVideoControllerSafely(videoController);
 
-    if (restorePortrait) {
-      await _restorePortraitUi();
+      if (restorePortrait) {
+        await _restorePortraitUi();
+      }
+    } finally {
+      _isPreparingNavigation = false;
     }
   }
 
@@ -786,6 +807,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       autoOpenFullscreen: true,
       restorePortrait: false,
     );
+  }
+
+  Future<void> _waitForOverlayToDetach() async {
+    await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    await WidgetsBinding.instance.endOfFrame;
   }
 
   Future<void> _restorePortraitUi() async {
@@ -875,9 +903,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     _FullscreenExitAction? result;
     _isFullscreenOpen = true;
     try {
-      result = await Navigator.of(context).push<_FullscreenExitAction>(
-      MaterialPageRoute<_FullscreenExitAction>(
-        builder: (_) => _FullscreenVideoScreen(
+      result = await Navigator.of(context, rootNavigator: true)
+          .push<_FullscreenExitAction>(
+        PageRouteBuilder<_FullscreenExitAction>(
+          opaque: true,
+          barrierColor: Colors.black,
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          pageBuilder: (_, __, ___) => _FullscreenVideoScreen(
           controller: controller,
           nextLesson: _autoNextTarget,
           enableAutoNextOverlay: widget.lesson.assessment == null,
@@ -893,19 +926,16 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           onSkipForward: () => _skipVideoBy(30),
           onSkipBackward: () => _skipVideoBy(-30),
           onCancelAutoNext: () => _cancelAutoNextCountdown(),
-          onStartAssessment: () async {},
+          onStartAssessment: () => _navigateToAssessmentIntro(context),
           onCancelAssessment: _cancelAssessmentPrompt,
         ),
       ),
     );
     } finally {
       _isFullscreenOpen = false;
-      if (result != _FullscreenExitAction.playNextLesson) {
-        await _restorePortraitUi();
-      }
+      await _waitForOverlayToDetach();
     }
 
-    // Fullscreen sudah ditutup
     if (!mounted) return;
 
     if (result == _FullscreenExitAction.playNextLesson) {
@@ -926,13 +956,16 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       return;
     }
 
-    // Kalau tidak navigate, restore state countdown kalau tadi sedang countdown
+    await _restorePortraitUi();
+
     if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final lesson = widget.lesson;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final videoTopSpacing = topInset < 12 ? 16.0 : topInset + 4;
 
     return RefreshIndicator(
       color: AppColors.primary,
@@ -944,40 +977,43 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         slivers: [
           // Video
           SliverToBoxAdapter(
-            child: _VideoSection(
-              lesson: lesson,
-              videoInitialized: _videoInitialized,
-              videoError: _videoError,
-              videoErrorMessage: _videoErrorMessage,
-              videoController: _videoController,
-              videoUnlocked: _isVideoUnlocked,
-              onWorkbookDismissed: _refreshLesson,
-              onRetry: _initVideo,
-              onBack: () => _handleBack(context),
-              onTogglePlayback: _toggleVideoPlayback,
-              onSeek: _seekVideo,
-              onToggleMute: _toggleMute,
-              onSkipForward: () => _skipVideoBy(30),
-              onSkipBackward: () => _skipVideoBy(-30),
-              showNextLessonPrompt: _showNextLessonPrompt,
-              showAssessmentPrompt: false,
-              autoNextRemainingSeconds: _autoNextRemainingSeconds,
-              autoNextCancelled: _autoNextCancelled,
-              onPlayNextLesson: () async {
-                final nextLesson = _autoNextTarget;
-                if (nextLesson == null) return;
-                _isAutoNavigating = true;
-                await _navigateToLesson(
-                  context,
-                  nextLesson.lessonId,
-                  autoPlayVideo: true,
-                );
-              },
-              onCancelAutoNext: () => _cancelAutoNextCountdown(),
-              onStartAssessment: () => _navigateToAssessmentIntro(context),
-              onCancelAssessment: _cancelAssessmentPrompt,
-              onOpenFullscreen: _openFullscreen,
-              nextLesson: _autoNextTarget,
+            child: Padding(
+              padding: EdgeInsets.only(top: videoTopSpacing),
+              child: _VideoSection(
+                lesson: lesson,
+                videoInitialized: _videoInitialized,
+                videoError: _videoError,
+                videoErrorMessage: _videoErrorMessage,
+                videoController: _videoController,
+                videoUnlocked: _isVideoUnlocked,
+                onWorkbookDismissed: _refreshLesson,
+                onRetry: _initVideo,
+                onBack: () => _handleBack(context),
+                onTogglePlayback: _toggleVideoPlayback,
+                onSeek: _seekVideo,
+                onToggleMute: _toggleMute,
+                onSkipForward: () => _skipVideoBy(30),
+                onSkipBackward: () => _skipVideoBy(-30),
+                showNextLessonPrompt: _showNextLessonPrompt,
+                showAssessmentPrompt: false,
+                autoNextRemainingSeconds: _autoNextRemainingSeconds,
+                autoNextCancelled: _autoNextCancelled,
+                onPlayNextLesson: () async {
+                  final nextLesson = _autoNextTarget;
+                  if (nextLesson == null) return;
+                  _isAutoNavigating = true;
+                  await _navigateToLesson(
+                    context,
+                    nextLesson.lessonId,
+                    autoPlayVideo: true,
+                  );
+                },
+                onCancelAutoNext: () => _cancelAutoNextCountdown(),
+                onStartAssessment: () => _navigateToAssessmentIntro(context),
+                onCancelAssessment: _cancelAssessmentPrompt,
+                onOpenFullscreen: _openFullscreen,
+                nextLesson: _autoNextTarget,
+              ),
             ),
           ),
 
@@ -1135,7 +1171,7 @@ class _VideoSection extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: MediaQuery.paddingOf(context).top + 8,
+          top: 12,
           left: 12,
           child: GestureDetector(
             onTap: onBack,
@@ -1220,6 +1256,7 @@ class _VideoSection extends StatelessWidget {
     }
 
     return _InlineVideoPlayer(
+      key: ValueKey(controller),
       controller: controller,
       onTogglePlayback: onTogglePlayback,
       onSeek: onSeek,
@@ -1260,6 +1297,7 @@ class _InlineVideoPlayer extends StatefulWidget {
   final Future<void> Function() onOpenFullscreen;
 
   const _InlineVideoPlayer({
+    super.key,
     required this.controller,
     this.fit = BoxFit.cover,
     required this.nextLesson,
@@ -1303,7 +1341,9 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   void didUpdateWidget(covariant _InlineVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_handleControllerUpdate);
+      try {
+        oldWidget.controller.removeListener(_handleControllerUpdate);
+      } catch (_) {}
       widget.controller.addListener(_handleControllerUpdate);
       _wasPlaying = widget.controller.value.isPlaying;
     }
@@ -1313,7 +1353,9 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   @override
   void dispose() {
     _controlsTimer?.cancel();
-    widget.controller.removeListener(_handleControllerUpdate);
+    try {
+      widget.controller.removeListener(_handleControllerUpdate);
+    } catch (_) {}
     WakelockPlus.disable();
     super.dispose();
   }
@@ -1975,22 +2017,27 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   bool _showAssessmentPrompt = false;
   bool _autoNextCancelled = false;
   bool _isAutoNavigating = false;
+  bool _isClosingScreen = false;
   int? _autoNextRemainingSeconds;
+
+  void _closeFullscreen([_FullscreenExitAction? result]) {
+    if (_isClosingScreen || !mounted) return;
+    _isClosingScreen = true;
+    Navigator.of(context, rootNavigator: true).pop(result);
+  }
 
   Future<void> _playNextLessonFromFullscreen() async {
     if (_isAutoNavigating) return;
     if (!mounted) return;
     _isAutoNavigating = true;
-
-    if (!mounted) return;
-    Navigator.of(context).pop(_FullscreenExitAction.playNextLesson);
+    _closeFullscreen(_FullscreenExitAction.playNextLesson);
   }
 
   Future<void> _startAssessmentFromFullscreen() async {
     if (_isAutoNavigating) return;
     if (!mounted) return;
     _isAutoNavigating = true;
-    Navigator.of(context).pop(_FullscreenExitAction.startAssessment);
+    _closeFullscreen(_FullscreenExitAction.startAssessment);
   }
 
   bool _mounted = false; // track manual karena async wakelock
@@ -2106,90 +2153,84 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        Navigator.of(context).pop();
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Center(
-                child: AspectRatio(
-                  aspectRatio: widget.controller.value.aspectRatio <= 0
-                      ? 16 / 9
-                      : widget.controller.value.aspectRatio,
-                  child: _InlineVideoPlayer(
-                    controller: widget.controller,
-                    fit: BoxFit.contain,
-                    nextLesson: widget.nextLesson,
-                    showNextLessonPrompt: false,
-                    showAssessmentPrompt: false,
-                    autoNextRemainingSeconds: null,
-                    autoNextCancelled: false,
-                    onTogglePlayback: widget.onTogglePlayback,
-                    onSeek: widget.onSeek,
-                    onToggleMute: widget.onToggleMute,
-                    onSkipForward: widget.onSkipForward,
-                    onSkipBackward: widget.onSkipBackward,
-                    onPlayNextLesson: _playNextLessonFromFullscreen,
-                    onCancelAutoNext: widget.onCancelAutoNext,
-                    onStartAssessment: widget.onStartAssessment,
-                    onCancelAssessment: widget.onCancelAssessment,
-                    onOpenFullscreen: () async => Navigator.of(context).pop(),
-                  ),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: AspectRatio(
+                aspectRatio: widget.controller.value.aspectRatio <= 0
+                    ? 16 / 9
+                    : widget.controller.value.aspectRatio,
+                child: _InlineVideoPlayer(
+                  controller: widget.controller,
+                  fit: BoxFit.contain,
+                  nextLesson: widget.nextLesson,
+                  showNextLessonPrompt: false,
+                  showAssessmentPrompt: false,
+                  autoNextRemainingSeconds: null,
+                  autoNextCancelled: false,
+                  onTogglePlayback: widget.onTogglePlayback,
+                  onSeek: widget.onSeek,
+                  onToggleMute: widget.onToggleMute,
+                  onSkipForward: widget.onSkipForward,
+                  onSkipBackward: widget.onSkipBackward,
+                  onPlayNextLesson: _playNextLessonFromFullscreen,
+                  onCancelAutoNext: widget.onCancelAutoNext,
+                  onStartAssessment: _startAssessmentFromFullscreen,
+                  onCancelAssessment: widget.onCancelAssessment,
+                  onOpenFullscreen: () async => _closeFullscreen(),
                 ),
               ),
-              if (widget.nextLesson != null &&
-                  _showNextLessonPrompt &&
-                  _autoNextRemainingSeconds != null)
-                Positioned(
-                  right: 20,
-                  bottom: 92,
-                  child: _VideoNextLessonOverlay(
-                    nextLesson: widget.nextLesson!,
-                    countdownSeconds: _autoNextRemainingSeconds,
-                    onPlayNow: _playNextLessonFromFullscreen,
-                    onCancel: () => _cancelAutoNextOverlay(),
-                  ),
-                ),
-              if (_showAssessmentPrompt)
-                Positioned(
-                  right: 20,
-                  bottom: 92,
-                  child: _VideoAssessmentOverlay(
-                    onStartAssessment: _startAssessmentFromFullscreen,
-                    onCancel: () {
-                      setState(() => _showAssessmentPrompt = false);
-                      widget.onCancelAssessment();
-                    },
-                  ),
-                ),
+            ),
+            if (widget.nextLesson != null &&
+                _showNextLessonPrompt &&
+                _autoNextRemainingSeconds != null)
               Positioned(
-                top: 12,
-                left: 12,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
-                      borderRadius: BorderRadius.circular(AppRadius.modal),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
-                      size: 16,
-                    ),
+                right: 20,
+                bottom: 92,
+                child: _VideoNextLessonOverlay(
+                  nextLesson: widget.nextLesson!,
+                  countdownSeconds: _autoNextRemainingSeconds,
+                  onPlayNow: _playNextLessonFromFullscreen,
+                  onCancel: () => _cancelAutoNextOverlay(),
+                ),
+              ),
+            if (_showAssessmentPrompt)
+              Positioned(
+                right: 20,
+                bottom: 92,
+                child: _VideoAssessmentOverlay(
+                  onStartAssessment: _startAssessmentFromFullscreen,
+                  onCancel: () {
+                    if (!mounted) return;
+                    setState(() => _showAssessmentPrompt = false);
+                    widget.onCancelAssessment();
+                  },
+                ),
+              ),
+            Positioned(
+              top: 12,
+              left: 12,
+              child: GestureDetector(
+                onTap: () => _closeFullscreen(),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(AppRadius.modal),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white,
+                    size: 16,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -46,6 +46,14 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
   DateTime? _expiresAt;
   Timer? _timer;
   Duration _timeRemaining = Duration.zero;
+  bool _isHandlingBackNavigation = false;
+
+  Future<void> _handleBackToLogin() async {
+    if (_isHandlingBackNavigation || !mounted) return;
+    _isHandlingBackNavigation = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    context.go(AppRoutes.login);
+  }
 
   @override
   void initState() {
@@ -195,7 +203,13 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
   Widget build(BuildContext context) {
     final isBusy = _isVerifying || _isResending;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _handleBackToLogin();
+      },
+      child: Scaffold(
       // Neutral / Black 1 — bg utama (§1)
       backgroundColor: const Color(0xFF060908),
       body: SafeArea(
@@ -218,7 +232,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      onPressed: isBusy ? null : () => context.pop(),
+                      onPressed: isBusy ? null : _handleBackToLogin,
                       icon: const Icon(
                         Icons.arrow_back_ios_new_rounded,
                         color: Colors.white,
@@ -390,7 +404,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
