@@ -62,12 +62,14 @@ class LessonScreen extends ConsumerStatefulWidget {
   final int lessonId;
   final bool autoPlayVideo;
   final bool autoOpenFullscreen;
+  final bool startFromBeginning;
 
   const LessonScreen({
     super.key,
     required this.lessonId,
     this.autoPlayVideo = false,
     this.autoOpenFullscreen = false,
+    this.startFromBeginning = false,
   });
 
   @override
@@ -88,11 +90,13 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     int lessonId, {
     bool autoPlayVideo = false,
     bool autoOpenFullscreen = false,
+    bool startFromBeginning = false,
   }) async {
     if (!mounted) return;
     final params = <String>[];
     if (autoPlayVideo) params.add('autoplay=1');
     if (autoOpenFullscreen) params.add('fullscreen=1');
+    if (startFromBeginning) params.add('fromStart=1');
     final suffix = params.isEmpty ? '' : '?${params.join('&')}';
     context.replace('/lessons/$lessonId$suffix');
   }
@@ -132,6 +136,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             lesson: lesson,
             autoPlayVideo: widget.autoPlayVideo,
             autoOpenFullscreen: widget.autoOpenFullscreen,
+            startFromBeginning: widget.startFromBeginning,
             onReplaceLessonRoute: _replaceLessonRoute,
           ),
         ),
@@ -171,10 +176,12 @@ class _LessonContent extends ConsumerStatefulWidget {
   final LessonDetail lesson;
   final bool autoPlayVideo;
   final bool autoOpenFullscreen;
+  final bool startFromBeginning;
   final Future<void> Function(
     int lessonId, {
     bool autoPlayVideo,
     bool autoOpenFullscreen,
+    bool startFromBeginning,
   }) onReplaceLessonRoute;
 
   const _LessonContent({
@@ -182,6 +189,7 @@ class _LessonContent extends ConsumerStatefulWidget {
     required this.lesson,
     required this.autoPlayVideo,
     required this.autoOpenFullscreen,
+    required this.startFromBeginning,
     required this.onReplaceLessonRoute,
   });
 
@@ -383,7 +391,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         return;
       }
 
-      if (_lastReportedProgress > 0 && _lastReportedProgress < 100) {
+      if (!widget.startFromBeginning &&
+          _lastReportedProgress > 0 &&
+          _lastReportedProgress < 100) {
         final duration = controller.value.duration;
         final seekTo = duration * (_lastReportedProgress / 100);
         await controller.seekTo(seekTo);
@@ -486,7 +496,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       if (_isAutoNavigating || _autoNextCancelled) return;
       _isAutoNavigating = true;
       unawaited(
-        _navigateToLesson(context, nextLesson.lessonId, autoPlayVideo: true),
+        _navigateToLesson(
+          context,
+          nextLesson.lessonId,
+          autoPlayVideo: true,
+          startFromBeginning: true,
+        ),
       );
       return;
     }
@@ -769,12 +784,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   Future<void> _navigateToLesson(
-      BuildContext context,
-      int lessonId, {
-        bool autoPlayVideo = false,
-        bool autoOpenFullscreen = false,
-        bool restorePortrait = true,
-      }) async {
+        BuildContext context,
+        int lessonId, {
+         bool autoPlayVideo = false,
+         bool autoOpenFullscreen = false,
+         bool startFromBeginning = false,
+         bool restorePortrait = true,
+       }) async {
     _preserveLandscapeOnDispose = !restorePortrait;
     await prepareForNavigation(
       context,
@@ -785,6 +801,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       lessonId,
       autoPlayVideo: autoPlayVideo,
       autoOpenFullscreen: autoOpenFullscreen,
+      startFromBeginning: startFromBeginning,
     );
   }
 
@@ -800,12 +817,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (!mounted) return;
 
     await _navigateToLesson(
-      context,
-      lessonId,
-      autoPlayVideo: autoPlayVideo,
-      autoOpenFullscreen: true,
-      restorePortrait: false,
-    );
+        context,
+        lessonId,
+        autoPlayVideo: autoPlayVideo,
+        autoOpenFullscreen: true,
+        startFromBeginning: true,
+        restorePortrait: false,
+      );
   }
 
   Future<void> _waitForOverlayToDetach() async {
@@ -964,7 +982,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Widget build(BuildContext context) {
     final lesson = widget.lesson;
     final topInset = MediaQuery.paddingOf(context).top;
-    final videoTopSpacing = topInset < 12 ? 16.0 : topInset + 4;
+    final videoTopSpacing = topInset < 12 ? 40.0 : topInset + 28;
 
     return RefreshIndicator(
       color: AppColors.primary,
@@ -976,43 +994,42 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         slivers: [
           // Video
           SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(top: videoTopSpacing),
-              child: _VideoSection(
-                lesson: lesson,
-                videoInitialized: _videoInitialized,
-                videoError: _videoError,
-                videoErrorMessage: _videoErrorMessage,
-                videoController: _videoController,
-                videoUnlocked: _isVideoUnlocked,
-                onWorkbookDismissed: _refreshLesson,
-                onRetry: _initVideo,
-                onBack: () => _handleBack(context),
-                onTogglePlayback: _toggleVideoPlayback,
-                onSeek: _seekVideo,
-                onToggleMute: _toggleMute,
-                onSkipForward: () => _skipVideoBy(30),
-                onSkipBackward: () => _skipVideoBy(-30),
-                showNextLessonPrompt: _showNextLessonPrompt,
-                showAssessmentPrompt: false,
-                autoNextRemainingSeconds: _autoNextRemainingSeconds,
-                autoNextCancelled: _autoNextCancelled,
-                onPlayNextLesson: () async {
-                  final nextLesson = _autoNextTarget;
-                  if (nextLesson == null) return;
+            child: _VideoSection(
+              lesson: lesson,
+              topSpacing: videoTopSpacing,
+              videoInitialized: _videoInitialized,
+              videoError: _videoError,
+              videoErrorMessage: _videoErrorMessage,
+              videoController: _videoController,
+              videoUnlocked: _isVideoUnlocked,
+              onWorkbookDismissed: _refreshLesson,
+              onRetry: _initVideo,
+              onBack: () => _handleBack(context),
+              onTogglePlayback: _toggleVideoPlayback,
+              onSeek: _seekVideo,
+              onToggleMute: _toggleMute,
+              onSkipForward: () => _skipVideoBy(30),
+              onSkipBackward: () => _skipVideoBy(-30),
+              showNextLessonPrompt: _showNextLessonPrompt,
+              showAssessmentPrompt: false,
+              autoNextRemainingSeconds: _autoNextRemainingSeconds,
+              autoNextCancelled: _autoNextCancelled,
+              onPlayNextLesson: () async {
+                final nextLesson = _autoNextTarget;
+                if (nextLesson == null) return;
                   _isAutoNavigating = true;
                   await _navigateToLesson(
                     context,
                     nextLesson.lessonId,
                     autoPlayVideo: true,
+                    startFromBeginning: true,
                   );
                 },
-                onCancelAutoNext: () => _cancelAutoNextCountdown(),
-                onStartAssessment: () => _navigateToAssessmentIntro(context),
-                onCancelAssessment: _cancelAssessmentPrompt,
-                onOpenFullscreen: _openFullscreen,
-                nextLesson: _autoNextTarget,
-              ),
+              onCancelAutoNext: () => _cancelAutoNextCountdown(),
+              onStartAssessment: () => _navigateToAssessmentIntro(context),
+              onCancelAssessment: _cancelAssessmentPrompt,
+              onOpenFullscreen: _openFullscreen,
+              nextLesson: _autoNextTarget,
             ),
           ),
 
@@ -1021,12 +1038,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             child: FadeTransition(
               opacity: _fadeAnim,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ModuleBreadcrumb(module: lesson.module),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       lesson.title,
                       style: const TextStyle(
@@ -1037,12 +1054,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _LessonProgressBar(
                       progress: lesson.progress,
                       animation: _progressAnim,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     _ActionRow(
                       lesson: lesson,
                       isAssessmentUnlocked: _isAssessmentUnlocked,
@@ -1050,7 +1067,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                       onOpenAssessment: () => _navigateToAssessmentIntro(context),
                     ),
                     if (lesson.audio.isAvailable) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       _InlineAudioPlayerCard(
                         title: lesson.title,
                         audioLoading: _audioLoading,
@@ -1060,17 +1077,17 @@ class _LessonContentState extends ConsumerState<_LessonContent>
                         onRetryAudio: _initAudio,
                       ),
                     ],
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 22),
                     if (lesson.content != null && lesson.content!.isNotEmpty) ...[
                       _ContentSection(content: lesson.content!),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 22),
                     ],
                     if (lesson.workbook.isAvailable) ...[
                       LessonWorkbookSection(
                         workbook: lesson.workbook,
                         onDismissed: _refreshLesson,
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 22),
                     ],
                     if (lesson.assessment != null) ...[
                       LessonAssessmentBanner(
@@ -1113,6 +1130,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
 class _VideoSection extends StatelessWidget {
   final LessonDetail lesson;
+  final double topSpacing;
   final _AutoNextTarget? nextLesson;
   final bool videoInitialized;
   final bool videoError;
@@ -1139,6 +1157,7 @@ class _VideoSection extends StatelessWidget {
 
   const _VideoSection({
     required this.lesson,
+    required this.topSpacing,
     required this.nextLesson,
     required this.videoInitialized,
     required this.videoError,
@@ -1168,21 +1187,27 @@ class _VideoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Container(
-            color: Colors.black,
-            child: _buildVideoBody(context),
-          ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: topSpacing),
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                color: Colors.black,
+                child: _buildVideoBody(context),
+              ),
+            ),
+          ],
         ),
         Positioned(
-          top: 12,
-          left: 12,
+          top: topSpacing + 12,
+          left: 16,
           child: GestureDetector(
             onTap: onBack,
             child: Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.55),
                 borderRadius: BorderRadius.circular(AppRadius.modal),
@@ -1194,7 +1219,7 @@ class _VideoSection extends StatelessWidget {
               child: const Icon(
                 Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
-                size: 14,
+                size: 16,
               ),
             ),
           ),
@@ -1411,7 +1436,18 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
     _scheduleControlsHide();
   }
 
+  void _hideControls() {
+    _controlsTimer?.cancel();
+    if (_controlsVisible) {
+      setState(() => _controlsVisible = false);
+    }
+  }
+
   void _handleSurfaceTap() {
+    if (_controlsVisible) {
+      _hideControls();
+      return;
+    }
     _showControls();
   }
 
@@ -1438,97 +1474,113 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
         final duration = value.duration;
         final position = value.position > duration ? duration : value.position;
         final isMuted = value.volume == 0;
+        final controlsBar = _VideoControlsBar(
+          duration: duration,
+          position: position,
+          isPlaying: value.isPlaying,
+          isMuted: isMuted,
+          onTogglePlayback: () => _runControlAction(widget.onTogglePlayback),
+          onSeek: (position) => _runControlAction(
+            () => widget.onSeek(position),
+          ),
+          onToggleMute: () => _runControlAction(widget.onToggleMute),
+          onOpenFullscreen: () => _runControlAction(widget.onOpenFullscreen),
+        );
+        final thinProgressBar = _VideoThinProgressBar(
+          duration: duration,
+          position: position,
+          visible: !_controlsVisible,
+          onSeek: (position) => widget.onSeek(position),
+        );
 
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _handleSurfaceTap,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              FittedBox(
-                fit: widget.fit,
-                child: SizedBox(
-                  width: value.size.width,
-                  height: value.size.height,
-                  child: VideoPlayer(widget.controller),
+        final controlsOverlay = IgnorePointer(
+          ignoring: !_controlsVisible,
+          child: AnimatedOpacity(
+            opacity: _controlsVisible ? 1 : 0,
+            duration: const Duration(milliseconds: 220),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x66000000),
+                          Color(0x11000000),
+                          Color(0x77000000),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              IgnorePointer(
-                ignoring: !_controlsVisible,
-                child: AnimatedOpacity(
-                  opacity: _controlsVisible ? 1 : 0,
-                  duration: const Duration(milliseconds: 220),
-                  child: Stack(
-                    fit: StackFit.expand,
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0x66000000),
-                              Color(0x11000000),
-                              Color(0x77000000),
-                            ],
-                          ),
+                      _BigVideoActionButton(
+                        icon: Icons.replay_30_rounded,
+                        onTap: () => _runControlAction(
+                          widget.onSkipBackward,
                         ),
                       ),
-                      Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _BigVideoActionButton(
-                              icon: Icons.replay_30_rounded,
-                              onTap: () => _runControlAction(
-                                widget.onSkipBackward,
-                              ),
-                            ),
-                            const SizedBox(width: 18),
-                            _BigVideoActionButton(
-                              icon: value.isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              size: 64,
-                              iconSize: 34,
-                              onTap: () => _runControlAction(
-                                widget.onTogglePlayback,
-                              ),
-                            ),
-                            const SizedBox(width: 18),
-                            _BigVideoActionButton(
-                              icon: Icons.forward_30_rounded,
-                              onTap: () => _runControlAction(
-                                widget.onSkipForward,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(width: 18),
+                      _BigVideoActionButton(
+                        icon: value.isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 64,
+                        iconSize: 34,
+                        onTap: () => _runControlAction(
+                          widget.onTogglePlayback,
                         ),
                       ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: _VideoControlsBar(
-                          duration: duration,
-                          position: position,
-                          isPlaying: value.isPlaying,
-                          isMuted: isMuted,
-                          onTogglePlayback: () =>
-                              _runControlAction(widget.onTogglePlayback),
-                          onSeek: (position) => _runControlAction(
-                            () => widget.onSeek(position),
-                          ),
-                          onToggleMute: () =>
-                              _runControlAction(widget.onToggleMute),
-                          onOpenFullscreen: () =>
-                              _runControlAction(widget.onOpenFullscreen),
+                      const SizedBox(width: 18),
+                      _BigVideoActionButton(
+                        icon: Icons.forward_30_rounded,
+                        onTap: () => _runControlAction(
+                          widget.onSkipForward,
                         ),
                       ),
                     ],
                   ),
                 ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: controlsBar,
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final videoSurface = GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _handleSurfaceTap,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: FittedBox(
+                  fit: widget.fit,
+                  child: SizedBox(
+                    width: value.size.width,
+                    height: value.size.height,
+                    child: VideoPlayer(widget.controller),
+                  ),
+                ),
               ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: thinProgressBar,
+              ),
+              Positioned.fill(child: controlsOverlay),
               if (widget.nextLesson != null &&
                   widget.showNextLessonPrompt &&
                   widget.autoNextRemainingSeconds != null)
@@ -1554,6 +1606,8 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
             ],
           ),
         );
+
+        return videoSurface;
       },
     );
   }
@@ -1894,64 +1948,67 @@ class _VideoControlsBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxMillis = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
     final currentMillis = position.inMilliseconds.clamp(0, maxMillis);
+    final slider = SliderTheme(
+      data: SliderTheme.of(context).copyWith(
+        trackHeight: 2.5,
+        trackShape: const RoundedRectSliderTrackShape(),
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+        activeTrackColor: AppColors.primary,
+        inactiveTrackColor: Colors.white24,
+        thumbColor: AppColors.primary,
+        overlayColor: AppColors.primary.withOpacity(0.18),
+      ),
+      child: Slider(
+        value: currentMillis.toDouble(),
+        max: maxMillis.toDouble(),
+        onChanged: (value) => onSeek(Duration(milliseconds: value.round())),
+      ),
+    );
+    final durationLabel = Text(
+      '${_formatVideoDuration(position)} / ${_formatVideoDuration(duration)}',
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        fontFamily: 'Montserrat',
+      ),
+      textAlign: TextAlign.center,
+    );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 6),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
             Colors.transparent,
-            Colors.black.withOpacity(0.16),
-            Colors.black.withOpacity(0.56),
+            Colors.black.withOpacity(0.12),
+            Colors.black.withOpacity(0.50),
           ],
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 2.5,
-              trackShape: const RoundedRectSliderTrackShape(),
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-              activeTrackColor: AppColors.primary,
-              inactiveTrackColor: Colors.white24,
-              thumbColor: AppColors.primary,
-              overlayColor: AppColors.primary.withOpacity(0.18),
-            ),
-            child: Slider(
-              value: currentMillis.toDouble(),
-              max: maxMillis.toDouble(),
-              onChanged: (value) => onSeek(Duration(milliseconds: value.round())),
-            ),
-          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             child: Row(
               children: [
                 _VideoControlButton(
-                  icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  icon: isPlaying
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
                   onTap: onTogglePlayback,
                 ),
                 _VideoControlButton(
-                  icon: isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  icon: isMuted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
                   onTap: onToggleMute,
                 ),
-                Expanded(
-                  child: Text(
-                    '${_formatVideoDuration(position)} / ${_formatVideoDuration(duration)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Montserrat',
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+                Expanded(child: durationLabel),
                 _VideoControlButton(
                   icon: Icons.fullscreen_rounded,
                   onTap: onOpenFullscreen,
@@ -1959,7 +2016,88 @@ class _VideoControlsBar extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 2),
+          slider,
         ],
+      ),
+    );
+  }
+}
+
+class _VideoThinProgressBar extends StatelessWidget {
+  final Duration duration;
+  final Duration position;
+  final bool visible;
+  final Future<void> Function(Duration position) onSeek;
+
+  const _VideoThinProgressBar({
+    required this.duration,
+    required this.position,
+    required this.visible,
+    required this.onSeek,
+  });
+
+  Future<void> _seekFromDx(double dx, double width) async {
+    if (width <= 0) return;
+    final ratio = (dx / width).clamp(0.0, 1.0);
+    final targetMillis = (duration.inMilliseconds * ratio).round();
+    await onSeek(Duration(milliseconds: targetMillis));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxMillis = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
+    final currentMillis = position.inMilliseconds.clamp(0, maxMillis);
+    final progress = currentMillis / maxMillis;
+
+    return AnimatedOpacity(
+      opacity: visible ? 1 : 0,
+      duration: const Duration(milliseconds: 180),
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: SizedBox(
+          height: 16,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (details) => _seekFromDx(
+                  details.localPosition.dx,
+                  constraints.maxWidth,
+                ),
+                onHorizontalDragStart: (details) => _seekFromDx(
+                  details.localPosition.dx,
+                  constraints.maxWidth,
+                ),
+                onHorizontalDragUpdate: (details) => _seekFromDx(
+                  details.localPosition.dx,
+                  constraints.maxWidth,
+                ),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SizedBox(
+                    height: 3,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Container(color: Colors.white24),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FractionallySizedBox(
+                            widthFactor: progress.isNaN
+                                ? 0
+                                : progress.clamp(0.0, 1.0),
+                            child: Container(color: AppColors.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -2234,7 +2372,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                 ),
               ),
             Positioned(
-              top: 12,
+              top: 24,
               left: 12,
               child: GestureDetector(
                 onTap: _showTransitionLoader ? null : () => _closeFullscreen(),
