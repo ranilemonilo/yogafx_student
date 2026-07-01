@@ -2,10 +2,6 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-=======
-import 'package:flutter_pdfview/flutter_pdfview.dart';
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
@@ -32,17 +28,10 @@ class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
 
   String? _filePath;
   String? _error;
-<<<<<<< HEAD
   int _currentPage = 1;
   int _pageCount = 0;
   double _zoomLevel = 1.0;
   bool _documentReady = false;
-=======
-  int? _totalPages;
-  int _currentPage = 0;
-  PDFViewController? _pdfController;
-  FitPolicy _fitPolicy = FitPolicy.BOTH;
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
 
   @override
   void initState() {
@@ -69,7 +58,6 @@ class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
     }
   }
 
-<<<<<<< HEAD
   void _setZoomLevel(double nextZoom) {
     final clampedZoom = nextZoom.clamp(1.0, 4.0);
     _pdfController.zoomLevel = clampedZoom;
@@ -89,30 +77,12 @@ class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
   void _goToNextPage() {
     if (_pageCount == 0 || _currentPage >= _pageCount) return;
     _pdfController.nextPage();
-=======
-  Future<void> _setFitPolicy(FitPolicy nextPolicy) async {
-    if (_fitPolicy == nextPolicy) return;
-    final currentPage = _currentPage;
-    setState(() => _fitPolicy = nextPolicy);
-
-    // Tunggu viewer re-create setelah key berubah, lalu kembalikan posisi halaman.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      final controller = _pdfController;
-      if (controller == null) return;
-      await controller.setPage(currentPage);
-    });
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
   }
 
   @override
   Widget build(BuildContext context) {
     final orientation = MediaQuery.orientationOf(context);
     final isLandscape = orientation == Orientation.landscape;
-<<<<<<< HEAD
-=======
-    final maxViewerWidth = isLandscape ? 980.0 : 720.0;
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -131,21 +101,14 @@ class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-<<<<<<< HEAD
             if (_documentReady)
               Text(
                 'Page $_currentPage of $_pageCount',
-=======
-            if (_filePath != null && _totalPages != null)
-              Text(
-                'Page ${_currentPage + 1} of $_totalPages',
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
                 style: const TextStyle(
                   color: AppColors.textMuted,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                   fontFamily: 'Montserrat',
-<<<<<<< HEAD
                 ),
               ),
           ],
@@ -306,131 +269,11 @@ class _ViewerFrame extends StatelessWidget {
           color: Colors.black,
           child: child,
         ),
-=======
-                ),
-              ),
-          ],
-        ),
-      ),
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        color: Colors.black,
-        padding: EdgeInsets.symmetric(
-          horizontal: isLandscape ? 24 : 12,
-          vertical: isLandscape ? 16 : 12,
-        ),
-        child: _error != null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    _error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
-                ),
-              )
-            : _filePath == null
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  )
-                : LayoutBuilder(
-                    builder: (context, constraints) {
-                      final maxViewerHeight = isLandscape
-                          ? constraints.maxHeight * 0.9
-                          : constraints.maxHeight * 0.94;
-
-                      return Stack(
-                        children: [
-                          Center(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: maxViewerWidth,
-                                maxHeight: maxViewerHeight,
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: PDFView(
-                                    key: ValueKey(
-                                      '${_filePath!}_${orientation.name}_${_fitPolicy.name}_${_currentPage}',
-                                    ),
-                                    filePath: _filePath!,
-                                    backgroundColor: Colors.black,
-                                    autoSpacing: true,
-                                    pageFling: true,
-                                    pageSnap: true,
-                                    defaultPage: _currentPage,
-                                    fitPolicy: _fitPolicy,
-                                    onViewCreated: (controller) {
-                                      _pdfController = controller;
-                                    },
-                                    onRender: (pages) {
-                                      if (!mounted) return;
-                                      setState(() {
-                                        _totalPages = pages;
-                                        _currentPage = _currentPage.clamp(
-                                          0,
-                                          (pages ?? 1) - 1,
-                                        );
-                                      });
-                                    },
-                                    onPageChanged: (page, _) {
-                                      if (!mounted || page == null) return;
-                                      setState(() => _currentPage = page);
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      Positioned(
-                        right: 16,
-                        bottom: 16,
-                        child: SafeArea(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _PdfZoomButton(
-                                icon: Icons.zoom_out_rounded,
-                                tooltip: 'Zoom out',
-                                onTap: () => _setFitPolicy(FitPolicy.HEIGHT),
-                              ),
-                              const SizedBox(width: 10),
-                              _PdfZoomButton(
-                                icon: Icons.fit_screen_rounded,
-                                tooltip: 'Fit page',
-                                onTap: () => _setFitPolicy(FitPolicy.BOTH),
-                              ),
-                              const SizedBox(width: 10),
-                              _PdfZoomButton(
-                                icon: Icons.zoom_in_rounded,
-                                tooltip: 'Zoom in',
-                                onTap: () => _setFitPolicy(FitPolicy.WIDTH),
-                              ),
-                            ],
-                          ),
-                        ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
       ),
     );
   }
 }
 
-<<<<<<< HEAD
 class _ViewerControlsBar extends StatelessWidget {
   final bool canGoPrevious;
   final bool canGoNext;
@@ -511,22 +354,11 @@ class _ViewerIconButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.enabled,
-=======
-class _PdfZoomButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  const _PdfZoomButton({
-    required this.icon,
-    required this.tooltip,
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
     final foreground = enabled ? Colors.white : Colors.white.withOpacity(0.28);
 
     return Material(
@@ -534,24 +366,13 @@ class _PdfZoomButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: enabled ? onTap : null,
-=======
-    return Material(
-      color: Colors.black.withOpacity(0.72),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
         borderRadius: BorderRadius.circular(14),
         child: Tooltip(
           message: tooltip,
           child: SizedBox(
             width: 48,
             height: 48,
-<<<<<<< HEAD
             child: Icon(icon, color: foreground, size: 24),
-=======
-            child: Icon(icon, color: Colors.white),
->>>>>>> 84f2e66259c20905eba0add0bf604c42463bda1f
           ),
         ),
       ),
