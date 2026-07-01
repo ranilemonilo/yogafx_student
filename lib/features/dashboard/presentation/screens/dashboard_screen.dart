@@ -1855,6 +1855,14 @@ class _ModuleCardState extends State<_ModuleCard>
                       ),
                     ),
                   ),
+                  if (module.status.trim().toLowerCase() == 'completed')
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: _DashboardCompletedBadge(
+                        label: module.statusLabel,
+                      ),
+                    ),
                   if (module.showProgress)
                     Positioned(
                       left: 12,
@@ -1908,15 +1916,17 @@ class _ModuleCardState extends State<_ModuleCard>
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    module.statusLabel,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontFamily: 'Montserrat',
+                  if (module.status.trim().toLowerCase() != 'completed') ...[
+                    Text(
+                      module.statusLabel,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontFamily: 'Montserrat',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
+                  ],
                   Row(
                     children: [
                       const Icon(Icons.play_circle_outline_rounded,
@@ -1937,6 +1947,41 @@ class _ModuleCardState extends State<_ModuleCard>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DashboardCompletedBadge extends StatelessWidget {
+  final String label;
+
+  const _DashboardCompletedBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.secondary, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_rounded, color: Colors.white, size: 12),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
       ),
     );
   }

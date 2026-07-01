@@ -1420,6 +1420,10 @@ class _LessonRowState extends State<_LessonRow> with SingleTickerProviderStateMi
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (!isLocked && lesson.progressPercentage >= 100) ...[
+                          const SizedBox(width: 8),
+                          const _StatusBadge(status: 'completed'),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 8),

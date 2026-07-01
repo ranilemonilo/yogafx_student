@@ -982,146 +982,150 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Widget build(BuildContext context) {
     final lesson = widget.lesson;
     final topInset = MediaQuery.paddingOf(context).top;
-    final videoTopSpacing = topInset < 12 ? 40.0 : topInset + 28;
+    final videoTopSpacing = topInset < 12 ? 24.0 : topInset + 10;
 
-    return RefreshIndicator(
-      color: AppColors.primary,
-      onRefresh: _refreshLesson,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
+    return Column(
+      children: [
+        _VideoSection(
+          lesson: lesson,
+          topSpacing: videoTopSpacing,
+          videoInitialized: _videoInitialized,
+          videoError: _videoError,
+          videoErrorMessage: _videoErrorMessage,
+          videoController: _videoController,
+          videoUnlocked: _isVideoUnlocked,
+          onWorkbookDismissed: _refreshLesson,
+          onRetry: _initVideo,
+          onBack: () => _handleBack(context),
+          onTogglePlayback: _toggleVideoPlayback,
+          onSeek: _seekVideo,
+          onToggleMute: _toggleMute,
+          onSkipForward: () => _skipVideoBy(30),
+          onSkipBackward: () => _skipVideoBy(-30),
+          showNextLessonPrompt: _showNextLessonPrompt,
+          showAssessmentPrompt: false,
+          autoNextRemainingSeconds: _autoNextRemainingSeconds,
+          autoNextCancelled: _autoNextCancelled,
+          onPlayNextLesson: () async {
+            final nextLesson = _autoNextTarget;
+            if (nextLesson == null) return;
+            _isAutoNavigating = true;
+            await _navigateToLesson(
+              context,
+              nextLesson.lessonId,
+              autoPlayVideo: true,
+              startFromBeginning: true,
+            );
+          },
+          onCancelAutoNext: () => _cancelAutoNextCountdown(),
+          onStartAssessment: () => _navigateToAssessmentIntro(context),
+          onCancelAssessment: _cancelAssessmentPrompt,
+          onOpenFullscreen: _openFullscreen,
+          nextLesson: _autoNextTarget,
         ),
-        slivers: [
-          // Video
-          SliverToBoxAdapter(
-            child: _VideoSection(
-              lesson: lesson,
-              topSpacing: videoTopSpacing,
-              videoInitialized: _videoInitialized,
-              videoError: _videoError,
-              videoErrorMessage: _videoErrorMessage,
-              videoController: _videoController,
-              videoUnlocked: _isVideoUnlocked,
-              onWorkbookDismissed: _refreshLesson,
-              onRetry: _initVideo,
-              onBack: () => _handleBack(context),
-              onTogglePlayback: _toggleVideoPlayback,
-              onSeek: _seekVideo,
-              onToggleMute: _toggleMute,
-              onSkipForward: () => _skipVideoBy(30),
-              onSkipBackward: () => _skipVideoBy(-30),
-              showNextLessonPrompt: _showNextLessonPrompt,
-              showAssessmentPrompt: false,
-              autoNextRemainingSeconds: _autoNextRemainingSeconds,
-              autoNextCancelled: _autoNextCancelled,
-              onPlayNextLesson: () async {
-                final nextLesson = _autoNextTarget;
-                if (nextLesson == null) return;
-                  _isAutoNavigating = true;
-                  await _navigateToLesson(
-                    context,
-                    nextLesson.lessonId,
-                    autoPlayVideo: true,
-                    startFromBeginning: true,
-                  );
-                },
-              onCancelAutoNext: () => _cancelAutoNextCountdown(),
-              onStartAssessment: () => _navigateToAssessmentIntro(context),
-              onCancelAssessment: _cancelAssessmentPrompt,
-              onOpenFullscreen: _openFullscreen,
-              nextLesson: _autoNextTarget,
-            ),
-          ),
-
-          // Body
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ModuleBreadcrumb(module: lesson.module),
-                    const SizedBox(height: 8),
-                    Text(
-                      lesson.title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'Montserrat',
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _LessonProgressBar(
-                      progress: lesson.progress,
-                      animation: _progressAnim,
-                    ),
-                    const SizedBox(height: 16),
-                    _ActionRow(
-                      lesson: lesson,
-                      isAssessmentUnlocked: _isAssessmentUnlocked,
-                      onWorkbookDismissed: _refreshLesson,
-                      onOpenAssessment: () => _navigateToAssessmentIntro(context),
-                    ),
-                    if (lesson.audio.isAvailable) ...[
-                      const SizedBox(height: 14),
-                      _InlineAudioPlayerCard(
-                        title: lesson.title,
-                        audioLoading: _audioLoading,
-                        audioReady: _audioReady,
-                        audioError: _audioError,
-                        audioPlayer: _audioPlayer,
-                        onRetryAudio: _initAudio,
-                      ),
-                    ],
-                    const SizedBox(height: 22),
-                    if (lesson.content != null && lesson.content!.isNotEmpty) ...[
-                      _ContentSection(content: lesson.content!),
-                      const SizedBox(height: 22),
-                    ],
-                    if (lesson.workbook.isAvailable) ...[
-                      LessonWorkbookSection(
-                        workbook: lesson.workbook,
-                        onDismissed: _refreshLesson,
-                      ),
-                      const SizedBox(height: 22),
-                    ],
-                    if (lesson.assessment != null) ...[
-                      LessonAssessmentBanner(
-                        lesson: lesson,
-                        isUnlocked: _isAssessmentUnlocked,
-                        onOpenAssessment: () => _navigateToAssessmentIntro(context),
-                      ),
-                      const SizedBox(height: 28),
-                    ],
-                    if (lesson.navigation.isNotEmpty) ...[
-                      _NavigationSection(
-                        navigation: lesson.navigation,
-                        currentLessonId: lesson.id,
-                        onNavigate: (lessonId) =>
-                            _navigateToLesson(context, lessonId),
-                      ),
-                      const SizedBox(height: 28),
-                    ],
-                    if (_autoNextTarget != null)
-                      _NextLessonBanner(
-                        nextLesson: _autoNextTarget!,
-                        countdownSeconds: lesson.assessment == null
-                            ? _autoNextRemainingSeconds
-                            : null,
-                        onNavigate: (lessonId) =>
-                            _navigateToLesson(context, lessonId),
-                      ),
-                  ],
-                ),
+        Expanded(
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: _refreshLesson,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fadeAnim,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _ModuleBreadcrumb(module: lesson.module),
+                          const SizedBox(height: 8),
+                          Text(
+                            lesson.title,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'Montserrat',
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _LessonProgressBar(
+                            progress: lesson.progress,
+                            animation: _progressAnim,
+                          ),
+                          const SizedBox(height: 16),
+                          _ActionRow(
+                            lesson: lesson,
+                            isAssessmentUnlocked: _isAssessmentUnlocked,
+                            onWorkbookDismissed: _refreshLesson,
+                            onOpenAssessment: () =>
+                                _navigateToAssessmentIntro(context),
+                          ),
+                          if (lesson.audio.isAvailable) ...[
+                            const SizedBox(height: 14),
+                            _InlineAudioPlayerCard(
+                              title: lesson.title,
+                              audioLoading: _audioLoading,
+                              audioReady: _audioReady,
+                              audioError: _audioError,
+                              audioPlayer: _audioPlayer,
+                              onRetryAudio: _initAudio,
+                            ),
+                          ],
+                          const SizedBox(height: 22),
+                          if (lesson.content != null &&
+                              lesson.content!.isNotEmpty) ...[
+                            _ContentSection(content: lesson.content!),
+                            const SizedBox(height: 22),
+                          ],
+                          if (lesson.workbook.isAvailable) ...[
+                            LessonWorkbookSection(
+                              workbook: lesson.workbook,
+                              onDismissed: _refreshLesson,
+                            ),
+                            const SizedBox(height: 22),
+                          ],
+                          if (lesson.assessment != null) ...[
+                            LessonAssessmentBanner(
+                              lesson: lesson,
+                              isUnlocked: _isAssessmentUnlocked,
+                              onOpenAssessment: () =>
+                                  _navigateToAssessmentIntro(context),
+                            ),
+                            const SizedBox(height: 28),
+                          ],
+                          if (lesson.navigation.isNotEmpty) ...[
+                            _NavigationSection(
+                              navigation: lesson.navigation,
+                              currentLessonId: lesson.id,
+                              onNavigate: (lessonId) =>
+                                  _navigateToLesson(context, lessonId),
+                            ),
+                            const SizedBox(height: 28),
+                          ],
+                          if (_autoNextTarget != null)
+                            _NextLessonBanner(
+                              nextLesson: _autoNextTarget!,
+                              countdownSeconds: lesson.assessment == null
+                                  ? _autoNextRemainingSeconds
+                                  : null,
+                              onNavigate: (lessonId) =>
+                                  _navigateToLesson(context, lessonId),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
