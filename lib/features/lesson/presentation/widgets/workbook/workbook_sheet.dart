@@ -1,11 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/api/api_client.dart';
-import '../../../../../core/router/app_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../data/models/lesson_model.dart';
 import '../shared/sheet_button.dart';
@@ -68,13 +67,7 @@ class LessonWorkbookSheet extends StatelessWidget {
             : SnackBarAction(
                 label: 'Open',
                 onPressed: () {
-                  routeContext.push(
-                    AppRoutes.workbookViewer,
-                    extra: {
-                      'url': workbook.url!,
-                      'title': workbook.fileName ?? 'Workbook',
-                    },
-                  );
+                  _openInBrowser(workbook.url!);
                 },
               ),
         duration: const Duration(seconds: 6),
@@ -99,6 +92,11 @@ class LessonWorkbookSheet extends StatelessWidget {
     final downloadsDir = await getDownloadsDirectory();
     if (downloadsDir != null) return downloadsDir;
     throw const FileSystemException('Download folder not found');
+  }
+
+  Future<void> _openInBrowser(String url) async {
+    final uri = Uri.parse(url);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   String _buildFileName(String? rawName) {
@@ -163,13 +161,7 @@ class LessonWorkbookSheet extends StatelessWidget {
               isPrimary: workbook.downloadUrl == null,
               onTap: () {
                 Navigator.pop(context);
-                context.push(
-                  AppRoutes.workbookViewer,
-                  extra: {
-                    'url': workbook.url!,
-                    'title': workbook.fileName ?? 'Workbook',
-                  },
-                );
+                _openInBrowser(workbook.url!);
               },
             ),
           ],
