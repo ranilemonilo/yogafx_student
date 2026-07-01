@@ -36,7 +36,7 @@ dependencies:
   just_audio: ^0.9.36
 
   # PDF viewer
-  flutter_pdfview: ^1.3.2
+  syncfusion_flutter_pdfviewer: ^28.2.12
   path_provider: ^2.1.4
 
   # File picker (assignment upload)

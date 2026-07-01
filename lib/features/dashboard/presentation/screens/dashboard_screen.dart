@@ -6,7 +6,6 @@ import '../../../../core/router/app_router.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
-import '../../../certificate/presentation/providers/certificate_provider.dart';
 import '../../../lesson/data/models/lesson_model.dart';
 import '../../../lesson/presentation/providers/lesson_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
@@ -14,7 +13,6 @@ import '../providers/dashboard_provider.dart';
 import '../providers/running_login_time_provider.dart';
 import '../utils/access_time_helper.dart';
 import '../../data/models/dashboard_model.dart';
-import '../../../module/utils/module_access_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 const _kLockedModuleMessage =
@@ -62,9 +60,6 @@ class DashboardScreen extends ConsumerWidget {
     }
 
     final dashboardAsync = ref.watch(dashboardProvider);
-    final hasGeneratedCertificate = ref
-        .watch(hasGeneratedCertificateProvider)
-        .maybeWhen(data: (value) => value, orElse: () => false);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -75,10 +70,7 @@ class DashboardScreen extends ConsumerWidget {
           message: e.toString(),
           onRetry: () => ref.invalidate(dashboardProvider),
         ),
-        data: (data) => _DashboardContent(
-          data: data,
-          hasGeneratedCertificate: hasGeneratedCertificate,
-        ),
+        data: (data) => _DashboardContent(data: data),
       ),
     );
   }
@@ -270,11 +262,7 @@ Future<bool?> _confirmLogout(BuildContext context) {
 
 class _DashboardContent extends ConsumerStatefulWidget {
   final DashboardData data;
-  final bool hasGeneratedCertificate;
-  const _DashboardContent({
-    required this.data,
-    required this.hasGeneratedCertificate,
-  });
+  const _DashboardContent({required this.data});
 
   @override
   ConsumerState<_DashboardContent> createState() => _DashboardContentState();
@@ -365,11 +353,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
                 ),
                 const SizedBox(height: 32),
                 _animated(
-                    3,
-                    _ModulesSection(
-                      section: data.availableModulesSection,
-                      hasGeneratedCertificate: widget.hasGeneratedCertificate,
-                    )),
+                    3, _ModulesSection(section: data.availableModulesSection)),
                 const SizedBox(height: 8),
               ],
             ),
@@ -381,152 +365,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
 }
 
 // ─── App Bar ──────────────────────────────────────────────────────────────────
-
-class _CertificateSection extends StatelessWidget {
-  final CertificateMilestone certificate;
-
-  const _CertificateSection({required this.certificate});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.divider, width: 0.8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              certificate.eyebrow.toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-                letterSpacing: 1.6,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              certificate.title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              certificate.eligibilityLabel,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                fontFamily: 'Montserrat',
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _MiniBadge(label: 'State', value: certificate.state),
-                const SizedBox(width: 8),
-                _MiniBadge(label: 'Status', value: certificate.status),
-                const SizedBox(width: 8),
-                _MiniBadge(label: 'Action', value: certificate.ctaLabel),
-              ],
-            ),
-            if (certificate.milestones.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: certificate.milestones.map((item) {
-                  final status = item.status.trim().toLowerCase();
-                  final isDone = status == 'complete' ||
-                      status == 'completed' ||
-                      status == 'done';
-                  final accent = isDone ? AppColors.secondary : AppColors.primary;
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: accent.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: accent.withOpacity(0.35), width: 0.8),
-                    ),
-                    child: Text(
-                      '${item.label} • ${item.detail}',
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MiniBadge extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MiniBadge({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.divider, width: 0.8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-                letterSpacing: 1.1,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value.isNotEmpty ? value : '-',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Montserrat',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _YogaFXAppBar extends ConsumerWidget {
   final dynamic student;
@@ -1665,11 +1503,7 @@ class _AssessmentBannerState extends State<_AssessmentBanner>
 
 class _ModulesSection extends StatefulWidget {
   final AvailableModulesSection section;
-  final bool hasGeneratedCertificate;
-  const _ModulesSection({
-    required this.section,
-    required this.hasGeneratedCertificate,
-  });
+  const _ModulesSection({required this.section});
 
   @override
   State<_ModulesSection> createState() => _ModulesSectionState();
@@ -1876,11 +1710,7 @@ class _ModulesSectionState extends State<_ModulesSection>
               itemCount: filtered.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) =>
-                  _ModuleCard(
-                    module: filtered[index],
-                    index: index,
-                    hasGeneratedCertificate: widget.hasGeneratedCertificate,
-                  ),
+                  _ModuleCard(module: filtered[index], index: index),
             ),
           ),
       ],
@@ -1891,12 +1721,7 @@ class _ModulesSectionState extends State<_ModulesSection>
 class _ModuleCard extends StatefulWidget {
   final DashboardModuleItem module;
   final int index;
-  final bool hasGeneratedCertificate;
-  const _ModuleCard({
-    required this.module,
-    required this.index,
-    required this.hasGeneratedCertificate,
-  });
+  const _ModuleCard({required this.module, required this.index});
 
   @override
   State<_ModuleCard> createState() => _ModuleCardState();
@@ -1948,15 +1773,7 @@ class _ModuleCardState extends State<_ModuleCard>
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
-    final canOpen = canOpenModuleByStatus(
-      module.status,
-      hasGeneratedCertificate: widget.hasGeneratedCertificate,
-    );
-    final statusText = resolveModuleAccessStatus(
-      module.status,
-      hasGeneratedCertificate: widget.hasGeneratedCertificate,
-    );
-    final statusLabel = _statusLabelFromModuleStatus(statusText);
+    final canOpen = _canOpenModule(module.status);
 
     return GestureDetector(
       onTap: () {
@@ -2038,6 +1855,14 @@ class _ModuleCardState extends State<_ModuleCard>
                       ),
                     ),
                   ),
+                  if (module.status.trim().toLowerCase() == 'completed')
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: _DashboardCompletedBadge(
+                        label: module.statusLabel,
+                      ),
+                    ),
                   if (module.showProgress)
                     Positioned(
                       left: 12,
@@ -2091,15 +1916,17 @@ class _ModuleCardState extends State<_ModuleCard>
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    statusLabel,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontFamily: 'Montserrat',
+                  if (module.status.trim().toLowerCase() != 'completed') ...[
+                    Text(
+                      module.statusLabel,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontFamily: 'Montserrat',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
+                  ],
                   Row(
                     children: [
                       const Icon(Icons.play_circle_outline_rounded,
@@ -2125,19 +1952,38 @@ class _ModuleCardState extends State<_ModuleCard>
   }
 }
 
-String _statusLabelFromModuleStatus(String status) {
-  switch (status.trim().toLowerCase()) {
-    case 'completed':
-      return 'Completed';
-    case 'available':
-    case 'active':
-    case 'ready':
-      return 'Available';
-    case 'locked':
-    case 'hidden':
-    case 'unavailable':
-    default:
-      return 'Locked';
+class _DashboardCompletedBadge extends StatelessWidget {
+  final String label;
+
+  const _DashboardCompletedBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.secondary, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_rounded, color: Colors.white, size: 12),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
