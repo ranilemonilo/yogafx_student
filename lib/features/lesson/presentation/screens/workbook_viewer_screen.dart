@@ -1,7 +1,8 @@
-import 'package:dio/dio.dart';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -21,8 +22,14 @@ class WorkbookViewerScreen extends StatefulWidget {
 }
 
 class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
+  final PdfViewerController _pdfController = PdfViewerController();
+
   String? _filePath;
   String? _error;
+  int _currentPage = 1;
+  int _pageCount = 0;
+  double _zoomLevel = 1.0;
+  bool _documentReady = false;
 
   @override
   void initState() {
@@ -39,116 +46,90 @@ class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
       await dio.download(widget.url, targetPath);
 
       if (!mounted) return;
-      setState(() => _filePath = targetPath);
+      setState(() {
+        _filePath = targetPath;
+        _error = null;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
     }
   }
 
+  void _setZoomLevel(double nextZoom) {
+    final clampedZoom = nextZoom.clamp(1.0, 4.0);
+    _pdfController.zoomLevel = clampedZoom;
+    if (!mounted) return;
+    setState(() => _zoomLevel = clampedZoom);
+  }
+
+  void _zoomIn() => _setZoomLevel(_zoomLevel + 0.25);
+
+  void _zoomOut() => _setZoomLevel(_zoomLevel - 0.25);
+
+  void _goToPreviousPage() {
+    if (_currentPage <= 1) return;
+    _pdfController.previousPage();
+  }
+
+  void _goToNextPage() {
+    if (_pageCount == 0 || _currentPage >= _pageCount) return;
+    _pdfController.nextPage();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).maybePop(),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.divider, width: 0.8),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary,
-                        size: 18,
-                      ),
-                    ),
+      appBar: AppBar(title: Text(widget.title)),
+      body: _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontFamily: 'Montserrat',
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Montserrat',
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Workbook PDF viewer',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 12,
-                            fontFamily: 'Montserrat',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.divider, width: 0.8),
                 ),
-                child: Row(
+              ),
+            )
+          : _filePath == null
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                )
+              : Column(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.picture_as_pdf_rounded,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                      child: Row(
                         children: [
-                          Text(
-                            widget.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'Montserrat',
-                            ),
+                          _PdfToolbarButton(
+                            icon: Icons.remove_rounded,
+                            onTap: _zoomOut,
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Read the workbook directly in this viewer.',
-                            style: TextStyle(
+                          const SizedBox(width: 8),
+                          _PdfToolbarButton(
+                            icon: Icons.add_rounded,
+                            onTap: _zoomIn,
+                          ),
+                          const SizedBox(width: 8),
+                          _PdfToolbarButton(
+                            icon: Icons.chevron_left_rounded,
+                            onTap: _goToPreviousPage,
+                          ),
+                          const SizedBox(width: 8),
+                          _PdfToolbarButton(
+                            icon: Icons.chevron_right_rounded,
+                            onTap: _goToNextPage,
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$_currentPage / $_pageCount',
+                            style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 12,
                               fontFamily: 'Montserrat',
@@ -157,48 +138,93 @@ class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
                         ],
                       ),
                     ),
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.divider,
+                            width: 0.8,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SfPdfViewer.file(
+                            File(_filePath!),
+                            controller: _pdfController,
+                            canShowPaginationDialog: false,
+                            onDocumentLoaded: (details) {
+                              if (!mounted) return;
+                              setState(() {
+                                _pageCount = details.document.pages.count;
+                                _documentReady = true;
+                              });
+                            },
+                            onPageChanged: (details) {
+                              if (!mounted) return;
+                              setState(() => _currentPage = details.newPageNumber);
+                            },
+                            onZoomLevelChanged: (details) {
+                              if (!mounted) return;
+                              setState(() => _zoomLevel = details.newZoomLevel);
+                            },
+                            onDocumentLoadFailed: (details) {
+                              if (!mounted) return;
+                              setState(() => _error = details.description);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_documentReady)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          'Zoom ${(_zoomLevel * 100).round()}%',
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.divider, width: 0.8),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: _error != null
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                _error!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
-                            ),
-                          )
-                        : _filePath == null
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.primary,
-                                ),
-                              )
-                            : PDFView(filePath: _filePath!),
-                  ),
-                ),
-              ),
-            ),
-          ],
+    );
+  }
+}
+
+class _PdfToolbarButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _PdfToolbarButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceElevated,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.divider, width: 0.8),
+          ),
+          child: Icon(
+            icon,
+            color: AppColors.textPrimary,
+            size: 18,
+          ),
         ),
       ),
     );

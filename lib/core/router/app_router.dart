@@ -236,6 +236,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           lessonId: int.parse(state.pathParameters['lessonId']!),
           autoPlayVideo: state.uri.queryParameters['autoplay'] == '1',
           autoOpenFullscreen: state.uri.queryParameters['fullscreen'] == '1',
+          startFromBeginning: state.uri.queryParameters['fromStart'] == '1',
         ),
         routes: [
           GoRoute(
