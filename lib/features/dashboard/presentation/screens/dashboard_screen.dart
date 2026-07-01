@@ -366,12 +366,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
                 const SizedBox(height: 32),
                 _animated(
                     3,
-                    _CertificateSection(
-                      certificate: data.certificateMilestone,
-                    )),
-                const SizedBox(height: 32),
-                _animated(
-                    4,
                     _ModulesSection(
                       section: data.availableModulesSection,
                       hasGeneratedCertificate: widget.hasGeneratedCertificate,
