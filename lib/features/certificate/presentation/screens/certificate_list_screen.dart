@@ -113,10 +113,8 @@ class _CertificateListContentState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Summary card
-                      _CertificateSummary(summary: widget.data.summary),
-                      const SizedBox(height: 24),
-
+                      _CertificateSummaryCard(summary: widget.data.summary),
+                      const SizedBox(height: 20),
                       // List or empty
                       if (widget.data.items.isEmpty)
                         const _CertificateEmptyState()
@@ -154,205 +152,146 @@ class _CertificateListContentState
   }
 }
 
-// ─── Summary Card ─────────────────────────────────────────────────────────────
-
-class _CertificateSummary extends StatelessWidget {
+class _CertificateSummaryCard extends StatelessWidget {
   final CertSummary summary;
 
-  const _CertificateSummary({required this.summary});
+  const _CertificateSummaryCard({required this.summary});
 
   @override
   Widget build(BuildContext context) {
-    // Completion fraction from requirements
-    final totalReqs = summary.requirements.length;
-    final doneReqs =
-        summary.requirements.where((r) => r.isComplete).length;
-    final fraction = totalReqs > 0 ? doneReqs / totalReqs : 0.0;
+    final latest = summary.latestCertificate;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1F1010),
-            const Color(0xFF1A1A1A),
-          ],
-        ),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider, width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row
+          Text(
+            summary.state.isNotEmpty ? summary.state.toUpperCase() : 'CERTIFICATE SUMMARY',
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 1.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            summary.message ?? 'Certificate status loaded from backend.',
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: AppColors.primary.withOpacity(0.25), width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.18),
-                      blurRadius: 14,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Icon(Icons.workspace_premium_rounded,
-                      color: AppColors.primary, size: 20),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      summary.tier?.name ?? 'Certificate Progress',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Montserrat',
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${summary.generatedCount} certificate${summary.generatedCount == 1 ? '' : 's'} issued',
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 11,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ],
-                ),
+              _MiniStat(label: 'Status', value: summary.status.isNotEmpty ? summary.status : '-'),
+              const SizedBox(width: 12),
+              _MiniStat(label: 'Generated', value: summary.generatedCount.toString()),
+              const SizedBox(width: 12),
+              _MiniStat(
+                label: 'Eligible',
+                value: summary.learningEligible ? 'Yes' : 'No',
               ),
             ],
           ),
-
-          const SizedBox(height: 16),
-
-          // Message
-          if (summary.message != null)
+          if (summary.requirements.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: summary.requirements.map((req) {
+                final color = req.isComplete ? AppColors.secondary : AppColors.primary;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: color.withOpacity(0.35), width: 0.8),
+                  ),
+                  child: Text(
+                    '${req.label}: ${req.completed}/${req.total}',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          if (latest != null) ...[
+            const SizedBox(height: 14),
             Text(
-              summary.message!,
+              'Latest: ${latest.typeLabel}',
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 13,
+                fontSize: 12,
                 fontFamily: 'Montserrat',
-                height: 1.5,
-              ),
-            ),
-
-          if (summary.requirements.isNotEmpty) ...[
-            const SizedBox(height: 18),
-
-            // Overall progress bar
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: fraction,
-                      backgroundColor: const Color(0xFF2A2A2A),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primary),
-                      minHeight: 3,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '$doneReqs/$totalReqs',
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-            Container(height: 0.5, color: const Color(0xFF2A2A2A)),
-            const SizedBox(height: 14),
-
-            // Requirements list
-            ...summary.requirements.map(
-                  (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: item.isComplete
-                            ? AppColors.primary.withOpacity(0.15)
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: item.isComplete
-                              ? AppColors.primary
-                              : const Color(0xFF444444),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: item.isComplete
-                          ? const Icon(Icons.check_rounded,
-                          color: AppColors.primary, size: 12)
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.label,
-                        style: TextStyle(
-                          color: item.isComplete
-                              ? AppColors.textPrimary
-                              : AppColors.textSecondary,
-                          fontSize: 13,
-                          fontFamily: 'Montserrat',
-                          fontWeight: item.isComplete
-                              ? FontWeight.w500
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${item.completed}/${item.total}',
-                      style: TextStyle(
-                        color: item.isComplete
-                            ? AppColors.primary
-                            : AppColors.textMuted,
-                        fontSize: 11,
-                        fontFamily: 'Montserrat',
-                        fontWeight: item.isComplete
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MiniStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.divider, width: 0.8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Montserrat',
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -48,15 +48,21 @@ class CertTier {
 }
 
 class CertSummary {
+  final String state;
+  final String status;
   final bool learningEligible;
-  final bool hasRequiredName;
   final String? message;
-  final CertTier? tier;
-  final List<String> availableTypes;
   final List<CertRequirement> requirements;
   final int generatedCount;
+  final CertificateItem? latestCertificate;
+
+  final bool hasRequiredName;
+  final CertTier? tier;
+  final List<String> availableTypes;
 
   const CertSummary({
+    required this.state,
+    required this.status,
     required this.learningEligible,
     required this.hasRequiredName,
     this.message,
@@ -64,15 +70,18 @@ class CertSummary {
     required this.availableTypes,
     required this.requirements,
     required this.generatedCount,
+    this.latestCertificate,
   });
 
   factory CertSummary.fromJson(Map<String, dynamic> json) {
     final rawRequirements = json['requirements'] as List<dynamic>? ?? const [];
     final rawTypes = json['available_types'] as List<dynamic>? ?? const [];
     return CertSummary(
+      state: json['state'] as String? ?? '',
+      status: json['status'] as String? ?? '',
       learningEligible: json['learning_eligible'] as bool? ?? false,
       hasRequiredName: json['has_required_name'] as bool? ?? false,
-      message: json['message'] as String?,
+      message: json['message'] as String? ?? json['summary_message'] as String?,
       tier: json['tier'] == null
           ? null
           : CertTier.fromJson(json['tier'] as Map<String, dynamic>),
@@ -81,6 +90,11 @@ class CertSummary {
           .map((item) => CertRequirement.fromJson(item as Map<String, dynamic>))
           .toList(),
       generatedCount: json['generated_count'] as int? ?? 0,
+      latestCertificate: json['latest_certificate'] is Map<String, dynamic>
+          ? CertificateItem.fromJson(
+              json['latest_certificate'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 }

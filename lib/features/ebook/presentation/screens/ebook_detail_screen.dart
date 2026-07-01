@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/ebook_model.dart';
 import '../providers/ebook_provider.dart';
@@ -36,6 +40,8 @@ class _EbookDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final downloadUrl = ebook.downloadUrl ?? ebook.file.downloadUrl;
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -102,12 +108,12 @@ class _EbookDetailContent extends StatelessWidget {
                       label: const Text('Preview Ebook'),
                     ),
                   ),
-                if (ebook.downloadUrl != null) ...[
+                if (downloadUrl != null) ...[
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => _openUrl(ebook.downloadUrl!),
+                      onPressed: () => _downloadEbook(context, ebook),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
                         side: const BorderSide(color: AppColors.divider),
@@ -142,6 +148,53 @@ class _EbookDetailContent extends StatelessWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  Future<void> _downloadEbook(BuildContext context, EbookItem ebook) async {
+    final downloadUrl = ebook.downloadUrl ?? ebook.file.downloadUrl;
+    if (downloadUrl == null || downloadUrl.trim().isEmpty) return;
+
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName = _resolveDownloadFileName(ebook, downloadUrl);
+      final targetDirectory =
+          Directory('${directory.path}${Platform.pathSeparator}ebooks');
+      if (!await targetDirectory.exists()) {
+        await targetDirectory.create(recursive: true);
+      }
+
+      final targetPath =
+          '${targetDirectory.path}${Platform.pathSeparator}$fileName';
+      final dio = ApiClient.create();
+      await dio.download(downloadUrl, targetPath);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ebook downloaded to $fileName')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download ebook: $e')),
+      );
+    }
+  }
+
+  String _resolveDownloadFileName(EbookItem ebook, String downloadUrl) {
+    final fromFileName = (ebook.fileName ?? '').trim();
+    if (fromFileName.isNotEmpty) return _sanitizeFileName(fromFileName);
+
+    final uri = Uri.parse(downloadUrl);
+    if (uri.pathSegments.isNotEmpty) {
+      final lastSegment = uri.pathSegments.last.trim();
+      if (lastSegment.isNotEmpty) return _sanitizeFileName(lastSegment);
+    }
+
+    return 'ebook_${ebook.id}.pdf';
+  }
+
+  String _sanitizeFileName(String value) {
+    return value.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
   }
 }
 

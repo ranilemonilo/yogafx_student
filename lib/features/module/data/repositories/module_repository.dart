@@ -79,6 +79,12 @@ class ModuleRepository {
           data['video_lecture_lessons'] ??
           data['module_lessons'],
     );
+    final rawVideoLecturers = _asList(
+      data['video_lecturers'] ??
+          data['video_lectures'] ??
+          data['video_lecturer'] ??
+          data['module_video_lecturers'],
+    );
 
     normalized['ebooks'] =
         rawEbooks
@@ -109,6 +115,17 @@ class ModuleRepository {
               return lesson;
             })
             .toList();
+    normalized['video_lecturers'] =
+        rawVideoLecturers
+            .map((video) {
+              if (video is Map) {
+                return _normalizeModuleVideoLecturer(
+                  Map<String, dynamic>.from(video),
+                );
+              }
+              return video;
+            })
+            .toList();
     normalized['assignments'] =
         (data['assignments'] as List<dynamic>?) ?? const <dynamic>[];
     return normalized;
@@ -134,11 +151,15 @@ class ModuleRepository {
     normalized['ebook_enabled'] = _asBool(item['ebook_enabled']);
     normalized['thumbnail_url'] =
         ApiClient.resolveUrl(_asNullableString(item['thumbnail_url']));
+    normalized['cta_url'] = _asNullableString(item['cta_url'] ?? item['primary_cta_url']);
+    normalized['cta_kind'] = _asNullableString(item['cta_kind'] ?? item['primary_cta_kind']);
+    normalized['cta_label'] = _asNullableString(item['cta_label'] ?? item['primary_cta_label']);
     return normalized;
   }
 
   Map<String, dynamic> _normalizeModuleEbook(Map<String, dynamic> ebook) {
     final normalized = Map<String, dynamic>.from(ebook);
+    final file = ebook['file'] as Map<String, dynamic>?;
     normalized['id'] = _asInt(ebook['id']);
     normalized['title'] = _asString(ebook['title']);
     normalized['sort_order'] = _asInt(ebook['sort_order']);
@@ -146,6 +167,35 @@ class ModuleRepository {
     normalized['preview_supported'] = _asBool(ebook['preview_supported']);
     normalized['preview_message'] = _asNullableString(ebook['preview_message']);
     normalized['mime_type'] = _asNullableString(ebook['mime_type']);
+    normalized['download_url'] = _asNullableString(
+      ebook['download_url'] ?? file?['download_url'] ?? file?['url'],
+    );
+    return normalized;
+  }
+
+  Map<String, dynamic> _normalizeModuleVideoLecturer(Map<String, dynamic> video) {
+    final normalized = Map<String, dynamic>.from(video);
+    final nestedVideo = video['video'] as Map<String, dynamic>?;
+    final hlsUrl =
+        nestedVideo?['hls_url'] ??
+        video['hls_url'] ??
+        video['stream_url'] ??
+        video['video_url'] ??
+        nestedVideo?['stream_url'] ??
+        nestedVideo?['url'];
+
+    normalized['id'] = _asInt(video['id']);
+    normalized['title'] = _asString(video['title']);
+    normalized['url_slug'] = _asString(video['url_slug'] ?? video['slug']);
+    normalized['description'] = _asNullableString(video['description']);
+    normalized['index'] = _asInt(video['index']);
+    normalized['status'] = _asString(video['status']);
+    normalized['thumbnail_url'] = _asNullableString(video['thumbnail_url']);
+    normalized['hls_url'] = _asNullableString(hlsUrl);
+    normalized['video'] = <String, dynamic>{
+      ...?nestedVideo,
+      'hls_url': _asNullableString(hlsUrl),
+    };
     return normalized;
   }
 
