@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/auth_network_image.dart';
+import '../../../certificate/presentation/providers/certificate_provider.dart';
 import '../../data/models/module_model.dart';
 import '../providers/module_provider.dart';
+import '../../utils/module_access_helper.dart';
 
 // ─── Design Tokens (Sesuai DESIGN_SYSTEM.md & AppColors) ──────────────────────
 
@@ -66,12 +68,7 @@ void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
       }
     }
   } else if (kind == 'download') {
-    final firstCertificate = module.certificates.firstOrNull;
-    if (firstCertificate != null) {
-      context.push('/certificates/${firstCertificate.id}');
-    } else {
-      context.push('/certificates');
-    }
+    return;
   } else if (kind == 'document') {
     final firstEbook = module.ebooks.firstOrNull;
     if (firstEbook != null) {
@@ -90,6 +87,9 @@ class ModuleDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final moduleAsync = ref.watch(moduleDetailProvider(moduleId));
+    final hasGeneratedCertificate = ref
+        .watch(hasGeneratedCertificateProvider)
+        .maybeWhen(data: (value) => value, orElse: () => false);
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -100,7 +100,11 @@ class ModuleDetailScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(moduleDetailProvider(moduleId)),
           onBack: () => context.pop(),
         ),
-        data: (module) => _ModuleDetailContent(moduleId: moduleId, module: module),
+        data: (module) => _ModuleDetailContent(
+          moduleId: moduleId,
+          module: module,
+          hasGeneratedCertificate: hasGeneratedCertificate,
+        ),
       ),
     );
   }
@@ -111,8 +115,13 @@ class ModuleDetailScreen extends ConsumerWidget {
 class _ModuleDetailContent extends StatefulWidget {
   final int moduleId;
   final ModuleDetail module;
+  final bool hasGeneratedCertificate;
 
-  const _ModuleDetailContent({required this.moduleId, required this.module});
+  const _ModuleDetailContent({
+    required this.moduleId,
+    required this.module,
+    required this.hasGeneratedCertificate,
+  });
 
   @override
   State<_ModuleDetailContent> createState() => _ModuleDetailContentState();
@@ -162,6 +171,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         if (mounted) _itemCtrlList[i].forward();
       });
     }
+
   }
 
   @override
@@ -183,11 +193,12 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
-    final assignments = _parseAssignments(module);
+    final assignments = _parseAssignments(module, widget.hasGeneratedCertificate);
 
     final shouldShowPrimaryCta = module.primaryCtaLabel != null &&
         !module.viewTypes.contains('ebook') &&
-        !module.viewTypes.contains('video_lecturer');
+        !module.viewTypes.contains('video_lecturer') &&
+        !module.viewTypes.contains('certificate');
 
     _animIndex = 0;
 
@@ -224,7 +235,10 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
             flexibleSpace: FlexibleSpaceBar(
               background: FadeTransition(
                 opacity: _heroFade,
-                child: _HeroBanner(module: module),
+                child: _HeroBanner(
+                  module: module,
+                  hasGeneratedCertificate: widget.hasGeneratedCertificate,
+                ),
               ),
             ),
           ),
@@ -235,10 +249,17 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (shouldShowPrimaryCta) ...[
-                    _buildAnimated(_ActionRow(module: module)),
+                    _buildAnimated(
+                      _ActionRow(module: module),
+                    ),
                     const SizedBox(height: 24),
                   ],
-                  _buildAnimated(_ModuleHeader(module: module)),
+                  _buildAnimated(
+                    _ModuleHeader(
+                      module: module,
+                      hasGeneratedCertificate: widget.hasGeneratedCertificate,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   if (module.showProgress) ...[
                     _buildAnimated(_ModuleProgress(module: module)),
@@ -347,8 +368,12 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
 
 class _HeroBanner extends StatelessWidget {
   final ModuleDetail module;
+  final bool hasGeneratedCertificate;
 
-  const _HeroBanner({required this.module});
+  const _HeroBanner({
+    required this.module,
+    required this.hasGeneratedCertificate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +509,12 @@ class _HeroBanner extends StatelessWidget {
         Positioned(
           top: 52,
           right: 16,
-          child: _StatusBadge(status: module.status),
+          child: _StatusBadge(
+            status: resolveModuleAccessStatus(
+              module.status,
+              hasGeneratedCertificate: hasGeneratedCertificate,
+            ),
+          ),
         ),
       ],
     );
@@ -588,8 +618,12 @@ class _ActionRow extends StatelessWidget {
 
 class _ModuleHeader extends StatelessWidget {
   final ModuleDetail module;
+  final bool hasGeneratedCertificate;
 
-  const _ModuleHeader({required this.module});
+  const _ModuleHeader({
+    required this.module,
+    required this.hasGeneratedCertificate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -634,7 +668,12 @@ class _ModuleHeader extends StatelessWidget {
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            _StatusBadge(status: module.status),
+            _StatusBadge(
+              status: resolveModuleAccessStatus(
+                module.status,
+                hasGeneratedCertificate: hasGeneratedCertificate,
+              ),
+            ),
             if (module.viewTypes.contains('lesson'))
               _MetaItem(
                 icon: Icons.play_circle_outline_rounded,
@@ -1044,9 +1083,13 @@ class _VideoThumbnailFallback extends StatelessWidget {
 
 // ─── Assignment Parser ────────────────────────────────────────────────────────
 
-List<_ModuleAssignmentItem> _parseAssignments(ModuleDetail module) {
+List<_ModuleAssignmentItem> _parseAssignments(
+  ModuleDetail module,
+  bool hasGeneratedCertificate,
+) {
   final unlockAssignmentsWithModule =
-      _isAssignmentModule(module) && _isModuleDetailAccessible(module);
+      _isAssignmentModule(module) &&
+      _isModuleDetailAccessible(module, hasGeneratedCertificate);
 
   return module.assignments
       .whereType<Map>()
@@ -1195,103 +1238,103 @@ class _EbookRowState extends State<_EbookRow> with SingleTickerProviderStateMixi
 
 // ─── Certificate Row ──────────────────────────────────────────────────────────
 
-class _CertificateRow extends StatefulWidget {
+class _CertificateRow extends StatelessWidget {
   final ModuleCertificateItem certificate;
   final int index;
 
   const _CertificateRow({required this.certificate, required this.index});
 
   @override
-  State<_CertificateRow> createState() => _CertificateRowState();
-}
-
-class _CertificateRowState extends State<_CertificateRow>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pressCtrl;
-  late Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _pressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97)
-        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
-  }
-
-  @override
-  void dispose() {
-    _pressCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final certificate = widget.certificate;
+    final certificate = this.certificate;
 
-    return GestureDetector(
-      onTap: () => context.push('/certificates/${certificate.id}'),
-      onTapDown: (_) => _pressCtrl.forward(),
-      onTapUp: (_) => _pressCtrl.reverse(),
-      onTapCancel: () => _pressCtrl.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _kSurface,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: _kBorderSoft, width: 0.8),
-            boxShadow: _kShadowCard,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kSurface,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: _kBorderSoft, width: 0.8),
+        boxShadow: _kShadowCard,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: _kRedSoft,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: _kRedBorder, width: 0.8),
+            ),
+            child: const Icon(Icons.workspace_premium_outlined, color: _kRed, size: 24),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: _kRedSoft,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: _kRedBorder, width: 0.8),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${index + 1}. ${certificate.typeLabel}',
+                  style: const TextStyle(
+                    color: _kTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Montserrat',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: const Icon(Icons.workspace_premium_outlined, color: _kRed, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${widget.index + 1}. ${certificate.typeLabel}',
-                      style: const TextStyle(
-                        color: _kTextPrimary,
-                        fontSize: 14,
+                if ((certificate.generatedAt ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    certificate.generatedAt!,
+                    style: const TextStyle(
+                      color: _kTextMuted,
+                      fontSize: 12,
+                      fontFamily: 'Montserrat',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if ((certificate.generatedBy ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Generated by ${certificate.generatedBy!}',
+                    style: const TextStyle(
+                      color: _kTextMuted,
+                      fontSize: 12,
+                      fontFamily: 'Montserrat',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if ((certificate.downloadUrl ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _kGreen.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: _kGreen.withOpacity(0.35), width: 0.8),
+                    ),
+                    child: const Text(
+                      'Certificate ready to download',
+                      style: TextStyle(
+                        color: _kGreen,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    if ((certificate.generatedAt ?? '').trim().isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        certificate.generatedAt!,
-                        style: const TextStyle(
-                          color: _kTextMuted,
-                          fontSize: 12,
-                          fontFamily: 'Montserrat',
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: _kTextMuted, size: 24),
-            ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1890,16 +1933,16 @@ bool _isVideoAccessible(ModuleVideoLecturerItem video) {
   return (video.hlsUrl ?? '').trim().isNotEmpty;
 }
 
-bool _isModuleDetailAccessible(ModuleDetail module) {
-  final status = module.status.trim().toLowerCase();
+bool _isModuleDetailAccessible(
+  ModuleDetail module,
+  bool hasGeneratedCertificate,
+) {
+  final status = resolveModuleAccessStatus(
+    module.status,
+    hasGeneratedCertificate: hasGeneratedCertificate,
+  );
   if (!module.isVisible) return false;
-  if (status == 'locked' || status == 'hidden') return false;
-  if (status != 'unavailable') return true;
-
-  return module.viewTypes.contains('assignment') ||
-      module.viewTypes.contains('ebook') ||
-      module.viewTypes.contains('certificate') ||
-      module.viewTypes.contains('video_lecturer');
+  return status != 'locked' && status != 'hidden' && status != 'unavailable';
 }
 
 bool _isAssignmentModule(ModuleDetail module) {
@@ -1952,7 +1995,7 @@ String _moduleHeroDescription(ModuleDetail module) {
     return 'Upload your work, review submission progress, and track feedback from the academy.';
   }
   if (_isCertificateModule(module)) {
-    return 'Open and download your certificate when it is available for this module.';
+    return 'Your certificate is shown directly on this page when it is available.';
   }
   if (_isEbookModule(module)) {
     return 'Read the supporting material for this module and open each ebook from the list below.';
@@ -1965,7 +2008,7 @@ String _moduleHeroDescription(ModuleDetail module) {
 
 String _primaryActionLabel(ModuleDetail module) {
   if (_isAssignmentModule(module)) return 'Open Assignments';
-  if (_isCertificateModule(module)) return 'View Certificate';
+  if (_isCertificateModule(module)) return 'Certificate Ready';
   if (_isEbookModule(module)) return 'Open Ebook';
   if (_isVideoLecturerModule(module)) return 'Watch Video';
   return module.primaryCtaLabel ?? 'Open Module';

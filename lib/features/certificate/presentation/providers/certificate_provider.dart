@@ -10,6 +10,11 @@ final certificateListProvider = FutureProvider<CertificateListData>((ref) async 
   return ref.read(certificateRepositoryProvider).getCertificates();
 });
 
+final hasGeneratedCertificateProvider = FutureProvider<bool>((ref) async {
+  final data = await ref.watch(certificateListProvider.future);
+  return data.summary.generatedCount > 0;
+});
+
 final certificateDetailProvider =
     FutureProvider.family<CertificateItem, int>((ref, certificateId) async {
   return ref

@@ -5,6 +5,8 @@ import '../../../lesson/presentation/providers/lesson_provider.dart';
 import '../../../lesson/data/models/lesson_model.dart';
 import '../../../module/data/models/module_model.dart';
 import '../../../module/presentation/providers/module_provider.dart';
+import '../../../certificate/presentation/providers/certificate_provider.dart';
+import '../../../module/utils/module_access_helper.dart';
 import '../../data/models/assessment_model.dart';
 import '../providers/assessment_provider.dart';
 
@@ -296,6 +298,9 @@ class _ResultContentState extends ConsumerState<_ResultContent>
     LessonDetail lesson,
   ) async {
     try {
+      final hasGeneratedCertificate = await ref.read(
+        hasGeneratedCertificateProvider.future,
+      );
       final moduleList = await ref.read(moduleListProvider.future);
       final sortedModules = [...moduleList.items]
         ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
@@ -306,7 +311,7 @@ class _ResultContentState extends ConsumerState<_ResultContent>
 
       for (var i = currentIndex + 1; i < sortedModules.length; i++) {
         final module = sortedModules[i];
-        if (!_canAutoOpenModule(module)) continue;
+        if (!_canAutoOpenModule(module, hasGeneratedCertificate)) continue;
 
         final detail = await ref.read(moduleDetailProvider(module.id).future);
         final unlockedLessons = detail.lessons.where((item) => !item.isLocked);
@@ -327,13 +332,13 @@ class _ResultContentState extends ConsumerState<_ResultContent>
     return null;
   }
 
-  bool _canAutoOpenModule(ModuleItem module) {
-    final status = module.status.toLowerCase();
+  bool _canAutoOpenModule(ModuleItem module, bool hasGeneratedCertificate) {
     if (!module.isVisible) return false;
-    if (status == 'locked' || status == 'hidden' || status == 'unavailable') {
-      return false;
-    }
-    return module.viewTypes.contains('lesson');
+    return canOpenModuleByStatus(
+      module.status,
+      hasGeneratedCertificate: hasGeneratedCertificate,
+    ) &&
+        module.viewTypes.contains('lesson');
   }
 
   @override

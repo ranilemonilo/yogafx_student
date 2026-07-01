@@ -12,9 +12,11 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
+import '../../../certificate/presentation/providers/certificate_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../module/data/models/module_model.dart';
 import '../../../module/presentation/providers/module_provider.dart';
+import '../../../module/utils/module_access_helper.dart';
 import '../../data/models/lesson_model.dart';
 import '../widgets/assessment/assessment_banner.dart';
 import '../providers/lesson_provider.dart';
@@ -286,6 +288,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   Future<_AutoNextTarget?> _resolveNextModuleLessonTarget() async {
     try {
+      final hasGeneratedCertificate = await ref.read(
+        hasGeneratedCertificateProvider.future,
+      );
       final moduleList = await ref.read(moduleListProvider.future);
       final sortedModules = [...moduleList.items]
         ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
@@ -296,7 +301,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
       for (var i = currentIndex + 1; i < sortedModules.length; i++) {
         final module = sortedModules[i];
-        if (!_canAutoOpenModule(module)) continue;
+        if (!_canAutoOpenModule(module, hasGeneratedCertificate)) continue;
 
         final detail = await ref.read(moduleDetailProvider(module.id).future);
         final unlockedLessons = detail.lessons.where((lesson) => !lesson.isLocked);
@@ -319,13 +324,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     return null;
   }
 
-  bool _canAutoOpenModule(ModuleItem module) {
-    final status = module.status.toLowerCase();
+  bool _canAutoOpenModule(ModuleItem module, bool hasGeneratedCertificate) {
     if (!module.isVisible) return false;
-    if (status == 'locked' || status == 'hidden' || status == 'unavailable') {
-      return false;
-    }
-    return module.viewTypes.contains('lesson');
+    return canOpenModuleByStatus(
+      module.status,
+      hasGeneratedCertificate: hasGeneratedCertificate,
+    ) &&
+        module.viewTypes.contains('lesson');
   }
 
   Future<void> _disposeVideoControllerSafely(

@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
+import '../../../certificate/presentation/providers/certificate_provider.dart';
 import '../../data/models/module_model.dart';
 import '../providers/module_provider.dart';
+import '../../utils/module_access_helper.dart';
 
 // ─── Design Tokens (Sesuai DESIGN_SYSTEM.md & AppColors) ──────────────────────
 
@@ -54,19 +56,12 @@ void _showLockedModuleSnackBar(BuildContext context) {
     );
 }
 
-bool _canOpenModule(ModuleItem module) {
-  final status = module.status.toLowerCase();
+bool _canOpenModule(ModuleItem module, bool hasGeneratedCertificate) {
   if (!module.isVisible) return false;
-  if (status == 'locked' || status == 'hidden') return false;
-  if (status != 'unavailable') return true;
-
-  final hasNonLessonContent =
-      module.viewTypes.contains('ebook') ||
-      module.viewTypes.contains('certificate') ||
-      module.viewTypes.contains('video_lecturer') ||
-      module.viewTypes.contains('assignment');
-
-  return hasNonLessonContent;
+  return canOpenModuleByStatus(
+    module.status,
+    hasGeneratedCertificate: hasGeneratedCertificate,
+  );
 }
 
 bool _isAssignmentModule(ModuleItem module) {
@@ -126,6 +121,9 @@ class ModuleListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final modulesAsync = ref.watch(moduleListProvider);
+    final hasGeneratedCertificate = ref
+        .watch(hasGeneratedCertificateProvider)
+        .maybeWhen(data: (value) => value, orElse: () => false);
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -148,7 +146,10 @@ class ModuleListScreen extends ConsumerWidget {
                   onRetry: () => ref.invalidate(moduleListProvider),
                 ),
               ),
-              data: (data) => _ModuleListContent(data: data),
+              data: (data) => _ModuleListContent(
+                data: data,
+                hasGeneratedCertificate: hasGeneratedCertificate,
+              ),
             ),
           ],
         ),
@@ -198,8 +199,12 @@ class _NetflixAppBar extends StatelessWidget {
 
 class _ModuleListContent extends StatefulWidget {
   final ModuleListData data;
+  final bool hasGeneratedCertificate;
 
-  const _ModuleListContent({required this.data});
+  const _ModuleListContent({
+    required this.data,
+    required this.hasGeneratedCertificate,
+  });
 
   @override
   State<_ModuleListContent> createState() => _ModuleListContentState();
@@ -282,7 +287,10 @@ class _ModuleListContentState extends State<_ModuleListContent>
               entry.key + 1,
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: _ModuleCard(module: entry.value),
+                child: _ModuleCard(
+                  module: entry.value,
+                  hasGeneratedCertificate: widget.hasGeneratedCertificate,
+                ),
               ),
             ),
           ),
@@ -338,8 +346,12 @@ class _SummaryChip extends StatelessWidget {
 
 class _ModuleCard extends StatefulWidget {
   final ModuleItem module;
+  final bool hasGeneratedCertificate;
 
-  const _ModuleCard({required this.module});
+  const _ModuleCard({
+    required this.module,
+    required this.hasGeneratedCertificate,
+  });
 
   @override
   State<_ModuleCard> createState() => _ModuleCardState();
@@ -367,7 +379,10 @@ class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderState
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
-    final canOpen = _canOpenModule(module);
+    final canOpen = _canOpenModule(
+      module,
+      widget.hasGeneratedCertificate,
+    );
     final isVideoLike = _isVideoLikeModule(module);
     final cardIcon = _moduleCardIcon(module);
     final eyebrow = _moduleCardEyebrow(module);
@@ -429,7 +444,12 @@ class _ModuleCardState extends State<_ModuleCard> with SingleTickerProviderState
                     Positioned(
                       top: 12,
                       right: 12,
-                      child: _StatusBadge(status: module.status),
+                      child: _StatusBadge(
+                        status: resolveModuleAccessStatus(
+                          module.status,
+                          hasGeneratedCertificate: widget.hasGeneratedCertificate,
+                        ),
+                      ),
                     ),
 
                     if (canOpen && isVideoLike)

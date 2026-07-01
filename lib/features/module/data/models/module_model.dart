@@ -71,9 +71,9 @@ class ModuleItem {
       thumbnailUrl: json['thumbnail_url'] as String?,
       // Mapping field baru
       viewTypes: List<String>.from(json['view_types'] ?? []),
-      primaryCtaLabel: json['primary_cta_label'] as String?,
-      primaryCtaUrl: json['primary_cta_url'] as String?,
-      primaryCtaKind: json['primary_cta_kind'] as String?,
+      primaryCtaLabel: json['cta_label'] as String? ?? json['primary_cta_label'] as String?,
+      primaryCtaUrl: json['cta_url'] as String? ?? json['primary_cta_url'] as String?,
+      primaryCtaKind: json['cta_kind'] as String? ?? json['primary_cta_kind'] as String?,
     );
   }
 
@@ -207,6 +207,7 @@ class ModuleEbookItem {
   });
 
   factory ModuleEbookItem.fromJson(Map<String, dynamic> json) {
+    final file = json['file'] as Map<String, dynamic>?;
     return ModuleEbookItem(
       id: json['id'] as int? ?? 0,
       title: json['title'] as String? ?? '',
@@ -215,7 +216,9 @@ class ModuleEbookItem {
       previewSupported: json['preview_supported'] as bool? ?? false,
       previewMessage: json['preview_message'] as String?,
       mimeType: json['mime_type'] as String?,
-      downloadUrl: json['download_url'] as String?,
+      downloadUrl: json['download_url'] as String? ??
+          file?['download_url'] as String? ??
+          file?['url'] as String?,
     );
   }
 
@@ -274,7 +277,7 @@ class ModuleVideoLecturerItem {
   });
 
   factory ModuleVideoLecturerItem.fromJson(Map<String, dynamic> json) {
-    final videoData = json['video'] as Map<String, dynamic>?; // Ambil object video
+    final videoData = json['video'] as Map<String, dynamic>?;
 
     return ModuleVideoLecturerItem(
       id: json['id'] as int? ?? 0,
@@ -284,7 +287,12 @@ class ModuleVideoLecturerItem {
       index: json['index'] as int? ?? 0,
       status: json['status'] as String? ?? 'unavailable',
       thumbnailUrl: json['thumbnail_url'] as String?,
-      hlsUrl: videoData?['hls_url'] as String?, // <--- TAMBAH INI
+      hlsUrl: videoData?['hls_url'] as String? ??
+          json['hls_url'] as String? ??
+          json['stream_url'] as String? ??
+          json['video_url'] as String? ??
+          videoData?['stream_url'] as String? ??
+          videoData?['url'] as String?,
     );
   }
 
@@ -356,9 +364,9 @@ class ModuleDetail {
 
       // Mapping field baru
       viewTypes: List<String>.from(json['view_types'] ?? []),
-      primaryCtaLabel: json['primary_cta_label'] as String?,
-      primaryCtaUrl: json['primary_cta_url'] as String?,
-      primaryCtaKind: json['primary_cta_kind'] as String?,
+      primaryCtaLabel: json['cta_label'] as String? ?? json['primary_cta_label'] as String?,
+      primaryCtaUrl: json['cta_url'] as String? ?? json['primary_cta_url'] as String?,
+      primaryCtaKind: json['cta_kind'] as String? ?? json['primary_cta_kind'] as String?,
 
       ebooks: rawEbooks
           .map((ebook) => ModuleEbookItem.fromJson(ebook as Map<String, dynamic>))
