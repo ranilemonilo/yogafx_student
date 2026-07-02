@@ -180,7 +180,7 @@ class _NetflixAppBar extends StatelessWidget {
       titleSpacing: 8,
       leading: IconButton(
         onPressed: () => _handleModuleBack(context),
-        icon: const Icon(Icons.arrow_back, color: _kTextPrimary, size: 24),
+        icon: const Icon(Icons.arrow_back_rounded, color: _kTextPrimary, size: 24),
       ),
       title: const Text(
         'Modules',

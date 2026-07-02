@@ -1,10 +1,10 @@
 name: yogafx_student
 description: YogaFX Student Mobile App
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -72,7 +72,6 @@ dev_dependencies:
 
   # Testing
   mocktail: ^1.0.4
-
 
 flutter:
   uses-material-design: true

@@ -50,7 +50,7 @@ class _EbookDetailContent extends StatelessWidget {
           snap: true,
           leading: IconButton(
             onPressed: () => context.pop(),
-            icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+            icon: const Icon(Icons.arrow_back_rounded, size: 18),
           ),
           title: const Text('Ebook Detail'),
         ),

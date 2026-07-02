@@ -683,7 +683,7 @@ class _AssessmentHeader extends StatelessWidget {
         children: [
           if (canGoBack)
             _HeaderIconBtn(
-              icon: Icons.arrow_back_ios_new_rounded,
+              icon: Icons.arrow_back_rounded,
               onTap: onBack,
             )
           else

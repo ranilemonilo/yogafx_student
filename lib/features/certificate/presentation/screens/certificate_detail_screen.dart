@@ -95,7 +95,7 @@ class _CertificateDetailContentState extends State<_CertificateDetailContent>
               snap: true,
               elevation: 0,
               leading: _HeaderIconBtn(
-                icon: Icons.arrow_back_ios_new_rounded,
+                icon: Icons.arrow_back_rounded,
                 onTap: () => Navigator.of(context).pop(),
               ),
               title: const Text(

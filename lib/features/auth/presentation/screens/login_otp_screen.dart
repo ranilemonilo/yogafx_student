@@ -234,7 +234,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                     IconButton(
                       onPressed: isBusy ? null : _handleBackToLogin,
                       icon: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
+                        Icons.arrow_back_rounded,
                         color: Colors.white,
                         size: 18,
                       ),

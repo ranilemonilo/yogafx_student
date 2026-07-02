@@ -276,7 +276,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
             leading: IconButton(
               onPressed: () => _handleProfileBack(context),
               icon: const Icon(
-                Icons.arrow_back,
+                Icons.arrow_back_rounded,
                 size: 24,
                 color: AppColors.textPrimary,
               ),

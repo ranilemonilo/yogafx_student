@@ -103,7 +103,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
                 border: Border.all(color: AppColors.divider, width: 0.8),
               ),
               child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
+                Icons.arrow_back_rounded,
                 color: AppColors.textPrimary,
                 size: 15,
               ),

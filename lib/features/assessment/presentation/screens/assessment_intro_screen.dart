@@ -877,7 +877,7 @@ class _BackButton extends StatelessWidget {
             width: 1,
           ),
         ),
-        child: const Icon(Icons.arrow_back, color: _DS.white, size: 18),
+        child: const Icon(Icons.arrow_back_rounded, color: _DS.white, size: 18),
       ),
     );
   }

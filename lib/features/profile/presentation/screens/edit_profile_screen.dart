@@ -138,7 +138,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           leading: IconButton(
             onPressed: _saving ? null : () => context.pop(),
             icon: const Icon(
-              Icons.arrow_back_ios_new,
+              Icons.arrow_back_rounded,
               size: 18,
               color: AppColors.textPrimary,
             ),

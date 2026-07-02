@@ -118,7 +118,7 @@ class _WorkbookViewerScreenState extends State<WorkbookViewerScreen> {
                           ),
                           const SizedBox(width: 8),
                           _PdfToolbarButton(
-                            icon: Icons.chevron_left_rounded,
+                            icon: Icons.arrow_back_rounded,
                             onTap: _goToPreviousPage,
                           ),
                           const SizedBox(width: 8),

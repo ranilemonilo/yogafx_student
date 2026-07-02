@@ -228,7 +228,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
                     color: Colors.black.withOpacity(0.6),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Icon(Icons.arrow_back, color: _kTextPrimary, size: 20),
+                  child: const Icon(Icons.arrow_back_rounded, color: _kTextPrimary, size: 20),
                 ),
               ),
             ),

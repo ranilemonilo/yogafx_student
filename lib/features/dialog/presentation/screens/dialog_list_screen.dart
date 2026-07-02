@@ -129,7 +129,7 @@ class _DialogListContentState extends ConsumerState<_DialogListContent>
                   ),
                 ),
                 child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
+                  Icons.arrow_back_rounded,
                   color: AppColors.textPrimary,
                   size: 15,
                 ),

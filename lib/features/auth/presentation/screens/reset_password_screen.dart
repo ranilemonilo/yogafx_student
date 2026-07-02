@@ -220,7 +220,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         appBar: AppBar(
           leading: IconButton(
             onPressed: _submitting ? null : _handleBackToLogin,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            icon: const Icon(Icons.arrow_back_rounded),
           ),
           title: Text(_isResetMode ? 'Set New Password' : 'Forgot Password'),
         ),

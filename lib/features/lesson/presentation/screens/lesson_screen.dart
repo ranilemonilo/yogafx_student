@@ -1226,7 +1226,7 @@ class _VideoSection extends StatelessWidget {
                 ),
               ),
               child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
+                Icons.arrow_back_rounded,
                 color: Colors.white,
                 size: 16,
               ),
@@ -2393,7 +2393,7 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.modal),
                   ),
                   child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
+                    Icons.arrow_back_rounded,
                     color: Colors.white,
                     size: 16,
                   ),
