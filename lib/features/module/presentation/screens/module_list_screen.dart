@@ -278,7 +278,9 @@ class _ModuleListContentState extends State<_ModuleListContent>
                 ),
               ),
               const SizedBox(width: 12),
-              const RunningLoginTimeCard(),
+              const RunningLoginTimeCard(
+                size: RunningLoginTimeCardSize.compact,
+              ),
             ],
           ),
           const SizedBox(height: 24),

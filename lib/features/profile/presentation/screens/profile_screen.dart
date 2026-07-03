@@ -310,14 +310,24 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                 children: [
                   _animated(
                     0,
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: const RunningLoginTimeCard(),
+                    Row(
+                      children: [
+                        _MetaBadge(
+                          icon: Icons.workspace_premium_outlined,
+                          label: profile.accessTier.name.toUpperCase(),
+                          tone: AppColors.primary,
+                          large: true,
+                        ),
+                        const Spacer(),
+                        const RunningLoginTimeCard(
+                          size: RunningLoginTimeCardSize.compact,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _animated(1, _ProfileHeroCard(profile: profile)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                   _animated(
                     2,
                     Row(
@@ -343,7 +353,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
                   _animated(
                     3,
                     _ProfileSectionCard(
@@ -357,7 +367,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _animated(
                     4,
                     _ProfileSectionCard(
@@ -370,7 +380,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _animated(
                     5,
                     _ProfileSectionCard(
@@ -400,7 +410,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _animated(
                     6,
                     _ProfileSectionCard(
@@ -493,33 +503,31 @@ class _ProfileHeroCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _MetaBadge(
-                icon: Icons.workspace_premium_outlined,
-                label: profile.accessTier.name.toUpperCase(),
-                tone: AppColors.primary,
-              ),
-              _MetaBadge(
-                icon: profile.profileCompleted
-                    ? Icons.verified_rounded
-                    : Icons.pending_outlined,
-                label: profile.profileCompleted
-                    ? 'PROFILE COMPLETE'
-                    : 'PROFILE INCOMPLETE',
-                tone: profile.profileCompleted
-                    ? AppColors.success
-                    : AppColors.warning,
-              ),
-              if ((profile.country ?? '').trim().isNotEmpty)
+          const SizedBox(height: 14),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if ((profile.country ?? '').trim().isNotEmpty)
+                  _MetaBadge(
+                    icon: Icons.public_outlined,
+                    label: profile.country!.trim(),
+                  ),
+                if ((profile.country ?? '').trim().isNotEmpty)
+                  const SizedBox(width: 8),
                 _MetaBadge(
-                  icon: Icons.public_outlined,
-                  label: profile.country!.trim(),
+                  icon: profile.profileCompleted
+                      ? Icons.verified_rounded
+                      : Icons.pending_outlined,
+                  label: profile.profileCompleted
+                      ? 'PROFILE COMPLETE'
+                      : 'PROFILE INCOMPLETE',
+                  tone: profile.profileCompleted
+                      ? AppColors.success
+                      : AppColors.warning,
                 ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -585,11 +593,13 @@ class _MetaBadge extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color? tone;
+  final bool large;
 
   const _MetaBadge({
     required this.icon,
     required this.label,
     this.tone,
+    this.large = false,
   });
 
   @override
@@ -597,7 +607,10 @@ class _MetaBadge extends StatelessWidget {
     final badgeColor = tone ?? AppColors.textSecondary;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: large ? 12 : 10,
+        vertical: large ? 8 : 6,
+      ),
       decoration: BoxDecoration(
         color: badgeColor.withOpacity(0.12),
         borderRadius: BorderRadius.circular(AppRadius.badge),
@@ -606,16 +619,16 @@ class _MetaBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: badgeColor, size: 12),
-          const SizedBox(width: 6),
+          Icon(icon, color: badgeColor, size: large ? 14 : 12),
+          SizedBox(width: large ? 8 : 6),
           Text(
             label,
             style: TextStyle(
               color: badgeColor,
-              fontSize: 11,
+              fontSize: large ? 12 : 11,
               fontWeight: FontWeight.w700,
               fontFamily: 'Montserrat',
-              letterSpacing: 0.6,
+              letterSpacing: large ? 0.8 : 0.6,
             ),
           ),
         ],

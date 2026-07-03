@@ -5,23 +5,31 @@ import '../../features/dashboard/presentation/providers/running_login_time_provi
 import '../../features/dashboard/presentation/utils/access_time_helper.dart';
 import '../theme/app_theme.dart';
 
+enum RunningLoginTimeCardSize {
+  compact,
+  regular,
+  large,
+}
+
 class RunningLoginTimeCard extends ConsumerWidget {
-  final bool compact;
+  final RunningLoginTimeCardSize size;
 
   const RunningLoginTimeCard({
     super.key,
-    this.compact = false,
+    this.size = RunningLoginTimeCardSize.regular,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final durationAsync = ref.watch(runningLoginTimeProvider);
-    final verticalPadding = compact ? 6.0 : 8.0;
-    final horizontalPadding = compact ? 10.0 : 12.0;
-    final iconSize = compact ? 12.0 : 14.0;
-    final labelFontSize = compact ? 10.0 : 11.0;
-    final valueFontSize = compact ? 12.0 : 14.0;
-    final gap = compact ? 6.0 : 8.0;
+    final isCompact = size == RunningLoginTimeCardSize.compact;
+    final isLarge = size == RunningLoginTimeCardSize.large;
+    final verticalPadding = isCompact ? 6.0 : isLarge ? 10.0 : 8.0;
+    final horizontalPadding = isCompact ? 10.0 : isLarge ? 14.0 : 12.0;
+    final iconSize = isCompact ? 12.0 : isLarge ? 16.0 : 14.0;
+    final labelFontSize = isCompact ? 10.0 : isLarge ? 12.0 : 11.0;
+    final valueFontSize = isCompact ? 12.0 : isLarge ? 15.0 : 14.0;
+    final gap = isCompact ? 6.0 : isLarge ? 9.0 : 8.0;
 
     Widget buildContent(String value) {
       return Row(

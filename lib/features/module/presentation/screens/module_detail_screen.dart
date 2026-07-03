@@ -428,23 +428,7 @@ class _HeroBanner extends StatelessWidget {
           ),
         ),
 
-        if (isVideoLike && module.primaryCtaLabel != null)
-          Center(
-            child: GestureDetector(
-              onTap: () => _openPrimaryModuleContent(context, module),
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  // DS §Media Control Buttons: rgba(0,0,0,0.6), border putih tipis
-                  color: Colors.black.withOpacity(0.60),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
-                ),
-                child: Icon(heroIcon, color: Colors.white, size: 36),
-              ),
-            ),
-          ),
+
 
         if (!isVideoLike)
           Positioned(
@@ -1016,7 +1000,8 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
                       children: [
                         Text(
                           '${widget.index + 1}. ',
-                          style: const TextStyle(
+                          style:
+                          const TextStyle(
                             color: _kTextMuted,
                             fontSize: 14,
                             fontFamily: 'Montserrat',
@@ -1341,6 +1326,43 @@ class _CertificateRow extends StatelessWidget {
 }
 
 // ─── Lesson Row ───────────────────────────────────────────────────────────────
+class _LessonCompletedBadge extends StatelessWidget {
+  const _LessonCompletedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: _kGreen,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _kGreen, width: 0.7),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_rounded,
+            color: Colors.white,
+            size: 9,
+          ),
+          SizedBox(width: 3),
+          Text(
+            'Completed',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.2,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _LessonRow extends StatefulWidget {
   final ModuleLesson lesson;
@@ -1463,18 +1485,28 @@ class _LessonRowState extends State<_LessonRow> with SingleTickerProviderStateMi
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (!isLocked && lesson.progressPercentage >= 100) ...[
-                          const SizedBox(width: 8),
-                          const _StatusBadge(status: 'completed'),
-                        ],
                       ],
                     ),
+
                     const SizedBox(height: 8),
+
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        if (lesson.hasVideo) const _MediaIcon(icon: Icons.play_circle_outline_rounded),
-                        if (lesson.hasAudio) const _MediaIcon(icon: Icons.headphones_rounded),
-                        if (lesson.hasWorkbook) const _MediaIcon(icon: Icons.description_rounded),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              if (lesson.hasVideo)
+                                const _MediaIcon(icon: Icons.play_circle_outline_rounded),
+                              if (lesson.hasAudio)
+                                const _MediaIcon(icon: Icons.headphones_rounded),
+                              if (lesson.hasWorkbook)
+                                const _MediaIcon(icon: Icons.description_rounded),
+                            ],
+                          ),
+                        ),
+                        if (!isLocked && lesson.progressPercentage >= 100)
+                          const _LessonCompletedBadge(),
                       ],
                     ),
                     if (!isLocked && lesson.progressPercentage > 0) ...[

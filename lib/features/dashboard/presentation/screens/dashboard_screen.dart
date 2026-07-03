@@ -336,14 +336,16 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
               children: [
                 _animated(0, _HeroSection(data: data)),
                 if (data.continueLearningSection.state != 'empty') ...[
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 0),
                   _animated(
                     1,
                     _ContinueLearningSection(
-                        section: data.continueLearningSection),
+                      section: data.continueLearningSection,
+                      moduleItems: data.availableModulesSection.items,
+                    ),
                   ),
                 ],
-                const SizedBox(height: 32),
+                const SizedBox(height: 22),
                 _animated(
                   2,
                   _ProgressSection(
@@ -351,7 +353,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
                     continueLearningSection: data.continueLearningSection,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 _animated(
                     3, _ModulesSection(section: data.availableModulesSection)),
                 const SizedBox(height: 8),
@@ -374,6 +376,7 @@ class _YogaFXAppBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(profileProvider);
     final authState = ref.watch(authProvider);
+    final profile = profileAsync.valueOrNull;
 
     return SliverAppBar(
       backgroundColor: Colors.transparent,
@@ -419,9 +422,9 @@ class _YogaFXAppBar extends ConsumerWidget {
           child: GestureDetector(
             onTap: () => _showProfileMenu(context, ref),
             child: _DashboardProfileAvatar(
-              imageUrl: profileAsync.value?.profilePhoto ??
+              imageUrl: profile?.profilePhoto ??
                   authState.user?.avatar,
-              displayName: profileAsync.value?.name ??
+              displayName: profile?.name ??
                   authState.user?.name ??
                   'Student',
             ),
@@ -723,7 +726,7 @@ class _HeroSectionState extends State<_HeroSection>
         // §1: background gradient dari overlayDark → background
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -764,41 +767,20 @@ class _HeroSectionState extends State<_HeroSection>
                     ),
                   ),
                   const Spacer(),
-                  const RunningLoginTimeCard(compact: true),
+                  const RunningLoginTimeCard(
+                    size: RunningLoginTimeCardSize.compact,
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
-              // Welcome line — §2: Caption 10px textMuted
               _ShimmerText(
                 text: 'Welcome, ${student.firstName}',
                 style: const TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 30,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'Montserrat',
                   height: 1.1,
-                ),
-              ),
-              const SizedBox(height: 6),
-              // Name — §2: Header 36px Bold
-              // Animated red accent line
-              AnimatedBuilder(
-                animation: _glowAnim,
-                builder: (_, __) => Container(
-                  width: 48,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary
-                            .withOpacity(0.3 + _glowAnim.value * 0.4),
-                        blurRadius: 8 + _glowAnim.value * 8,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -896,19 +878,20 @@ class _ShimmerTextState extends State<_ShimmerText>
 
 class _ContinueLearningSection extends StatelessWidget {
   final ContinueLearningSection section;
-  const _ContinueLearningSection({required this.section});
+  final List<DashboardModuleItem> moduleItems;
+
+  const _ContinueLearningSection({
+    required this.section,
+    required this.moduleItems,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionLabel(text: section.eyebrow),
-          const SizedBox(height: 14),
-          _ContinueCard(section: section),
-        ],
+      child: _ContinueCard(
+        section: section,
+        moduleItems: moduleItems,
       ),
     );
   }
@@ -916,7 +899,12 @@ class _ContinueLearningSection extends StatelessWidget {
 
 class _ContinueCard extends ConsumerStatefulWidget {
   final ContinueLearningSection section;
-  const _ContinueCard({required this.section});
+  final List<DashboardModuleItem> moduleItems;
+
+  const _ContinueCard({
+    required this.section,
+    required this.moduleItems,
+  });
 
   @override
   ConsumerState<_ContinueCard> createState() => _ContinueCardState();
@@ -988,7 +976,7 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
     final lessonDetailAsync = currentLesson == null
         ? null
         : ref.watch(lessonDetailProvider(currentLesson.id));
-    final nextLesson = lessonDetailAsync?.value?.nextLesson;
+    final nextLesson = lessonDetailAsync?.valueOrNull?.nextLesson;
     final hasUnlockedNextLesson = nextLesson != null && nextLesson.isUnlocked;
     final destinationLessonId =
         hasUnlockedNextLesson ? nextLesson.id : currentLesson?.id;
@@ -997,6 +985,10 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
         : section.status;
     final ctaLabel =
         hasUnlockedNextLesson ? 'Start Next Lesson' : section.ctaLabel;
+    final moduleNumber = _resolveModuleNumber(
+      section: section,
+      moduleItems: widget.moduleItems,
+    );
 
     return GestureDetector(
       onTap: destinationLessonId == null
@@ -1018,21 +1010,20 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
               scale: _scaleAnim,
               child: Container(
                 width: double.infinity,
-                height: 220,
+                height: 468,
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.card),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
                       color:
                       Colors.black.withOpacity(0.5 + _glowAnim.value * 0.2),
-                      blurRadius: 20 + _glowAnim.value * 16,
+                      blurRadius: 0 + _glowAnim.value * 16,
                       offset: Offset(0, 8 + _glowAnim.value * 8),
                     ),
                     BoxShadow(
-                      color: AppColors.primary
-                          .withOpacity(_glowAnim.value * 0.15),
-                      blurRadius: 20 + _glowAnim.value * 10,
+                      color: Colors.white.withOpacity(_glowAnim.value * 0.08),
+                      blurRadius: 18 + _glowAnim.value * 8,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -1057,99 +1048,137 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
                 ),
               ),
             Positioned.fill(
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-              ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.95),
-                  ],
-                  stops: const [0.2, 1.0],
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.10),
+                      Colors.black.withOpacity(0.18),
+                      Colors.black.withOpacity(0.45),
+                      Colors.black.withOpacity(0.82),
+                      Colors.black.withOpacity(0.97),
+                    ],
+                    stops: const [0.0, 0.28, 0.56, 0.82, 1.0],
+                  ),
                 ),
               ),
             ),
-            // Left red accent stripe
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(width: 3, color: AppColors.primary),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.26),
+                      width: 1.35,
+                    ),
+                  ),
+                ),
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    (section.module?.title ?? '').toUpperCase(),
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Montserrat',
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    section.lesson?.title ?? '',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Montserrat',
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 14),
-                  AnimatedBuilder(
-                    animation: _progressAnim,
-                    builder: (_, __) => ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: _progressAnim.value,
-                        backgroundColor:
-                        AppColors.textPrimary.withOpacity(0.12),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.primary),
-                        minHeight: 2.5,
+                  const Spacer(),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.0),
+                          Colors.black.withOpacity(0.18),
+                        ],
                       ),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Text(
-                        statusText,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                          fontFamily: 'Montserrat',
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          section.lesson?.title ?? section.title,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'Montserrat',
+                            height: 1.04,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const Spacer(),
-                      _RedButton(
-                        label: ctaLabel,
-                        icon: Icons.play_arrow_rounded,
-                        onTap: () {
-                          if (destinationLessonId == null) return;
-                          _openContinueLesson(
-                            context,
-                            lessonId: destinationLessonId,
-                            autoPlayVideo: hasUnlockedNextLesson,
-                          );
-                        },
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        Text(
+                          _continueLessonMetaLabel(
+                            section: section,
+                            moduleNumber: moduleNumber,
+                            hasUnlockedNextLesson: hasUnlockedNextLesson,
+                            statusText: statusText,
+                          ),
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Montserrat',
+                            letterSpacing: 0.8,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () {
+                            if (destinationLessonId == null) return;
+                            _openContinueLesson(
+                              context,
+                              lessonId: destinationLessonId,
+                              autoPlayVideo: hasUnlockedNextLesson,
+                            );
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.black,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  ctaLabel == 'Start Next Lesson'
+                                      ? 'Continue Lesson'
+                                      : ctaLabel,
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'Montserrat',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1163,6 +1192,50 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
 
 String _nextLessonStatusLabel(NextLesson nextLesson) {
   return 'Next up: Lesson ${nextLesson.sortOrder}';
+}
+
+String _continueLessonMetaLabel({
+  required ContinueLearningSection section,
+  required int? moduleNumber,
+  required bool hasUnlockedNextLesson,
+  required String statusText,
+}) {
+  final lessonOrder = section.lesson?.sortOrder;
+
+  if (moduleNumber != null &&
+      lessonOrder != null) {
+    return 'MODULE $moduleNumber - LESSON $lessonOrder';
+  }
+
+  final moduleTitle = section.module?.title;
+  if (moduleTitle != null &&
+      moduleTitle.trim().isNotEmpty &&
+      lessonOrder != null) {
+    return '${moduleTitle.toUpperCase()} - LESSON $lessonOrder';
+  }
+
+  if (hasUnlockedNextLesson && statusText.isNotEmpty) {
+    return statusText.toUpperCase();
+  }
+
+  return section.eyebrow.toUpperCase();
+}
+
+int? _resolveModuleNumber({
+  required ContinueLearningSection section,
+  required List<DashboardModuleItem> moduleItems,
+}) {
+  final module = section.module;
+  if (module == null) return null;
+
+  final matchIndex = moduleItems.indexWhere(
+    (item) =>
+        item.urlSlug == module.urlSlug ||
+        item.title.trim().toLowerCase() == module.title.trim().toLowerCase(),
+  );
+
+  if (matchIndex == -1) return null;
+  return matchIndex + 1;
 }
 
 void _openContinueLesson(
@@ -1298,6 +1371,10 @@ class _AnimatedStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final highlightColor = label == 'Overall'
+        ? AppColors.secondary
+        : AppColors.primary;
+
     return Expanded(
       child: AnimatedBuilder(
         animation: animation,
@@ -1317,14 +1394,14 @@ class _AnimatedStatCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.card),
                   border: Border.all(
                     color: highlight
-                        ? AppColors.primary.withOpacity(0.4)
+                        ? highlightColor.withOpacity(0.4)
                         : AppColors.divider,
                     width: 0.8,
                   ),
                   boxShadow: highlight
                       ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.12),
+                      color: highlightColor.withOpacity(0.12),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -1336,7 +1413,7 @@ class _AnimatedStatCard extends StatelessWidget {
                   children: [
                     Icon(icon,
                         color: highlight
-                            ? AppColors.primary
+                            ? highlightColor
                             : AppColors.textMuted,
                         size: 18),
                     const SizedBox(height: 10),
@@ -1344,7 +1421,7 @@ class _AnimatedStatCard extends StatelessWidget {
                       value,
                       style: TextStyle(
                         color: highlight
-                            ? AppColors.primary
+                            ? highlightColor
                             : AppColors.textPrimary,
                         fontSize: 19,
                         fontWeight: FontWeight.w800,

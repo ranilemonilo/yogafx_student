@@ -281,10 +281,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   Future<void> _primeAutoNextTarget() async {
-    if (widget.lesson.nextLesson != null) {
+    final nextLesson = widget.lesson.nextLesson;
+    if (nextLesson != null && nextLesson.isUnlocked) {
       if (!mounted) return;
       setState(() {
-        _autoNextTarget = _AutoNextTarget.fromNextLesson(widget.lesson.nextLesson!);
+        _autoNextTarget = _AutoNextTarget.fromNextLesson(nextLesson);
       });
       return;
     }
@@ -1669,15 +1670,14 @@ class _VideoNextLessonOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final countdownText = 'Next lesson starts in ${countdownSeconds ?? 0}s...';
-    final eyebrowText =
-        nextLesson.isFromNextModule ? 'NEXT MODULE' : 'NEXT LESSON';
+    const eyebrowText = 'NEXT LESSON';
 
     return ConstrainedBox(
       constraints: const BoxConstraints(
-        maxWidth: 220,
+        maxWidth: 190,
       ),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.78),
           borderRadius: BorderRadius.circular(AppRadius.modal),
@@ -1697,8 +1697,8 @@ class _VideoNextLessonOverlay extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(AppRadius.card),
@@ -1706,10 +1706,10 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                   child: const Icon(
                     Icons.skip_next_rounded,
                     color: AppColors.primary,
-                    size: 16,
+                    size: 14,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1719,10 +1719,10 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                         eyebrowText,
                         style: const TextStyle(
                           color: AppColors.textMuted,
-                          fontSize: 7,
+                          fontSize: 6,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
-                          letterSpacing: 1.0,
+                          letterSpacing: 0.8,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -1732,7 +1732,7 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
                         ),
@@ -1742,24 +1742,24 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             Text(
               countdownText,
               style: const TextStyle(
                 color: AppColors.primary,
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'Montserrat',
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: onPlayNow,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(AppRadius.button),
@@ -1769,7 +1769,7 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
                         ),
@@ -1777,13 +1777,13 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 GestureDetector(
                   onTap: onCancel,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
+                      horizontal: 8,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
@@ -1794,7 +1794,7 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                       'Cancel',
                       style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
@@ -2938,6 +2938,23 @@ class _InlineAudioControls extends StatelessWidget {
 
   const _InlineAudioControls({required this.player});
 
+  Future<void> _seekBackward10() async {
+    final currentPosition = player.position;
+    final target = currentPosition - const Duration(seconds: 10);
+    await player.seek(target < Duration.zero ? Duration.zero : target);
+  }
+
+  Future<void> _seekForward10() async {
+    final currentPosition = player.position;
+    final maxDuration = player.duration ?? Duration.zero;
+    final target = currentPosition + const Duration(seconds: 10);
+    await player.seek(
+      maxDuration == Duration.zero || target <= maxDuration
+          ? target
+          : maxDuration,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<PlayerState>(
@@ -2982,12 +2999,7 @@ class _InlineAudioControls extends StatelessWidget {
                   children: [
                     _AudioIconButton(
                       icon: Icons.replay_10_rounded,
-                      onTap: () {
-                        final target = position - const Duration(seconds: 10);
-                        return player.seek(
-                          target < Duration.zero ? Duration.zero : target,
-                        );
-                      },
+                      onTap: _seekBackward10,
                     ),
                     const SizedBox(width: 8),
                     _AudioIconButton(
@@ -3006,15 +3018,7 @@ class _InlineAudioControls extends StatelessWidget {
                     const SizedBox(width: 8),
                     _AudioIconButton(
                       icon: Icons.forward_10_rounded,
-                      onTap: () {
-                        final maxDuration = player.duration ?? Duration.zero;
-                        final target = position + const Duration(seconds: 10);
-                        return player.seek(
-                          maxDuration == Duration.zero || target <= maxDuration
-                              ? target
-                              : maxDuration,
-                        );
-                      },
+                      onTap: _seekForward10,
                     ),
                     const Spacer(),
                     Text(
@@ -3299,8 +3303,8 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
           child: Row(
             children: [
               SizedBox(
-                width: 100,
-                height: 70,
+                width: 84,
+                height: 60,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -3318,7 +3322,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -3327,43 +3331,31 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                       'UP NEXT',
                       style: TextStyle(
                         color: AppColors.textMuted,
-                        fontSize: 9,
+                        fontSize: 8,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
-                        letterSpacing: 1.5,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
                       widget.nextLesson.title,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (widget.nextLesson.isFromNextModule) ...[
-                      const SizedBox(height: 4),
-                      const Text(
-                        'From the next module',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                    ],
                     if (countdownSeconds != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         'Auto next in ${countdownSeconds}s',
                         style: const TextStyle(
                           color: AppColors.primary,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'Montserrat',
                         ),
@@ -3373,11 +3365,11 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(right: 14),
+                padding: const EdgeInsets.only(right: 12),
                 child: const Icon(
                   Icons.play_arrow_rounded,
                   color: AppColors.primary,
-                  size: 22,
+                  size: 20,
                 ),
               ),
             ],
