@@ -127,7 +127,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: lessonAsync.when(
-          loading: () => const LessonSkeleton(),
+          loading: () => widget.autoOpenFullscreen
+              ? const _FullscreenTransitionLoader()
+              : const LessonSkeleton(),
           error: (e, _) => LessonError(
             message: e.toString(),
             onRetry: () => ref.invalidate(lessonDetailProvider(widget.lessonId)),
@@ -215,6 +217,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _isFullscreenOpen = false;
   bool _preserveLandscapeOnDispose = false;
   bool _didAutoOpenFullscreen = false;
+  bool _isOpeningAutoFullscreen = false;
   bool _isPreparingNavigation = false;
   bool _showNextLessonPrompt = false;
   bool _isAssessmentPromptOpen = false;
@@ -273,6 +276,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     if (_hasPlayableVideo && _isVideoUnlocked) {
       _initVideo();
+    } else if (widget.autoOpenFullscreen) {
+      _didAutoOpenFullscreen = true;
     }
     if (widget.lesson.audio.isAvailable && widget.lesson.audio.url != null) {
       _initAudio();
@@ -424,16 +429,24 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           _videoController != null &&
           _videoController!.value.isInitialized) {
         _didAutoOpenFullscreen = true;
+        setState(() => _isOpeningAutoFullscreen = true);
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
 
           final currentController = _videoController;
           if (currentController == null || !currentController.value.isInitialized) {
+            if (mounted) {
+              setState(() => _isOpeningAutoFullscreen = false);
+            }
             return;
           }
 
-          unawaited(_openFullscreen());
+          await _openFullscreen();
+
+          if (mounted) {
+            setState(() => _isOpeningAutoFullscreen = false);
+          }
         });
       }
     } catch (e) {
@@ -986,152 +999,217 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   @override
   Widget build(BuildContext context) {
+    final shouldHideInlinePageForFullscreen = widget.autoOpenFullscreen &&
+        (!_didAutoOpenFullscreen || _isOpeningAutoFullscreen);
+
+    if (shouldHideInlinePageForFullscreen) {
+      return const _FullscreenTransitionLoader();
+    }
+
     final lesson = widget.lesson;
     final topInset = MediaQuery.paddingOf(context).top;
     final videoTopSpacing = topInset < 12 ? 24.0 : topInset + 10;
-
-    return Column(
-      children: [
-        _VideoSection(
-          lesson: lesson,
-          topSpacing: videoTopSpacing,
-          videoInitialized: _videoInitialized,
-          videoError: _videoError,
-          videoErrorMessage: _videoErrorMessage,
-          videoController: _videoController,
-          videoUnlocked: _isVideoUnlocked,
-          onWorkbookDismissed: _refreshLesson,
-          onRetry: _initVideo,
-          onBack: () => _handleBack(context),
-          onTogglePlayback: _toggleVideoPlayback,
-          onSeek: _seekVideo,
-          onToggleMute: _toggleMute,
-          onSkipForward: () => _skipVideoBy(30),
-          onSkipBackward: () => _skipVideoBy(-30),
-          showNextLessonPrompt: _showNextLessonPrompt,
-          showAssessmentPrompt: false,
-          autoNextRemainingSeconds: _autoNextRemainingSeconds,
-          autoNextCancelled: _autoNextCancelled,
-          onPlayNextLesson: () async {
-            final nextLesson = _autoNextTarget;
-            if (nextLesson == null) return;
-            _isAutoNavigating = true;
-            await _navigateToLesson(
-              context,
-              nextLesson.lessonId,
-              autoPlayVideo: true,
-              startFromBeginning: true,
-            );
-          },
-          onCancelAutoNext: () => _cancelAutoNextCountdown(),
-          onStartAssessment: () => _navigateToAssessmentIntro(context),
-          onCancelAssessment: _cancelAssessmentPrompt,
-          onOpenFullscreen: _openFullscreen,
-          nextLesson: _autoNextTarget,
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _refreshLesson,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
+    final lessonDetails = SliverToBoxAdapter(
+      child: FadeTransition(
+        opacity: _fadeAnim,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ModuleBreadcrumb(module: lesson.module),
+              const SizedBox(height: 8),
+              Text(
+                lesson.title,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'Montserrat',
+                  height: 1.2,
+                ),
               ),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _ModuleBreadcrumb(module: lesson.module),
-                          const SizedBox(height: 8),
-                          Text(
-                            lesson.title,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'Montserrat',
-                              height: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _LessonProgressBar(
-                            progress: lesson.progress,
-                            animation: _progressAnim,
-                          ),
-                          const SizedBox(height: 16),
-                          _ActionRow(
-                            lesson: lesson,
-                            isAssessmentUnlocked: _isAssessmentUnlocked,
-                            onWorkbookDismissed: _refreshLesson,
-                            onOpenAssessment: () =>
-                                _navigateToAssessmentIntro(context),
-                          ),
-                          if (lesson.audio.isAvailable) ...[
-                            const SizedBox(height: 14),
-                            _InlineAudioPlayerCard(
-                              title: lesson.title,
-                              audioLoading: _audioLoading,
-                              audioReady: _audioReady,
-                              audioError: _audioError,
-                              audioPlayer: _audioPlayer,
-                              onRetryAudio: _initAudio,
-                            ),
-                          ],
-                          const SizedBox(height: 22),
-                          if (lesson.content != null &&
-                              lesson.content!.isNotEmpty) ...[
-                            _ContentSection(content: lesson.content!),
-                            const SizedBox(height: 22),
-                          ],
-                          if (lesson.workbook.isAvailable) ...[
-                            LessonWorkbookSection(
-                              workbook: lesson.workbook,
-                              onDismissed: _refreshLesson,
-                            ),
-                            const SizedBox(height: 22),
-                          ],
-                          if (lesson.assessment != null) ...[
-                            LessonAssessmentBanner(
-                              lesson: lesson,
-                              isUnlocked: _isAssessmentUnlocked,
-                              onOpenAssessment: () =>
-                                  _navigateToAssessmentIntro(context),
-                            ),
-                            const SizedBox(height: 28),
-                          ],
-                          if (lesson.navigation.isNotEmpty) ...[
-                            _NavigationSection(
-                              navigation: lesson.navigation,
-                              currentLessonId: lesson.id,
-                              onNavigate: (lessonId) =>
-                                  _navigateToLesson(context, lessonId),
-                            ),
-                            const SizedBox(height: 28),
-                          ],
-                          if (_autoNextTarget != null)
-                            _NextLessonBanner(
-                              nextLesson: _autoNextTarget!,
-                              countdownSeconds: lesson.assessment == null
-                                  ? _autoNextRemainingSeconds
-                                  : null,
-                              onNavigate: (lessonId) =>
-                                  _navigateToLesson(context, lessonId),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+              const SizedBox(height: 14),
+              _LessonProgressBar(
+                progress: lesson.progress,
+                animation: _progressAnim,
+              ),
+              const SizedBox(height: 16),
+              _ActionRow(
+                lesson: lesson,
+                isAssessmentUnlocked: _isAssessmentUnlocked,
+                onWorkbookDismissed: _refreshLesson,
+                onOpenAssessment: () => _navigateToAssessmentIntro(context),
+              ),
+              if (lesson.audio.isAvailable) ...[
+                const SizedBox(height: 14),
+                _InlineAudioPlayerCard(
+                  title: lesson.title,
+                  audioLoading: _audioLoading,
+                  audioReady: _audioReady,
+                  audioError: _audioError,
+                  audioPlayer: _audioPlayer,
+                  onRetryAudio: _initAudio,
                 ),
               ],
-            ),
+              const SizedBox(height: 22),
+              if (lesson.content != null && lesson.content!.isNotEmpty) ...[
+                _ContentSection(content: lesson.content!),
+                const SizedBox(height: 22),
+              ],
+              if (lesson.workbook.isAvailable) ...[
+                LessonWorkbookSection(
+                  workbook: lesson.workbook,
+                  onDismissed: _refreshLesson,
+                ),
+                const SizedBox(height: 22),
+              ],
+              if (lesson.assessment != null) ...[
+                LessonAssessmentBanner(
+                  lesson: lesson,
+                  isUnlocked: _isAssessmentUnlocked,
+                  onOpenAssessment: () =>
+                      _navigateToAssessmentIntro(context),
+                ),
+                const SizedBox(height: 28),
+              ],
+              if (lesson.navigation.isNotEmpty) ...[
+                _NavigationSection(
+                  navigation: lesson.navigation,
+                  currentLessonId: lesson.id,
+                  onNavigate: (lessonId) =>
+                      _navigateToLesson(context, lessonId),
+                ),
+                const SizedBox(height: 28),
+              ],
+              if (_autoNextTarget != null)
+                _NextLessonBanner(
+                  nextLesson: _autoNextTarget!,
+                  countdownSeconds: lesson.assessment == null
+                      ? _autoNextRemainingSeconds
+                      : null,
+                  onNavigate: (lessonId) =>
+                      _navigateToLesson(context, lessonId),
+                ),
+            ],
           ),
         ),
-      ],
+      ),
+    );
+
+    final compactBody = RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _refreshLesson,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverToBoxAdapter(
+            child: _VideoSection(
+              lesson: lesson,
+              topSpacing: videoTopSpacing,
+              videoInitialized: _videoInitialized,
+              videoError: _videoError,
+              videoErrorMessage: _videoErrorMessage,
+              videoController: _videoController,
+              videoUnlocked: _isVideoUnlocked,
+              onWorkbookDismissed: _refreshLesson,
+              onRetry: _initVideo,
+              onBack: () => _handleBack(context),
+              onTogglePlayback: _toggleVideoPlayback,
+              onSeek: _seekVideo,
+              onToggleMute: _toggleMute,
+              onSkipForward: () => _skipVideoBy(30),
+              onSkipBackward: () => _skipVideoBy(-30),
+              showNextLessonPrompt: _showNextLessonPrompt,
+              showAssessmentPrompt: false,
+              autoNextRemainingSeconds: _autoNextRemainingSeconds,
+              autoNextCancelled: _autoNextCancelled,
+              onPlayNextLesson: () async {
+                final nextLesson = _autoNextTarget;
+                if (nextLesson == null) return;
+                _isAutoNavigating = true;
+                await _navigateToLesson(
+                  context,
+                  nextLesson.lessonId,
+                  autoPlayVideo: true,
+                  startFromBeginning: true,
+                );
+              },
+              onCancelAutoNext: () => _cancelAutoNextCountdown(),
+              onStartAssessment: () => _navigateToAssessmentIntro(context),
+              onCancelAssessment: _cancelAssessmentPrompt,
+              onOpenFullscreen: _openFullscreen,
+              nextLesson: _autoNextTarget,
+            ),
+          ),
+          lessonDetails,
+        ],
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompactHeight = constraints.maxHeight < 560;
+        if (isCompactHeight) {
+          return compactBody;
+        }
+
+        return Column(
+          children: [
+            _VideoSection(
+              lesson: lesson,
+              topSpacing: videoTopSpacing,
+              videoInitialized: _videoInitialized,
+              videoError: _videoError,
+              videoErrorMessage: _videoErrorMessage,
+              videoController: _videoController,
+              videoUnlocked: _isVideoUnlocked,
+              onWorkbookDismissed: _refreshLesson,
+              onRetry: _initVideo,
+              onBack: () => _handleBack(context),
+              onTogglePlayback: _toggleVideoPlayback,
+              onSeek: _seekVideo,
+              onToggleMute: _toggleMute,
+              onSkipForward: () => _skipVideoBy(30),
+              onSkipBackward: () => _skipVideoBy(-30),
+              showNextLessonPrompt: _showNextLessonPrompt,
+              showAssessmentPrompt: false,
+              autoNextRemainingSeconds: _autoNextRemainingSeconds,
+              autoNextCancelled: _autoNextCancelled,
+              onPlayNextLesson: () async {
+                final nextLesson = _autoNextTarget;
+                if (nextLesson == null) return;
+                _isAutoNavigating = true;
+                await _navigateToLesson(
+                  context,
+                  nextLesson.lessonId,
+                  autoPlayVideo: true,
+                  startFromBeginning: true,
+                );
+              },
+              onCancelAutoNext: () => _cancelAutoNextCountdown(),
+              onStartAssessment: () => _navigateToAssessmentIntro(context),
+              onCancelAssessment: _cancelAssessmentPrompt,
+              onOpenFullscreen: _openFullscreen,
+              nextLesson: _autoNextTarget,
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: _refreshLesson,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [lessonDetails],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -2325,114 +2403,124 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: AspectRatio(
-                aspectRatio: widget.controller.value.aspectRatio <= 0
-                    ? 16 / 9
-                    : widget.controller.value.aspectRatio,
-                child: _InlineVideoPlayer(
-                  controller: widget.controller,
-                  fit: BoxFit.contain,
-                  nextLesson: widget.nextLesson,
-                  showNextLessonPrompt: false,
-                  showAssessmentPrompt: false,
-                  autoNextRemainingSeconds: null,
-                  autoNextCancelled: false,
-                  onTogglePlayback: widget.onTogglePlayback,
-                  onSeek: widget.onSeek,
-                  onToggleMute: widget.onToggleMute,
-                  onSkipForward: widget.onSkipForward,
-                  onSkipBackward: widget.onSkipBackward,
-                  onPlayNextLesson: _playNextLessonFromFullscreen,
-                  onCancelAutoNext: widget.onCancelAutoNext,
-                  onStartAssessment: _startAssessmentFromFullscreen,
-                  onCancelAssessment: widget.onCancelAssessment,
-                  onOpenFullscreen: () async => _closeFullscreen(),
-                ),
+      body: Stack(
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: widget.controller.value.aspectRatio <= 0
+                  ? 16 / 9
+                  : widget.controller.value.aspectRatio,
+              child: _InlineVideoPlayer(
+                controller: widget.controller,
+                fit: BoxFit.contain,
+                nextLesson: widget.nextLesson,
+                showNextLessonPrompt: false,
+                showAssessmentPrompt: false,
+                autoNextRemainingSeconds: null,
+                autoNextCancelled: false,
+                onTogglePlayback: widget.onTogglePlayback,
+                onSeek: widget.onSeek,
+                onToggleMute: widget.onToggleMute,
+                onSkipForward: widget.onSkipForward,
+                onSkipBackward: widget.onSkipBackward,
+                onPlayNextLesson: _playNextLessonFromFullscreen,
+                onCancelAutoNext: widget.onCancelAutoNext,
+                onStartAssessment: _startAssessmentFromFullscreen,
+                onCancelAssessment: widget.onCancelAssessment,
+                onOpenFullscreen: () async => _closeFullscreen(),
               ),
             ),
-            if (widget.nextLesson != null &&
-                _showNextLessonPrompt &&
-                _autoNextRemainingSeconds != null)
-              Positioned(
-                right: 20,
-                bottom: 92,
-                child: _VideoNextLessonOverlay(
-                  nextLesson: widget.nextLesson!,
-                  countdownSeconds: _autoNextRemainingSeconds,
-                  onPlayNow: _playNextLessonFromFullscreen,
-                  onCancel: () => _cancelAutoNextOverlay(),
-                ),
-              ),
-            if (_showAssessmentPrompt)
-              Positioned(
-                right: 20,
-                bottom: 92,
-                child: _VideoAssessmentOverlay(
-                  onStartAssessment: _startAssessmentFromFullscreen,
-                  onCancel: () {
-                    if (!mounted) return;
-                    setState(() => _showAssessmentPrompt = false);
-                    widget.onCancelAssessment();
-                  },
-                ),
-              ),
+          ),
+          if (widget.nextLesson != null &&
+              _showNextLessonPrompt &&
+              _autoNextRemainingSeconds != null)
             Positioned(
-              top: 24,
-              left: 12,
-              child: GestureDetector(
-                onTap: _showTransitionLoader ? null : () => _closeFullscreen(),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(AppRadius.modal),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+              right: 20,
+              bottom: 92,
+              child: _VideoNextLessonOverlay(
+                nextLesson: widget.nextLesson!,
+                countdownSeconds: _autoNextRemainingSeconds,
+                onPlayNow: _playNextLessonFromFullscreen,
+                onCancel: () => _cancelAutoNextOverlay(),
+              ),
+            ),
+          if (_showAssessmentPrompt)
+            Positioned(
+              right: 20,
+              bottom: 92,
+              child: _VideoAssessmentOverlay(
+                onStartAssessment: _startAssessmentFromFullscreen,
+                onCancel: () {
+                  if (!mounted) return;
+                  setState(() => _showAssessmentPrompt = false);
+                  widget.onCancelAssessment();
+                },
+              ),
+            ),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 12,
+            left: MediaQuery.paddingOf(context).left + 12,
+            child: GestureDetector(
+              onTap: _showTransitionLoader ? null : () => _closeFullscreen(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.55),
+                  borderRadius: BorderRadius.circular(AppRadius.modal),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 16,
                 ),
               ),
             ),
-            if (_showTransitionLoader)
-              Positioned.fill(
-                child: AbsorbPointer(
-                  child: Container(
-                    color: Colors.black.withOpacity(0.78),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
-                              strokeWidth: 2.6,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Loading next video...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'Montserrat',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+          ),
+          if (_showTransitionLoader)
+            Positioned.fill(
+              child: AbsorbPointer(
+                child: ColoredBox(
+                  color: Color.fromRGBO(0, 0, 0, 0.78),
+                  child: const _FullscreenTransitionLoader(),
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FullscreenTransitionLoader extends StatelessWidget {
+  const _FullscreenTransitionLoader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
+                strokeWidth: 2.6,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading next video...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Montserrat',
+              ),
+            ),
           ],
         ),
       ),
