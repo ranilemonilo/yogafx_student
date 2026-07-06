@@ -612,3 +612,4 @@ class _LinkButtonState extends State<_LinkButton> {
     );
   }
 }
+

@@ -289,9 +289,40 @@ class _ResultContentState extends ConsumerState<_ResultContent>
       return;
     }
 
+    final navigationTarget = _resolveNextNavigationTarget(lesson);
+    if (navigationTarget != null) {
+      if (!mounted) return;
+      setState(() => _nextTarget = navigationTarget);
+      return;
+    }
+
     final fallback = await _resolveNextModuleTarget(lesson);
     if (!mounted) return;
     setState(() => _nextTarget = fallback);
+  }
+
+  _AssessmentNextTarget? _resolveNextNavigationTarget(LessonDetail lesson) {
+    final navigation = lesson.navigation;
+    if (navigation.isEmpty) return null;
+
+    final sortedNavigation = [...navigation]
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final currentIndex = sortedNavigation.indexWhere(
+      (item) => item.id == lesson.id,
+    );
+    if (currentIndex == -1) return null;
+
+    for (var i = currentIndex + 1; i < sortedNavigation.length; i++) {
+      final item = sortedNavigation[i];
+      if (item.isLocked) continue;
+      return _AssessmentNextTarget(
+        lessonId: item.id,
+        label: 'Next Lesson',
+        isFromNextModule: false,
+      );
+    }
+
+    return null;
   }
 
   Future<_AssessmentNextTarget?> _resolveNextModuleTarget(

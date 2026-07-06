@@ -6,6 +6,8 @@ import '../../../../core/router/app_router.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
+import '../../../dialog/data/models/dialog_model.dart';
+import '../../../dialog/presentation/providers/dialog_provider.dart';
 import '../../../lesson/data/models/lesson_model.dart';
 import '../../../lesson/presentation/providers/lesson_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
@@ -33,6 +35,15 @@ bool _canOpenModule(String status) {
   return normalizedStatus != 'locked' &&
       normalizedStatus != 'unavailable' &&
       normalizedStatus != 'hidden';
+}
+
+bool _shouldShowInstantDialogForTier(String? slug) {
+  final normalized = slug?.trim().toLowerCase() ?? '';
+  if (normalized.isEmpty) return true;
+  if (normalized.contains('starter')) return false;
+  return normalized.contains('online') ||
+      normalized.contains('masterclass') ||
+      normalized.contains('master_class');
 }
 
 // ─── Root Screen ──────────────────────────────────────────────────────────────
@@ -142,7 +153,28 @@ Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
   );
 }
 
-Future<void> _showInstantDialogMenu(BuildContext context) async {
+String _dialogRouteKey(String key) {
+  return key == 'full_standing' ? 'full-standing' : 'full-floor';
+}
+
+IconData _dialogIconForKey(String key) {
+  return key == 'full_standing'
+      ? Icons.accessibility_new_rounded
+      : Icons.airline_seat_recline_normal_rounded;
+}
+
+String _dialogSubtitle(DialogItem item) {
+  final normalizedKey = item.key.trim().toLowerCase();
+  if (normalizedKey == 'full_standing') {
+    return 'Open the standing dialog sequence.';
+  }
+  if (normalizedKey == 'full_floor') {
+    return 'Open the floor dialog sequence.';
+  }
+  return 'Open this dialog sequence.';
+}
+
+Future<void> _showInstantDialogMenu(BuildContext context, WidgetRef _) async {
   await showModalBottomSheet<void>(
     context: context,
     backgroundColor: AppColors.surface,
@@ -210,6 +242,136 @@ Future<void> _showInstantDialogMenu(BuildContext context) async {
             ],
           ),
         ),
+      );
+    },
+  );
+}
+
+Future<void> _showInstantDialogMenuFromApi(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) {
+      return Consumer(
+        builder: (context, modalRef, _) {
+          final dialogsAsync = modalRef.watch(dialogListProvider);
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Instant Access Dialog',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Choose the dialog you want to open.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  dialogsAsync.when(
+                    loading: () => const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                    error: (error, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          error.toString(),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontFamily: 'Montserrat',
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _RedButton(
+                          label: 'Try again',
+                          icon: Icons.refresh_rounded,
+                          onTap: () => modalRef.invalidate(dialogListProvider),
+                        ),
+                      ],
+                    ),
+                    data: (data) {
+                      final items = data.items
+                          .where((item) => item.key.trim().isNotEmpty)
+                          .toList();
+
+                      if (items.isEmpty) {
+                        return const Text(
+                          'No dialog is available for this account yet.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontFamily: 'Montserrat',
+                            height: 1.5,
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < items.length; i++) ...[
+                            _QuickDialogTile(
+                              icon: _dialogIconForKey(items[i].key),
+                              title: items[i].title,
+                              subtitle: _dialogSubtitle(items[i]),
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                context.push(
+                                  '/dialogs/${_dialogRouteKey(items[i].key)}',
+                                );
+                              },
+                            ),
+                            if (i != items.length - 1) const SizedBox(height: 10),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       );
     },
   );
@@ -377,6 +539,10 @@ class _YogaFXAppBar extends ConsumerWidget {
     final profileAsync = ref.watch(profileProvider);
     final authState = ref.watch(authProvider);
     final profile = profileAsync.valueOrNull;
+    final accessTierSlug = profile?.accessTier.slug ??
+        authState.user?.accessTier?.slug ??
+        (student is DashboardStudent ? student.accessTier.slug : null);
+    final showInstantDialog = _shouldShowInstantDialogForTier(accessTierSlug);
 
     return SliverAppBar(
       backgroundColor: Colors.transparent,
@@ -411,12 +577,13 @@ class _YogaFXAppBar extends ConsumerWidget {
         ),
       ),
       actions: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, right: 8),
-          child: _InstantDialogButton(
-            onTap: () => _showInstantDialogMenu(context),
+        if (showInstantDialog)
+          Padding(
+            padding: const EdgeInsets.only(left: 8, right: 8),
+            child: _InstantDialogButton(
+              onTap: () => _showInstantDialogMenuFromApi(context, ref),
+            ),
           ),
-        ),
         Padding(
           padding: const EdgeInsets.only(right: 16, left: 4),
           child: GestureDetector(
@@ -455,7 +622,6 @@ class _DashboardProfileAvatar extends StatelessWidget {
         color: AppColors.primary,
         // §11: avatar radius 8px
         borderRadius: BorderRadius.circular(AppRadius.avatar),
-        border: Border.all(color: AppColors.textPrimary.withOpacity(0.12)),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasImage

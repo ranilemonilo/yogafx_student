@@ -3,6 +3,10 @@ import '../../../../core/error/app_exception.dart';
 import '../../data/models/auth_user.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../dashboard/presentation/providers/running_login_time_provider.dart';
+import '../../../module/presentation/providers/module_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 
 // State
 enum AuthStatus { initial, loading, authenticated, unauthenticated }
@@ -35,9 +39,10 @@ class AuthState {
 
 // Notifier
 class AuthNotifier extends StateNotifier<AuthState> {
+  final Ref _ref;
   final AuthRepository _repository;
 
-  AuthNotifier(this._repository) : super(const AuthState()) {
+  AuthNotifier(this._ref, this._repository) : super(const AuthState()) {
     _init();
   }
 
@@ -80,6 +85,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         status: AuthStatus.authenticated,
         user: response.user,
       );
+      _resetUserScopedProviders();
       return true;
     } on AppException catch (e) {
       state = state.copyWith(
@@ -98,7 +104,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _repository.logout();
+    _resetUserScopedProviders();
     state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+
+  void _resetUserScopedProviders() {
+    _ref.invalidate(dashboardProvider);
+    _ref.invalidate(runningLoginTimeProvider);
+    _ref.invalidate(profileProvider);
+    _ref.invalidate(moduleListProvider);
   }
 }
 
@@ -108,5 +122,5 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(authRepositoryProvider));
+  return AuthNotifier(ref, ref.read(authRepositoryProvider));
 });

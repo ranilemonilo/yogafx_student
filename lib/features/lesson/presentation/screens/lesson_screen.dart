@@ -221,6 +221,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _audioLoading = false;
   bool _audioReady = false;
   String? _audioError;
+  int _currentWatchProgress = 0;
   int _lastReportedProgress = 0;
   int? _autoNextRemainingSeconds;
   bool _isAutoNavigating = false;
@@ -254,12 +255,20 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (_requiresWorkbookFirst) return false;
     final hasPlayableVideo = widget.lesson.video != null && widget.lesson.video!.isReady;
     if (!hasPlayableVideo) return true;
-    return widget.lesson.progress.watchProgress >= 95;
+    return _effectiveWatchProgress >= 95;
+  }
+
+  int get _effectiveWatchProgress {
+    final serverProgress = widget.lesson.progress.watchProgress;
+    return _currentWatchProgress > serverProgress
+        ? _currentWatchProgress
+        : serverProgress;
   }
 
   @override
   void initState() {
     super.initState();
+    _currentWatchProgress = widget.lesson.progress.watchProgress;
     _lastReportedProgress = widget.lesson.progress.watchProgress;
 
     if (!widget.autoOpenFullscreen) {
@@ -302,16 +311,61 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   Future<void> _primeAutoNextTarget() async {
     final nextLesson = widget.lesson.nextLesson;
     if (nextLesson != null && nextLesson.isUnlocked) {
-      if (!mounted) return;
-      setState(() {
-        _autoNextTarget = _AutoNextTarget.fromNextLesson(nextLesson);
-      });
+      _setAutoNextTarget(_AutoNextTarget.fromNextLesson(nextLesson));
+      return;
+    }
+
+    final navigationTarget = _resolveNextNavigationTarget();
+    if (navigationTarget != null) {
+      _setAutoNextTarget(navigationTarget);
       return;
     }
 
     final fallbackTarget = await _resolveNextModuleLessonTarget();
-    if (!mounted || fallbackTarget == null) return;
-    setState(() => _autoNextTarget = fallbackTarget);
+    if (fallbackTarget == null) return;
+    _setAutoNextTarget(fallbackTarget);
+  }
+
+  void _setAutoNextTarget(_AutoNextTarget target) {
+    if (!mounted) return;
+    setState(() => _autoNextTarget = target);
+    _syncAutoNextWithCurrentPlayback();
+  }
+
+  void _syncAutoNextWithCurrentPlayback() {
+    final controller = _videoController;
+    if (controller == null) return;
+
+    final value = controller.value;
+    if (!value.isInitialized || value.duration.inSeconds == 0) return;
+    if (_isFullscreenOpen) return;
+
+    _handleAutoNext(value);
+  }
+
+  _AutoNextTarget? _resolveNextNavigationTarget() {
+    final navigation = widget.lesson.navigation;
+    if (navigation.isEmpty) return null;
+
+    final sortedNavigation = [...navigation]
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final currentIndex = sortedNavigation.indexWhere(
+      (item) => item.id == widget.lesson.id,
+    );
+    if (currentIndex == -1) return null;
+
+    for (var i = currentIndex + 1; i < sortedNavigation.length; i++) {
+      final item = sortedNavigation[i];
+      return _AutoNextTarget(
+        lessonId: item.id,
+        title: item.title,
+        sortOrder: item.sortOrder,
+        thumbnailUrl: item.thumbnailUrl,
+        isFromNextModule: false,
+      );
+    }
+
+    return null;
   }
 
   Future<_AutoNextTarget?> _resolveNextModuleLessonTarget() async {
@@ -486,6 +540,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     final currentProgress =
     ((value.position.inSeconds / value.duration.inSeconds) * 100).round();
+
+    if (currentProgress != _currentWatchProgress && mounted) {
+      setState(() {
+        _currentWatchProgress = currentProgress.clamp(0, 100);
+      });
+    }
 
     if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
       _lastReportedProgress = currentProgress;
@@ -681,6 +741,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       }
       _videoController = null;
       _audioPlayer = null;
+      _currentWatchProgress = widget.lesson.progress.watchProgress;
       _lastReportedProgress = widget.lesson.progress.watchProgress;
       _autoNextRemainingSeconds = null;
       _isFullscreenOpen = false;

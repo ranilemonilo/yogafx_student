@@ -551,7 +551,6 @@ class _ProfileAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(AppRadius.avatar),
-        border: Border.all(color: AppColors.primary, width: 1.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasImage
