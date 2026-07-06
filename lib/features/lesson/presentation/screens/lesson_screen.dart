@@ -86,6 +86,16 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   void initState() {
     super.initState();
     _lessonContentKey = GlobalKey<_LessonContentState>();
+
+    if (widget.autoOpenFullscreen) {
+      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
+      unawaited(
+        SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]),
+      );
+    }
   }
 
   Future<void> _replaceLessonRoute(
@@ -251,6 +261,10 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   void initState() {
     super.initState();
     _lastReportedProgress = widget.lesson.progress.watchProgress;
+
+    if (!widget.autoOpenFullscreen) {
+      unawaited(_restorePortraitUi());
+    }
 
     _fadeCtrl = AnimationController(
       vsync: this,
