@@ -46,6 +46,11 @@ bool _shouldShowInstantDialogForTier(String? slug) {
       normalized.contains('master_class');
 }
 
+bool _isTabletLandscapeLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width >= 900 && size.width > size.height;
+}
+
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
 class DashboardScreen extends ConsumerWidget {
@@ -479,6 +484,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
+    final useTabletLandscapeLayout = _isTabletLandscapeLayout(context);
 
     return RefreshIndicator(
       color: AppColors.primary,
@@ -493,33 +499,91 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
         slivers: [
           _YogaFXAppBar(student: data.student),
           SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _animated(0, _HeroSection(data: data)),
-                if (data.continueLearningSection.state != 'empty') ...[
-                  const SizedBox(height: 0),
-                  _animated(
-                    1,
-                    _ContinueLearningSection(
-                      section: data.continueLearningSection,
-                      moduleItems: data.availableModulesSection.items,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: useTabletLandscapeLayout ? 28 : 0,
+              ),
+              child: useTabletLandscapeLayout
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 11,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _animated(0, _HeroSection(data: data)),
+                              if (data.continueLearningSection.state != 'empty')
+                                _animated(
+                                  1,
+                                  _ContinueLearningSection(
+                                    section: data.continueLearningSection,
+                                    moduleItems: data.availableModulesSection.items,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          flex: 10,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _animated(
+                                2,
+                                _ProgressSection(
+                                  section: data.progressSummarySection,
+                                  continueLearningSection:
+                                      data.continueLearningSection,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              _animated(
+                                3,
+                                _ModulesSection(
+                                  section: data.availableModulesSection,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _animated(0, _HeroSection(data: data)),
+                        if (data.continueLearningSection.state != 'empty') ...[
+                          const SizedBox(height: 0),
+                          _animated(
+                            1,
+                            _ContinueLearningSection(
+                              section: data.continueLearningSection,
+                              moduleItems: data.availableModulesSection.items,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        _animated(
+                          2,
+                          _ProgressSection(
+                            section: data.progressSummarySection,
+                            continueLearningSection:
+                                data.continueLearningSection,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _animated(
+                          3,
+                          _ModulesSection(
+                            section: data.availableModulesSection,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                     ),
-                  ),
-                ],
-                const SizedBox(height: 22),
-                _animated(
-                  2,
-                  _ProgressSection(
-                    section: data.progressSummarySection,
-                    continueLearningSection: data.continueLearningSection,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _animated(
-                    3, _ModulesSection(section: data.availableModulesSection)),
-                const SizedBox(height: 8),
-              ],
             ),
           ),
         ],

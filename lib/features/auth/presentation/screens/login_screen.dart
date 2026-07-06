@@ -192,7 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     required bool isTablet,
   }) {
     return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: isTablet ? double.infinity : 360),
+      constraints: BoxConstraints(maxWidth: isTablet ? 460 : 360),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
