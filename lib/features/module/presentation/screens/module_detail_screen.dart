@@ -34,6 +34,11 @@ const _kShadowCard  = [BoxShadow(color: Color(0xCC000000), blurRadius: 24, offse
 const _kShadowModal = [BoxShadow(color: Color(0xE6000000), blurRadius: 40, offset: Offset(0, 16))];
 const _kShadowBtn   = [BoxShadow(color: Color(0xB3000000), blurRadius: 12, offset: Offset(0, 4))];
 
+bool _isTabletLandscapeLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width >= 900 && size.width > size.height;
+}
+
 // ─── Logic CTA (tidak diubah) ─────────────────────────────────────────────────
 
 void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
@@ -194,6 +199,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   Widget build(BuildContext context) {
     final module = widget.module;
     final assignments = _parseAssignments(module, widget.hasGeneratedCertificate);
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
 
     final shouldShowPrimaryCta = module.primaryCtaLabel != null &&
         !module.viewTypes.contains('ebook') &&
@@ -214,7 +220,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 280,
+            expandedHeight: isTabletLandscape ? 340 : 280,
             pinned: true,
             backgroundColor: _kHeaderBg.withOpacity(0.95),
             elevation: 0,
@@ -243,39 +249,51 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (shouldShowPrimaryCta) ...[
-                    _buildAnimated(
-                      _ActionRow(module: module),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  _buildAnimated(
-                    _ModuleHeader(
-                      module: module,
-                      hasGeneratedCertificate: widget.hasGeneratedCertificate,
-                    ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isTabletLandscape ? 1180 : double.infinity,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    isTabletLandscape ? 24 : 16,
+                    16,
+                    isTabletLandscape ? 24 : 16,
+                    48,
                   ),
-                  const SizedBox(height: 24),
-                  if (module.showProgress) ...[
-                    _buildAnimated(_ModuleProgress(module: module)),
-                    const SizedBox(height: 24),
-                  ],
-                  if (module.description != null) ...[
-                    _buildAnimated(_Description(text: module.description!)),
-                    const SizedBox(height: 28),
-                  ],
-                  if (module.viewTypes.contains('video_lecturer'))
-                    ..._buildVideoLecturerList(module),
-                  if (module.viewTypes.contains('ebook')) ..._buildEbookList(module),
-                  if (module.viewTypes.contains('certificate')) ..._buildCertificateInfo(module),
-                  if (module.viewTypes.contains('lesson')) ..._buildLessonList(module),
-                  if (module.viewTypes.contains('assignment')) ..._buildAssignmentList(assignments),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (shouldShowPrimaryCta) ...[
+                        _buildAnimated(
+                          _ActionRow(module: module),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      _buildAnimated(
+                        _ModuleHeader(
+                          module: module,
+                          hasGeneratedCertificate: widget.hasGeneratedCertificate,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      if (module.showProgress) ...[
+                        _buildAnimated(_ModuleProgress(module: module)),
+                        const SizedBox(height: 24),
+                      ],
+                      if (module.description != null) ...[
+                        _buildAnimated(_Description(text: module.description!)),
+                        const SizedBox(height: 28),
+                      ],
+                      if (module.viewTypes.contains('video_lecturer'))
+                        ..._buildVideoLecturerList(module),
+                      if (module.viewTypes.contains('ebook')) ..._buildEbookList(module),
+                      if (module.viewTypes.contains('certificate')) ..._buildCertificateInfo(module),
+                      if (module.viewTypes.contains('lesson')) ..._buildLessonList(module),
+                      if (module.viewTypes.contains('assignment')) ..._buildAssignmentList(assignments),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

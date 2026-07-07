@@ -51,6 +51,10 @@ bool _isTabletLandscapeLayout(BuildContext context) {
   return size.width >= 900 && size.width > size.height;
 }
 
+bool _isTabletLayout(BuildContext context) {
+  return MediaQuery.sizeOf(context).shortestSide >= 600;
+}
+
 // ─── Root Screen ──────────────────────────────────────────────────────────────
 
 class DashboardScreen extends ConsumerWidget {
@@ -503,87 +507,39 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
               padding: EdgeInsets.symmetric(
                 horizontal: useTabletLandscapeLayout ? 28 : 0,
               ),
-              child: useTabletLandscapeLayout
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 11,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _animated(0, _HeroSection(data: data)),
-                              if (data.continueLearningSection.state != 'empty')
-                                _animated(
-                                  1,
-                                  _ContinueLearningSection(
-                                    section: data.continueLearningSection,
-                                    moduleItems: data.availableModulesSection.items,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          flex: 10,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _animated(
-                                2,
-                                _ProgressSection(
-                                  section: data.progressSummarySection,
-                                  continueLearningSection:
-                                      data.continueLearningSection,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              _animated(
-                                3,
-                                _ModulesSection(
-                                  section: data.availableModulesSection,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _animated(0, _HeroSection(data: data)),
-                        if (data.continueLearningSection.state != 'empty') ...[
-                          const SizedBox(height: 0),
-                          _animated(
-                            1,
-                            _ContinueLearningSection(
-                              section: data.continueLearningSection,
-                              moduleItems: data.availableModulesSection.items,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 22),
-                        _animated(
-                          2,
-                          _ProgressSection(
-                            section: data.progressSummarySection,
-                            continueLearningSection:
-                                data.continueLearningSection,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _animated(
-                          3,
-                          _ModulesSection(
-                            section: data.availableModulesSection,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _animated(0, _HeroSection(data: data)),
+                  if (data.continueLearningSection.state != 'empty') ...[
+                    const SizedBox(height: 0),
+                    _animated(
+                      1,
+                      _ContinueLearningSection(
+                        section: data.continueLearningSection,
+                        moduleItems: data.availableModulesSection.items,
+                      ),
                     ),
+                  ],
+                  const SizedBox(height: 22),
+                  _animated(
+                    2,
+                    _ProgressSection(
+                      section: data.progressSummarySection,
+                      continueLearningSection:
+                          data.continueLearningSection,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _animated(
+                    3,
+                    _ModulesSection(
+                      section: data.availableModulesSection,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
         ],
@@ -1202,6 +1158,8 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
   @override
   Widget build(BuildContext context) {
     final section = widget.section;
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
+    final isTablet = _isTabletLayout(context);
     final currentLesson = section.lesson;
     final lessonDetailAsync = currentLesson == null
         ? null
@@ -1219,6 +1177,19 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
       section: section,
       moduleItems: widget.moduleItems,
     );
+    final cardHeight = isTablet ? (isTabletLandscape ? 420.0 : 540.0) : 468.0;
+    final outerPadding = isTablet ? (isTabletLandscape ? 18.0 : 20.0) : 14.0;
+    final contentPadding = isTablet ? (isTabletLandscape ? 18.0 : 20.0) : 12.0;
+    final titleFontSize = isTablet ? (isTabletLandscape ? 24.0 : 28.0) : 26.0;
+    final titleMaxLines = isTablet ? 2 : (isTabletLandscape ? 1 : 2);
+    final metaFontSize = isTablet ? 12.0 : (isTabletLandscape ? 10.0 : 11.0);
+    final metaSpacing = isTablet ? 10.0 : (isTabletLandscape ? 2.0 : 6.0);
+    final buttonTopSpacing = isTablet ? 18.0 : (isTabletLandscape ? 6.0 : 12.0);
+    final buttonHorizontalPadding = isTablet ? 20.0 : 18.0;
+    final buttonVerticalPadding = isTablet ? 12.0 : (isTabletLandscape ? 7.0 : 12.0);
+    final buttonRadius = isTablet ? 10.0 : (isTabletLandscape ? 8.0 : 6.0);
+    final buttonFontSize = isTablet ? 14.0 : (isTabletLandscape ? 12.0 : 14.0);
+    final buttonIconSize = isTablet ? 22.0 : 24.0;
 
     return GestureDetector(
       onTap: destinationLessonId == null
@@ -1240,7 +1211,7 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
               scale: _scaleAnim,
               child: Container(
                 width: double.infinity,
-                height: 468,
+                height: cardHeight,
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
@@ -1309,108 +1280,118 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Spacer(),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.0),
-                          Colors.black.withOpacity(0.18),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          section.lesson?.title ?? section.title,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'Montserrat',
-                            height: 1.04,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _continueLessonMetaLabel(
-                            section: section,
-                            moduleNumber: moduleNumber,
-                            hasUnlockedNextLesson: hasUnlockedNextLesson,
-                            statusText: statusText,
-                          ),
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Montserrat',
-                            letterSpacing: 0.8,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        
-                        const SizedBox(height: 12),
-                        GestureDetector(
-                          onTap: () {
-                            if (destinationLessonId == null) return;
-                            _openContinueLesson(
-                              context,
-                              lessonId: destinationLessonId,
-                              autoPlayVideo: hasUnlockedNextLesson,
-                            );
-                          },
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: Colors.black,
-                                  size: 28,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  ctaLabel == 'Start Next Lesson'
-                                      ? 'Continue Lesson'
-                                      : ctaLabel,
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'Montserrat',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+              padding: EdgeInsets.fromLTRB(
+                outerPadding,
+                outerPadding,
+                outerPadding,
+                outerPadding,
+              ),
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(
+                    contentPadding,
+                    contentPadding,
+                    contentPadding,
+                    contentPadding,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.0),
+                        Colors.black.withOpacity(0.18),
                       ],
                     ),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                ],
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        section.lesson?.title ?? section.title,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'Montserrat',
+                          height: 1.04,
+                        ),
+                        maxLines: titleMaxLines,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: metaSpacing),
+                      Text(
+                        _continueLessonMetaLabel(
+                          section: section,
+                          moduleNumber: moduleNumber,
+                          hasUnlockedNextLesson: hasUnlockedNextLesson,
+                          statusText: statusText,
+                        ),
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: metaFontSize,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Montserrat',
+                          letterSpacing: 0.8,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: buttonTopSpacing),
+                      GestureDetector(
+                        onTap: () {
+                          if (destinationLessonId == null) return;
+                          _openContinueLesson(
+                            context,
+                            lessonId: destinationLessonId,
+                            autoPlayVideo: hasUnlockedNextLesson,
+                          );
+                        },
+                        child: Container(
+                          constraints: BoxConstraints(
+                            minWidth: isTablet ? 164 : 0,
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: buttonHorizontalPadding,
+                            vertical: buttonVerticalPadding,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(
+                              buttonRadius,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.black,
+                                size: buttonIconSize,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                ctaLabel == 'Start Next Lesson'
+                                    ? 'Continue Lesson'
+                                    : ctaLabel,
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: buttonFontSize,
+                                  fontWeight: FontWeight.w800,
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -1521,13 +1502,20 @@ class _ProgressSectionState extends State<_ProgressSection>
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = _isTabletLayout(context);
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
+
+    final sectionGap = isTablet ? 10.0 : 14.0;
+    final cardSpacing = isTablet ? (isTabletLandscape ? 8.0 : 9.0) : 10.0;
+    final compactProgressCard = isTablet;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionLabel(text: widget.section.eyebrow),
-          const SizedBox(height: 14),
+          SizedBox(height: sectionGap),
           Row(
             children: [
               _AnimatedStatCard(
@@ -1536,18 +1524,19 @@ class _ProgressSectionState extends State<_ProgressSection>
                 '${widget.section.modulesCompleted}/${widget.section.modulesTotal}',
                 icon: Icons.layers_rounded,
                 animation: _anim,
+                compact: compactProgressCard,
                 onTap: () => context.push(AppRoutes.modules),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: cardSpacing),
               _AnimatedStatCard(
                 label: 'Lessons',
                 value:
                 '${widget.section.lessonsCompleted}/${widget.section.lessonsTotal}',
                 icon: Icons.play_circle_rounded,
                 animation: _anim,
+                compact: compactProgressCard,
                 onTap: () {
-                  final lessonId =
-                      widget.continueLearningSection.lesson?.id;
+                  final lessonId = widget.continueLearningSection.lesson?.id;
                   if (lessonId != null) {
                     context.push('/lessons/$lessonId');
                   } else {
@@ -1555,13 +1544,14 @@ class _ProgressSectionState extends State<_ProgressSection>
                   }
                 },
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: cardSpacing),
               _AnimatedStatCard(
                 label: 'Overall',
                 value: '${widget.section.overallProgressPercentage}%',
                 icon: Icons.bar_chart_rounded,
                 animation: _anim,
                 highlight: true,
+                compact: compactProgressCard,
                 onTap: () => context.pushNamed(
                   'overallProgress',
                   queryParameters: {
@@ -1570,7 +1560,7 @@ class _ProgressSectionState extends State<_ProgressSection>
                     'lessonsCompleted': '${widget.section.lessonsCompleted}',
                     'lessonsTotal': '${widget.section.lessonsTotal}',
                     'overallProgressPercentage':
-                        '${widget.section.overallProgressPercentage}',
+                    '${widget.section.overallProgressPercentage}',
                   },
                 ),
               ),
@@ -1588,6 +1578,7 @@ class _AnimatedStatCard extends StatelessWidget {
   final IconData icon;
   final Animation<double> animation;
   final bool highlight;
+  final bool compact;
   final VoidCallback onTap;
 
   const _AnimatedStatCard({
@@ -1597,6 +1588,7 @@ class _AnimatedStatCard extends StatelessWidget {
     required this.animation,
     required this.onTap,
     this.highlight = false,
+    this.compact = false,
   });
 
   @override
@@ -1604,6 +1596,17 @@ class _AnimatedStatCard extends StatelessWidget {
     final highlightColor = label == 'Overall'
         ? AppColors.secondary
         : AppColors.primary;
+
+    final cardPadding = compact
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 11)
+        : const EdgeInsets.all(16);
+
+    final iconSize = compact ? 16.0 : 18.0;
+    final iconBottomGap = compact ? 7.0 : 10.0;
+    final valueFontSize = compact ? 16.5 : 19.0;
+    final valueBottomGap = compact ? 2.0 : 3.0;
+    final labelFontSize = compact ? 9.0 : 10.0;
+    final shadowBlur = compact ? 12.0 : 16.0;
 
     return Expanded(
       child: AnimatedBuilder(
@@ -1615,9 +1618,8 @@ class _AnimatedStatCard extends StatelessWidget {
             child: GestureDetector(
               onTap: onTap,
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: cardPadding,
                 decoration: BoxDecoration(
-                  // highlight → warm dark bg | default → surfaceElevated
                   color: highlight
                       ? AppColors.overlayDark
                       : AppColors.surfaceElevated,
@@ -1632,7 +1634,7 @@ class _AnimatedStatCard extends StatelessWidget {
                       ? [
                     BoxShadow(
                       color: highlightColor.withOpacity(0.12),
-                      blurRadius: 16,
+                      blurRadius: shadowBlur,
                       offset: const Offset(0, 4),
                     ),
                   ]
@@ -1641,29 +1643,31 @@ class _AnimatedStatCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(icon,
-                        color: highlight
-                            ? highlightColor
-                            : AppColors.textMuted,
-                        size: 18),
-                    const SizedBox(height: 10),
+                    Icon(
+                      icon,
+                      color: highlight
+                          ? highlightColor
+                          : AppColors.textMuted,
+                      size: iconSize,
+                    ),
+                    SizedBox(height: iconBottomGap),
                     Text(
                       value,
                       style: TextStyle(
                         color: highlight
                             ? highlightColor
                             : AppColors.textPrimary,
-                        fontSize: 19,
+                        fontSize: valueFontSize,
                         fontWeight: FontWeight.w800,
                         fontFamily: 'Montserrat',
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    SizedBox(height: valueBottomGap),
                     Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textMuted,
-                        fontSize: 10,
+                        fontSize: labelFontSize,
                         fontFamily: 'Montserrat',
                         letterSpacing: 0.5,
                       ),
@@ -1678,7 +1682,6 @@ class _AnimatedStatCard extends StatelessWidget {
     );
   }
 }
-
 // ─── Assessment Banner ────────────────────────────────────────────────────────
 
 class _AssessmentBanner extends StatefulWidget {
@@ -1868,7 +1871,10 @@ class _ModulesSectionState extends State<_ModulesSection>
   @override
   Widget build(BuildContext context) {
     if (widget.section.items.isEmpty) return const SizedBox.shrink();
+
     final filtered = _filtered;
+    final isTablet = _isTabletLayout(context);
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2007,18 +2013,25 @@ class _ModulesSectionState extends State<_ModulesSection>
             ),
           )
         else
-          SizedBox(
-            height: 220,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              clipBehavior: Clip.none,
-              itemCount: filtered.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) =>
-                  _ModuleCard(module: filtered[index], index: index),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SizedBox(
+                height: 220,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  clipBehavior: Clip.none,
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) => _ModuleCard(
+                    module: filtered[index],
+                    index: index,
+                    width: isTablet ? 260.0 : null,
+                  ),
+                ),
+              );
+            },
           ),
       ],
     );
@@ -2028,8 +2041,13 @@ class _ModulesSectionState extends State<_ModulesSection>
 class _ModuleCard extends StatefulWidget {
   final DashboardModuleItem module;
   final int index;
-  const _ModuleCard({required this.module, required this.index});
+  final double? width;
 
+  const _ModuleCard({
+    required this.module,
+    required this.index,
+    this.width,
+  });
   @override
   State<_ModuleCard> createState() => _ModuleCardState();
 }
@@ -2081,7 +2099,17 @@ class _ModuleCardState extends State<_ModuleCard>
   Widget build(BuildContext context) {
     final module = widget.module;
     final canOpen = _canOpenModule(module.status);
-
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
+    final isTablet = _isTabletLayout(context);
+    final cardWidth = widget.width ?? (isTabletLandscape ? 260.0 : 200.0);
+    final cardBodyPadding = isTablet
+        ? const EdgeInsets.fromLTRB(12, 8, 12, 10)
+        : const EdgeInsets.fromLTRB(12, 12, 12, 16);
+    final titleFontSize = isTablet ? 12.0 : 13.0;
+    final statusFontSize = isTablet ? 10.0 : 11.0;
+    final lessonsFontSize = isTablet ? 9.0 : 10.0;
+    final bodySpacing = isTablet ? 3.0 : 6.0;
+    final cardAspectRatio = isTablet ? 16 / 8.2 : 16 / 7;
     return GestureDetector(
       onTap: () {
         if (!canOpen) {
@@ -2104,7 +2132,7 @@ class _ModuleCardState extends State<_ModuleCard>
                 scale: _scaleAnim.value,
                 alignment: Alignment.topCenter,
                 child: Container(
-                  width: 200,
+                  width: cardWidth,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(AppRadius.card),
@@ -2135,19 +2163,19 @@ class _ModuleCardState extends State<_ModuleCard>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AspectRatio(
-              aspectRatio: 16 / 7,
+              aspectRatio: cardAspectRatio,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   module.thumbnailUrl != null
                       ? AuthNetworkImage(
-                    imageUrl: module.thumbnailUrl!,
-                    fit: BoxFit.cover,
-                    placeholderBuilder: (_) =>
-                        _ModuleThumbnailPlaceholder(title: module.title),
-                    errorBuilderWidget: (_, __) =>
-                        _ModuleThumbnailPlaceholder(title: module.title),
-                  )
+                          imageUrl: module.thumbnailUrl!,
+                          fit: BoxFit.cover,
+                          placeholderBuilder: (_) =>
+                              _ModuleThumbnailPlaceholder(title: module.title),
+                          errorBuilderWidget: (_, __) =>
+                              _ModuleThumbnailPlaceholder(title: module.title),
+                        )
                       : _ModuleThumbnailPlaceholder(title: module.title),
                   Container(
                     decoration: BoxDecoration(
@@ -2174,7 +2202,7 @@ class _ModuleCardState extends State<_ModuleCard>
                     Positioned(
                       left: 12,
                       right: 12,
-                      bottom: 10,
+                      bottom: isTablet ? 6 : 10,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2183,18 +2211,18 @@ class _ModuleCardState extends State<_ModuleCard>
                             child: LinearProgressIndicator(
                               value: module.progressPercentage / 100,
                               backgroundColor:
-                              AppColors.textPrimary.withOpacity(0.15),
+                                  AppColors.textPrimary.withOpacity(0.15),
                               valueColor: const AlwaysStoppedAnimation<Color>(
                                   AppColors.primary),
                               minHeight: 2.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: isTablet ? 2 : 4),
                           Text(
                             '${module.completedLessons}/${module.lessonCount} lessons',
                             style: TextStyle(
                               color: AppColors.textPrimary.withOpacity(0.6),
-                              fontSize: 9,
+                              fontSize: isTablet ? 8.0 : 9,
                               fontFamily: 'Montserrat',
                             ),
                           ),
@@ -2205,34 +2233,34 @@ class _ModuleCardState extends State<_ModuleCard>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+              padding: cardBodyPadding,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     module.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 13,
+                      fontSize: titleFontSize,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Montserrat',
-                      height: 1.3,
+                      height: 1.2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: bodySpacing),
                   if (module.status.trim().toLowerCase() != 'completed') ...[
                     Text(
                       module.statusLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 11,
+                        fontSize: statusFontSize,
                         fontFamily: 'Montserrat',
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: bodySpacing),
                   ],
                   Row(
                     children: [
@@ -2241,9 +2269,9 @@ class _ModuleCardState extends State<_ModuleCard>
                       const SizedBox(width: 4),
                       Text(
                         '${module.lessonCount} lessons',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textMuted,
-                          fontSize: 10,
+                          fontSize: lessonsFontSize,
                           fontFamily: 'Montserrat',
                         ),
                       ),

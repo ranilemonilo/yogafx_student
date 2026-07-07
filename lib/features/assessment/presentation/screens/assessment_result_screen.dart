@@ -125,6 +125,11 @@ abstract class _DS {
   );
 }
 
+bool _isTabletLandscapeLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width >= 900 && size.width > size.height;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Root Screen — LOGIKA TIDAK DIUBAH
 // ─────────────────────────────────────────────────────────────────────────────
@@ -380,6 +385,7 @@ class _ResultContentState extends ConsumerState<_ResultContent>
 
   @override
   Widget build(BuildContext context) {
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
     final isCompleted =
         widget.status == 'completed' || widget.status == 'result';
     final score = widget.scorePercentage;
@@ -392,81 +398,80 @@ class _ResultContentState extends ConsumerState<_ResultContent>
         ? '${widget.correctAnswers} of ${widget.totalQuestions} answers correct'
         : 'Your answers have been processed successfully.';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(
-        horizontal: _DS.sp24,
-        vertical: _DS.sp40,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FadeTransition(
-            opacity: _iconFade,
-            child: ScaleTransition(
-              scale: _iconScale,
-              child: _ResultBadge(isCompleted: isCompleted),
-            ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: isTabletLandscape ? 960 : double.infinity,
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: isTabletLandscape ? 28 : _DS.sp24,
+            vertical: _DS.sp40,
           ),
-          const SizedBox(height: _DS.sp28),
-
-          FadeTransition(
-            opacity: _textFade,
-            child: SlideTransition(
-              position: _textSlide,
-              child: Column(
-                children: [
-                  Text(
-                    isCompleted
-                        ? 'Assessment Complete'
-                        : 'Assessment In Progress',
-                    style: _DS.title(),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  if (isCompleted && correctnessLabel != null) ...[
-                    const SizedBox(height: _DS.sp8),
-                    Text(
-                      correctnessLabel,
-                      style: _DS.labelSmall(
-                        color: _DS.red,
-                        letterSpacing: 0.8,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FadeTransition(
+                opacity: _iconFade,
+                child: ScaleTransition(
+                  scale: _iconScale,
+                  child: _ResultBadge(isCompleted: isCompleted),
+                ),
+              ),
+              const SizedBox(height: _DS.sp28),
+              FadeTransition(
+                opacity: _textFade,
+                child: SlideTransition(
+                  position: _textSlide,
+                  child: Column(
+                    children: [
+                      Text(
+                        isCompleted
+                            ? 'Assessment Complete'
+                            : 'Assessment In Progress',
+                        style: _DS.title(),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-
-                  const SizedBox(height: _DS.sp24),
-
-                  _ScoreCard(
-                    scoreValue: scoreValue,
-                    isCompleted: isCompleted,
+                      if (isCompleted && correctnessLabel != null) ...[
+                        const SizedBox(height: _DS.sp8),
+                        Text(
+                          correctnessLabel,
+                          style: _DS.labelSmall(
+                            color: _DS.red,
+                            letterSpacing: 0.8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: _DS.sp24),
+                      _ScoreCard(
+                        scoreValue: scoreValue,
+                        isCompleted: isCompleted,
+                      ),
+                      const SizedBox(height: _DS.sp20),
+                      Text(
+                        summary,
+                        style: _DS.body(),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(height: _DS.sp20),
-
-                  Text(
-                    summary,
-                    style: _DS.body(),
-                    textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: _DS.sp40),
+              FadeTransition(
+                opacity: _buttonsFade,
+                child: SlideTransition(
+                  position: _buttonsSlide,
+                  child: _ActionButtons(
+                    lessonId: widget.lessonId,
+                    nextTarget: _nextTarget,
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-
-          const SizedBox(height: _DS.sp40),
-
-          FadeTransition(
-            opacity: _buttonsFade,
-            child: SlideTransition(
-              position: _buttonsSlide,
-              child: _ActionButtons(
-                lessonId: widget.lessonId,
-                nextTarget: _nextTarget,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -257,9 +257,63 @@ class _ModuleListContentState extends State<_ModuleListContent>
     );
   }
 
+  bool _isTabletLayout(BuildContext context) {
+    return MediaQuery.sizeOf(context).shortestSide >= 600;
+  }
+
   @override
   Widget build(BuildContext context) {
     final summary = widget.data.summary;
+    final isTablet = _isTabletLayout(context);
+    if (isTablet) {
+      return SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
+        sliver: SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _animated(
+                      0,
+                      _SummaryChip(
+                        label: '${summary.total} modules',
+                        icon: Icons.layers_rounded,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const RunningLoginTimeCard(
+                    size: RunningLoginTimeCardSize.compact,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: widget.data.items.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.86,
+                ),
+                itemBuilder: (context, index) => _animated(
+                  index + 1,
+                  _ModuleCard(
+                    module: widget.data.items[index],
+                    hasGeneratedCertificate: widget.hasGeneratedCertificate,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),

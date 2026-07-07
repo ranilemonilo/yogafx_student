@@ -104,6 +104,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
     final attemptAsync = ref.watch(assessmentAttemptProvider(
       (lessonId: widget.lessonId, attemptId: widget.attemptId),
     ));
@@ -173,41 +174,60 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen>
                         opacity: _fadeAnim,
                         child: SlideTransition(
                           position: _slideAnim,
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                            child: _QuestionBody(
-                              question: data.question,
-                              selectedOptionIds: _selectedOptionIds,
-                              answerText: _answerText,
-                              optionFeedbackMessage: _optionFeedbackMessage,
-                              onOptionSelected: (optionId) =>
-                                  _handleOptionSelected(context, data, optionId),
-                              onTextChanged: (text) {
-                                setState(() {
-                                  _answerText = text;
-                                  _optionFeedbackMessage = null;
-                                  _isOptionAnswerCorrect = false;
-                                });
-                              },
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: isTabletLandscape ? 960 : double.infinity,
+                              ),
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.fromLTRB(
+                                  isTabletLandscape ? 28 : 24,
+                                  32,
+                                  isTabletLandscape ? 28 : 24,
+                                  24,
+                                ),
+                                child: _QuestionBody(
+                                  question: data.question,
+                                  selectedOptionIds: _selectedOptionIds,
+                                  answerText: _answerText,
+                                  optionFeedbackMessage: _optionFeedbackMessage,
+                                  onOptionSelected: (optionId) =>
+                                      _handleOptionSelected(context, data, optionId),
+                                  onTextChanged: (text) {
+                                    setState(() {
+                                      _answerText = text;
+                                      _optionFeedbackMessage = null;
+                                      _isOptionAnswerCorrect = false;
+                                    });
+                                  },
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
 
-                    _BottomAction(
-                      questionType: data.question.questionType,
-                      isLastQuestion: data.isLastQuestion,
-                      canGoBack: false,
-                      submitting: _submitting,
-                      hasAnswer: _hasAnswer(data.question),
-                      canManuallyProceed: data.question.questionType == 'text'
-                          ? _hasAnswer(data.question)
-                          : (!data.question.hasCorrectnessGate ||
-                          _isOptionAnswerCorrect),
-                      isRequired: data.question.required,
-                      onPrevious: () {},
-                      onSubmit: () => _handleSubmit(context, data),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: isTabletLandscape ? 960 : double.infinity,
+                        ),
+                        child: _BottomAction(
+                          questionType: data.question.questionType,
+                          isLastQuestion: data.isLastQuestion,
+                          canGoBack: false,
+                          submitting: _submitting,
+                          hasAnswer: _hasAnswer(data.question),
+                          canManuallyProceed: data.question.questionType == 'text'
+                              ? _hasAnswer(data.question)
+                              : (!data.question.hasCorrectnessGate ||
+                              _isOptionAnswerCorrect),
+                          isRequired: data.question.required,
+                          onPrevious: () {},
+                          onSubmit: () => _handleSubmit(context, data),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1385,4 +1405,9 @@ class _AttemptError extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _isTabletLandscapeLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width >= 900 && size.width > size.height;
 }
