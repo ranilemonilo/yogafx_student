@@ -489,6 +489,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
   Widget build(BuildContext context) {
     final data = widget.data;
     final useTabletLandscapeLayout = _isTabletLandscapeLayout(context);
+    final useTabletLayout = _isTabletLayout(context);
 
     return RefreshIndicator(
       color: AppColors.primary,
@@ -521,16 +522,19 @@ class _DashboardContentState extends ConsumerState<_DashboardContent>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 22),
-                  _animated(
-                    2,
-                    _ProgressSection(
-                      section: data.progressSummarySection,
-                      continueLearningSection:
-                          data.continueLearningSection,
+                  if (!useTabletLayout) ...[
+                    const SizedBox(height: 22),
+                    _animated(
+                      2,
+                      _ProgressSection(
+                        section: data.progressSummarySection,
+                        continueLearningSection:
+                            data.continueLearningSection,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                  ] else
+                    const SizedBox(height: 18),
                   _animated(
                     3,
                     _ModulesSection(
@@ -906,13 +910,19 @@ class _HeroSectionState extends State<_HeroSection>
   Widget build(BuildContext context) {
     final student = widget.data.student;
     final tier = student.accessTier;
+    final showTabletProgress = _isTabletLayout(context);
 
     return Stack(
       children: [
         // §1: background gradient dari overlayDark → background
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            showTabletProgress ? 18 : 10,
+          ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -958,17 +968,53 @@ class _HeroSectionState extends State<_HeroSection>
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              _ShimmerText(
-                text: 'Welcome, ${student.firstName}',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'Montserrat',
-                  height: 1.1,
+              const SizedBox(height: 6),
+              if (showTabletProgress) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: _ShimmerText(
+                        text: 'Welcome, ${student.firstName}',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'Montserrat',
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 9,
+                      child: Align(
+                        alignment: Alignment.topRight,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: _TabletHeroProgressStrip(
+                            section: widget.data.progressSummarySection,
+                            continueLearningSection:
+                                widget.data.continueLearningSection,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              ] else ...[
+                _ShimmerText(
+                  text: 'Welcome, ${student.firstName}',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Montserrat',
+                    height: 1.1,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -997,6 +1043,173 @@ class _ScanlinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ScanlinePainter oldDelegate) => false;
+}
+
+class _TabletHeroProgressStrip extends StatelessWidget {
+  final ProgressSummarySection section;
+  final ContinueLearningSection continueLearningSection;
+
+  const _TabletHeroProgressStrip({
+    required this.section,
+    required this.continueLearningSection,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel(text: 'Learning Progress'),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            _TabletHeroProgressItem(
+              label: 'Modules',
+              value: '${section.modulesCompleted}/${section.modulesTotal}',
+              icon: Icons.layers_rounded,
+              onTap: () => context.push(AppRoutes.modules),
+            ),
+            const SizedBox(width: 8),
+            _TabletHeroProgressItem(
+              label: 'Lessons',
+              value: '${section.lessonsCompleted}/${section.lessonsTotal}',
+              icon: Icons.play_circle_rounded,
+              onTap: () {
+                final lessonId = continueLearningSection.lesson?.id;
+                if (lessonId != null) {
+                  context.push('/lessons/$lessonId');
+                } else {
+                  context.push(AppRoutes.modules);
+                }
+              },
+            ),
+            const SizedBox(width: 8),
+            _TabletHeroProgressItem(
+              label: 'Overall',
+              value: '${section.overallProgressPercentage}%',
+              icon: Icons.bar_chart_rounded,
+              highlight: true,
+              onTap: () => context.pushNamed(
+                'overallProgress',
+                queryParameters: {
+                  'modulesCompleted': '${section.modulesCompleted}',
+                  'modulesTotal': '${section.modulesTotal}',
+                  'lessonsCompleted': '${section.lessonsCompleted}',
+                  'lessonsTotal': '${section.lessonsTotal}',
+                  'overallProgressPercentage':
+                      '${section.overallProgressPercentage}',
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TabletHeroProgressItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool highlight;
+  final VoidCallback onTap;
+
+  const _TabletHeroProgressItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.onTap,
+    this.highlight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final highlightColor = label == 'Overall'
+        ? AppColors.secondary
+        : AppColors.primary;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: highlight
+                ? AppColors.overlayDark.withOpacity(0.92)
+                : AppColors.surfaceElevated.withOpacity(0.92),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color:
+                  highlight ? highlightColor.withOpacity(0.42) : AppColors.divider,
+              width: 0.8,
+            ),
+            boxShadow: highlight
+                ? [
+                    BoxShadow(
+                      color: highlightColor.withOpacity(0.10),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: highlight
+                      ? highlightColor.withOpacity(0.14)
+                      : AppColors.textPrimary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: highlight ? highlightColor : AppColors.textMuted,
+                  size: 10,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      style: TextStyle(
+                        color:
+                            highlight ? highlightColor : AppColors.textPrimary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'Montserrat',
+                        height: 1.1,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 6.0,
+                        fontFamily: 'Montserrat',
+                        letterSpacing: 0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Shimmer Text ─────────────────────────────────────────────────────────────
@@ -1177,16 +1390,16 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
       section: section,
       moduleItems: widget.moduleItems,
     );
-    final cardHeight = isTablet ? (isTabletLandscape ? 420.0 : 540.0) : 468.0;
-    final outerPadding = isTablet ? (isTabletLandscape ? 18.0 : 20.0) : 14.0;
-    final contentPadding = isTablet ? (isTabletLandscape ? 18.0 : 20.0) : 12.0;
+    final cardHeight = isTablet ? (isTabletLandscape ? 468.0 : 600.0) : 468.0;
+    final outerPadding = isTablet ? (isTabletLandscape ? 18.0 : 22.0) : 14.0;
+    final contentPadding = isTablet ? (isTabletLandscape ? 20.0 : 22.0) : 12.0;
     final titleFontSize = isTablet ? (isTabletLandscape ? 24.0 : 28.0) : 26.0;
     final titleMaxLines = isTablet ? 2 : (isTabletLandscape ? 1 : 2);
     final metaFontSize = isTablet ? 12.0 : (isTabletLandscape ? 10.0 : 11.0);
-    final metaSpacing = isTablet ? 10.0 : (isTabletLandscape ? 2.0 : 6.0);
-    final buttonTopSpacing = isTablet ? 18.0 : (isTabletLandscape ? 6.0 : 12.0);
+    final metaSpacing = isTablet ? 12.0 : (isTabletLandscape ? 2.0 : 6.0);
+    final buttonTopSpacing = isTablet ? 22.0 : (isTabletLandscape ? 6.0 : 12.0);
     final buttonHorizontalPadding = isTablet ? 20.0 : 18.0;
-    final buttonVerticalPadding = isTablet ? 12.0 : (isTabletLandscape ? 7.0 : 12.0);
+    final buttonVerticalPadding = isTablet ? 13.0 : (isTabletLandscape ? 7.0 : 12.0);
     final buttonRadius = isTablet ? 10.0 : (isTabletLandscape ? 8.0 : 6.0);
     final buttonFontSize = isTablet ? 14.0 : (isTabletLandscape ? 12.0 : 14.0);
     final buttonIconSize = isTablet ? 22.0 : 24.0;
@@ -1302,7 +1515,7 @@ class _ContinueCardState extends ConsumerState<_ContinueCard>
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.black.withOpacity(0.0),
-                        Colors.black.withOpacity(0.18),
+                        Colors.black.withOpacity(0.22),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(14),
