@@ -27,6 +27,19 @@ import '../widgets/shared/section_label.dart';
 import '../widgets/workbook/workbook_section.dart';
 import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
+bool _isTabletLandscapeLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.shortestSide >= 600 &&
+      MediaQuery.orientationOf(context) == Orientation.landscape;
+}
+
+bool _isTabletDeviceForOrientation() {
+  final view = WidgetsBinding.instance.platformDispatcher.views.first;
+  final shortestSide =
+      view.physicalSize.shortestSide / view.devicePixelRatio;
+  return shortestSide >= 600;
+}
+
 class _AutoNextTarget {
   final int lessonId;
   final String title;
@@ -86,6 +99,16 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   void initState() {
     super.initState();
     _lessonContentKey = GlobalKey<_LessonContentState>();
+
+    if (widget.autoOpenFullscreen) {
+      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
+      unawaited(
+        SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]),
+      );
+    }
   }
 
   Future<void> _replaceLessonRoute(
@@ -127,7 +150,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: lessonAsync.when(
-          loading: () => const LessonSkeleton(),
+          loading: () => widget.autoOpenFullscreen
+              ? const _FullscreenTransitionLoader()
+              : const LessonSkeleton(),
           error: (e, _) => LessonError(
             message: e.toString(),
             onRetry: () => ref.invalidate(lessonDetailProvider(widget.lessonId)),
@@ -209,12 +234,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _audioLoading = false;
   bool _audioReady = false;
   String? _audioError;
+  int _currentWatchProgress = 0;
   int _lastReportedProgress = 0;
   int? _autoNextRemainingSeconds;
   bool _isAutoNavigating = false;
   bool _isFullscreenOpen = false;
   bool _preserveLandscapeOnDispose = false;
   bool _didAutoOpenFullscreen = false;
+  bool _isOpeningAutoFullscreen = false;
   bool _isPreparingNavigation = false;
   bool _showNextLessonPrompt = false;
   bool _isAssessmentPromptOpen = false;
@@ -241,13 +268,25 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (_requiresWorkbookFirst) return false;
     final hasPlayableVideo = widget.lesson.video != null && widget.lesson.video!.isReady;
     if (!hasPlayableVideo) return true;
-    return widget.lesson.progress.watchProgress >= 95;
+    return _effectiveWatchProgress >= 95;
+  }
+
+  int get _effectiveWatchProgress {
+    final serverProgress = widget.lesson.progress.watchProgress;
+    return _currentWatchProgress > serverProgress
+        ? _currentWatchProgress
+        : serverProgress;
   }
 
   @override
   void initState() {
     super.initState();
+    _currentWatchProgress = widget.lesson.progress.watchProgress;
     _lastReportedProgress = widget.lesson.progress.watchProgress;
+
+    if (!widget.autoOpenFullscreen) {
+      unawaited(_restoreDefaultUi());
+    }
 
     _fadeCtrl = AnimationController(
       vsync: this,
@@ -273,6 +312,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     if (_hasPlayableVideo && _isVideoUnlocked) {
       _initVideo();
+    } else if (widget.autoOpenFullscreen) {
+      _didAutoOpenFullscreen = true;
     }
     if (widget.lesson.audio.isAvailable && widget.lesson.audio.url != null) {
       _initAudio();
@@ -281,17 +322,63 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   Future<void> _primeAutoNextTarget() async {
-    if (widget.lesson.nextLesson != null) {
-      if (!mounted) return;
-      setState(() {
-        _autoNextTarget = _AutoNextTarget.fromNextLesson(widget.lesson.nextLesson!);
-      });
+    final nextLesson = widget.lesson.nextLesson;
+    if (nextLesson != null && nextLesson.isUnlocked) {
+      _setAutoNextTarget(_AutoNextTarget.fromNextLesson(nextLesson));
+      return;
+    }
+
+    final navigationTarget = _resolveNextNavigationTarget();
+    if (navigationTarget != null) {
+      _setAutoNextTarget(navigationTarget);
       return;
     }
 
     final fallbackTarget = await _resolveNextModuleLessonTarget();
-    if (!mounted || fallbackTarget == null) return;
-    setState(() => _autoNextTarget = fallbackTarget);
+    if (fallbackTarget == null) return;
+    _setAutoNextTarget(fallbackTarget);
+  }
+
+  void _setAutoNextTarget(_AutoNextTarget target) {
+    if (!mounted) return;
+    setState(() => _autoNextTarget = target);
+    _syncAutoNextWithCurrentPlayback();
+  }
+
+  void _syncAutoNextWithCurrentPlayback() {
+    final controller = _videoController;
+    if (controller == null) return;
+
+    final value = controller.value;
+    if (!value.isInitialized || value.duration.inSeconds == 0) return;
+    if (_isFullscreenOpen) return;
+
+    _handleAutoNext(value);
+  }
+
+  _AutoNextTarget? _resolveNextNavigationTarget() {
+    final navigation = widget.lesson.navigation;
+    if (navigation.isEmpty) return null;
+
+    final sortedNavigation = [...navigation]
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final currentIndex = sortedNavigation.indexWhere(
+      (item) => item.id == widget.lesson.id,
+    );
+    if (currentIndex == -1) return null;
+
+    for (var i = currentIndex + 1; i < sortedNavigation.length; i++) {
+      final item = sortedNavigation[i];
+      return _AutoNextTarget(
+        lessonId: item.id,
+        title: item.title,
+        sortOrder: item.sortOrder,
+        thumbnailUrl: item.thumbnailUrl,
+        isFromNextModule: false,
+      );
+    }
+
+    return null;
   }
 
   Future<_AutoNextTarget?> _resolveNextModuleLessonTarget() async {
@@ -423,16 +510,24 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           _videoController != null &&
           _videoController!.value.isInitialized) {
         _didAutoOpenFullscreen = true;
+        setState(() => _isOpeningAutoFullscreen = true);
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
 
           final currentController = _videoController;
           if (currentController == null || !currentController.value.isInitialized) {
+            if (mounted) {
+              setState(() => _isOpeningAutoFullscreen = false);
+            }
             return;
           }
 
-          unawaited(_openFullscreen());
+          await _openFullscreen();
+
+          if (mounted) {
+            setState(() => _isOpeningAutoFullscreen = false);
+          }
         });
       }
     } catch (e) {
@@ -458,6 +553,12 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     final currentProgress =
     ((value.position.inSeconds / value.duration.inSeconds) * 100).round();
+
+    if (currentProgress != _currentWatchProgress && mounted) {
+      setState(() {
+        _currentWatchProgress = currentProgress.clamp(0, 100);
+      });
+    }
 
     if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
       _lastReportedProgress = currentProgress;
@@ -653,6 +754,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       }
       _videoController = null;
       _audioPlayer = null;
+      _currentWatchProgress = widget.lesson.progress.watchProgress;
       _lastReportedProgress = widget.lesson.progress.watchProgress;
       _autoNextRemainingSeconds = null;
       _isFullscreenOpen = false;
@@ -775,7 +877,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       await _disposeVideoControllerSafely(videoController);
 
       if (restorePortrait) {
-        await _restorePortraitUi();
+        await _restoreDefaultUi();
       }
     } finally {
       _isPreparingNavigation = false;
@@ -838,6 +940,20 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     await WidgetsBinding.instance.endOfFrame;
   }
 
+  Future<void> _restoreDefaultUi() async {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await SystemChrome.setPreferredOrientations(
+      _isTabletDeviceForOrientation()
+          ? const [
+              DeviceOrientation.portraitUp,
+              DeviceOrientation.landscapeLeft,
+              DeviceOrientation.landscapeRight,
+            ]
+          : const [DeviceOrientation.portraitUp],
+    );
+    await WidgetsBinding.instance.endOfFrame;
+  }
+
   Future<void> _restorePortraitUi() async {
     // Pastikan sudah balik portrait sebelum apapun
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -869,7 +985,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
       unawaited(
         SystemChrome.setPreferredOrientations(
-          const [DeviceOrientation.portraitUp],
+          _isTabletDeviceForOrientation()
+              ? const [
+                  DeviceOrientation.portraitUp,
+                  DeviceOrientation.landscapeLeft,
+                  DeviceOrientation.landscapeRight,
+                ]
+              : const [DeviceOrientation.portraitUp],
         ),
       );
     }
@@ -972,165 +1094,297 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     }
 
     if (result == _FullscreenExitAction.startAssessment) {
-      await _restorePortraitUi();
+      await _restoreDefaultUi();
       if (!mounted) return;
       await _navigateToAssessmentIntro(context);
       return;
     }
 
-    await _restorePortraitUi();
+    await _restoreDefaultUi();
 
     if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final shouldHideInlinePageForFullscreen = widget.autoOpenFullscreen &&
+        (!_didAutoOpenFullscreen || _isOpeningAutoFullscreen);
+
+    if (shouldHideInlinePageForFullscreen) {
+      return const _FullscreenTransitionLoader();
+    }
+
     final lesson = widget.lesson;
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
     final topInset = MediaQuery.paddingOf(context).top;
     final videoTopSpacing = topInset < 12 ? 24.0 : topInset + 10;
-
-    return Column(
-      children: [
-        _VideoSection(
-          lesson: lesson,
-          topSpacing: videoTopSpacing,
-          videoInitialized: _videoInitialized,
-          videoError: _videoError,
-          videoErrorMessage: _videoErrorMessage,
-          videoController: _videoController,
-          videoUnlocked: _isVideoUnlocked,
-          onWorkbookDismissed: _refreshLesson,
-          onRetry: _initVideo,
-          onBack: () => _handleBack(context),
-          onTogglePlayback: _toggleVideoPlayback,
-          onSeek: _seekVideo,
-          onToggleMute: _toggleMute,
-          onSkipForward: () => _skipVideoBy(30),
-          onSkipBackward: () => _skipVideoBy(-30),
-          showNextLessonPrompt: _showNextLessonPrompt,
-          showAssessmentPrompt: false,
-          autoNextRemainingSeconds: _autoNextRemainingSeconds,
-          autoNextCancelled: _autoNextCancelled,
-          onPlayNextLesson: () async {
-            final nextLesson = _autoNextTarget;
-            if (nextLesson == null) return;
-            _isAutoNavigating = true;
-            await _navigateToLesson(
-              context,
-              nextLesson.lessonId,
-              autoPlayVideo: true,
-              startFromBeginning: true,
-            );
-          },
-          onCancelAutoNext: () => _cancelAutoNextCountdown(),
-          onStartAssessment: () => _navigateToAssessmentIntro(context),
-          onCancelAssessment: _cancelAssessmentPrompt,
-          onOpenFullscreen: _openFullscreen,
-          nextLesson: _autoNextTarget,
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _refreshLesson,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
+    final lessonDetails = SliverToBoxAdapter(
+      child: FadeTransition(
+        opacity: _fadeAnim,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: isTabletLandscape ? 640 : double.infinity,
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                isTabletLandscape ? 24 : 20,
+                14,
+                isTabletLandscape ? 24 : 20,
+                40,
               ),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _ModuleBreadcrumb(module: lesson.module),
-                          const SizedBox(height: 8),
-                          Text(
-                            lesson.title,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'Montserrat',
-                              height: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _LessonProgressBar(
-                            progress: lesson.progress,
-                            animation: _progressAnim,
-                          ),
-                          const SizedBox(height: 16),
-                          _ActionRow(
-                            lesson: lesson,
-                            isAssessmentUnlocked: _isAssessmentUnlocked,
-                            onWorkbookDismissed: _refreshLesson,
-                            onOpenAssessment: () =>
-                                _navigateToAssessmentIntro(context),
-                          ),
-                          if (lesson.audio.isAvailable) ...[
-                            const SizedBox(height: 14),
-                            _InlineAudioPlayerCard(
-                              title: lesson.title,
-                              audioLoading: _audioLoading,
-                              audioReady: _audioReady,
-                              audioError: _audioError,
-                              audioPlayer: _audioPlayer,
-                              onRetryAudio: _initAudio,
-                            ),
-                          ],
-                          const SizedBox(height: 22),
-                          if (lesson.content != null &&
-                              lesson.content!.isNotEmpty) ...[
-                            _ContentSection(content: lesson.content!),
-                            const SizedBox(height: 22),
-                          ],
-                          if (lesson.workbook.isAvailable) ...[
-                            LessonWorkbookSection(
-                              workbook: lesson.workbook,
-                              onDismissed: _refreshLesson,
-                            ),
-                            const SizedBox(height: 22),
-                          ],
-                          if (lesson.assessment != null) ...[
-                            LessonAssessmentBanner(
-                              lesson: lesson,
-                              isUnlocked: _isAssessmentUnlocked,
-                              onOpenAssessment: () =>
-                                  _navigateToAssessmentIntro(context),
-                            ),
-                            const SizedBox(height: 28),
-                          ],
-                          if (lesson.navigation.isNotEmpty) ...[
-                            _NavigationSection(
-                              navigation: lesson.navigation,
-                              currentLessonId: lesson.id,
-                              onNavigate: (lessonId) =>
-                                  _navigateToLesson(context, lessonId),
-                            ),
-                            const SizedBox(height: 28),
-                          ],
-                          if (_autoNextTarget != null)
-                            _NextLessonBanner(
-                              nextLesson: _autoNextTarget!,
-                              countdownSeconds: lesson.assessment == null
-                                  ? _autoNextRemainingSeconds
-                                  : null,
-                              onNavigate: (lessonId) =>
-                                  _navigateToLesson(context, lessonId),
-                            ),
-                        ],
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ModuleBreadcrumb(module: lesson.module),
+                  const SizedBox(height: 8),
+                  Text(
+                    lesson.title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'Montserrat',
+                      height: 1.2,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 14),
+                  _LessonProgressBar(
+                    progress: lesson.progress,
+                    animation: _progressAnim,
+                  ),
+                  const SizedBox(height: 16),
+                  _ActionRow(
+                    lesson: lesson,
+                    isAssessmentUnlocked: _isAssessmentUnlocked,
+                    onWorkbookDismissed: _refreshLesson,
+                    onOpenAssessment: () => _navigateToAssessmentIntro(context),
+                  ),
+                  if (lesson.audio.isAvailable) ...[
+                    const SizedBox(height: 14),
+                    _InlineAudioPlayerCard(
+                      title: lesson.title,
+                      audioLoading: _audioLoading,
+                      audioReady: _audioReady,
+                      audioError: _audioError,
+                      audioPlayer: _audioPlayer,
+                      onRetryAudio: _initAudio,
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  if (lesson.content != null && lesson.content!.isNotEmpty) ...[
+                    _ContentSection(content: lesson.content!),
+                    const SizedBox(height: 22),
+                  ],
+                  if (lesson.workbook.isAvailable) ...[
+                    LessonWorkbookSection(
+                      workbook: lesson.workbook,
+                      onDismissed: _refreshLesson,
+                    ),
+                    const SizedBox(height: 22),
+                  ],
+                  if (lesson.assessment != null) ...[
+                    LessonAssessmentBanner(
+                      lesson: lesson,
+                      isUnlocked: _isAssessmentUnlocked,
+                      onOpenAssessment: () =>
+                          _navigateToAssessmentIntro(context),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  if (lesson.navigation.isNotEmpty) ...[
+                    _NavigationSection(
+                      navigation: lesson.navigation,
+                      currentLessonId: lesson.id,
+                      onNavigate: (lessonId) =>
+                          _navigateToLesson(context, lessonId),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  if (_autoNextTarget != null)
+                    _NextLessonBanner(
+                      nextLesson: _autoNextTarget!,
+                      countdownSeconds: lesson.assessment == null
+                          ? _autoNextRemainingSeconds
+                          : null,
+                      onNavigate: (lessonId) =>
+                          _navigateToLesson(context, lessonId),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
-      ],
+      ),
+    );
+
+    final compactBody = RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _refreshLesson,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverToBoxAdapter(
+            child: _VideoSection(
+              lesson: lesson,
+              topSpacing: videoTopSpacing,
+              videoInitialized: _videoInitialized,
+              videoError: _videoError,
+              videoErrorMessage: _videoErrorMessage,
+              videoController: _videoController,
+              videoUnlocked: _isVideoUnlocked,
+              onWorkbookDismissed: _refreshLesson,
+              onRetry: _initVideo,
+              onBack: () => _handleBack(context),
+              onTogglePlayback: _toggleVideoPlayback,
+              onSeek: _seekVideo,
+              onToggleMute: _toggleMute,
+              onSkipForward: () => _skipVideoBy(30),
+              onSkipBackward: () => _skipVideoBy(-30),
+              showNextLessonPrompt: _showNextLessonPrompt,
+              showAssessmentPrompt: false,
+              autoNextRemainingSeconds: _autoNextRemainingSeconds,
+              autoNextCancelled: _autoNextCancelled,
+              onPlayNextLesson: () async {
+                final nextLesson = _autoNextTarget;
+                if (nextLesson == null) return;
+                _isAutoNavigating = true;
+                await _navigateToLesson(
+                  context,
+                  nextLesson.lessonId,
+                  autoPlayVideo: true,
+                  startFromBeginning: true,
+                );
+              },
+              onCancelAutoNext: () => _cancelAutoNextCountdown(),
+              onStartAssessment: () => _navigateToAssessmentIntro(context),
+              onCancelAssessment: _cancelAssessmentPrompt,
+              onOpenFullscreen: _openFullscreen,
+              nextLesson: _autoNextTarget,
+            ),
+          ),
+          lessonDetails,
+        ],
+      ),
+    );
+
+    final detailsScroll = RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _refreshLesson,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [lessonDetails],
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompactHeight = constraints.maxHeight < 560;
+        if (isTabletLandscape) {
+          return Row(
+            children: [
+              Expanded(
+                flex: 7,
+                child: _VideoSection(
+                  lesson: lesson,
+                  topSpacing: videoTopSpacing,
+                  videoInitialized: _videoInitialized,
+                  videoError: _videoError,
+                  videoErrorMessage: _videoErrorMessage,
+                  videoController: _videoController,
+                  videoUnlocked: _isVideoUnlocked,
+                  onWorkbookDismissed: _refreshLesson,
+                  onRetry: _initVideo,
+                  onBack: () => _handleBack(context),
+                  onTogglePlayback: _toggleVideoPlayback,
+                  onSeek: _seekVideo,
+                  onToggleMute: _toggleMute,
+                  onSkipForward: () => _skipVideoBy(30),
+                  onSkipBackward: () => _skipVideoBy(-30),
+                  showNextLessonPrompt: _showNextLessonPrompt,
+                  showAssessmentPrompt: false,
+                  autoNextRemainingSeconds: _autoNextRemainingSeconds,
+                  autoNextCancelled: _autoNextCancelled,
+                  onPlayNextLesson: () async {
+                    final nextLesson = _autoNextTarget;
+                    if (nextLesson == null) return;
+                    _isAutoNavigating = true;
+                    await _navigateToLesson(
+                      context,
+                      nextLesson.lessonId,
+                      autoPlayVideo: true,
+                      startFromBeginning: true,
+                    );
+                  },
+                  onCancelAutoNext: () => _cancelAutoNextCountdown(),
+                  onStartAssessment: () => _navigateToAssessmentIntro(context),
+                  onCancelAssessment: _cancelAssessmentPrompt,
+                  onOpenFullscreen: _openFullscreen,
+                  nextLesson: _autoNextTarget,
+                ),
+              ),
+              Container(width: 1, color: AppColors.divider),
+              Expanded(
+                flex: 3,
+                child: detailsScroll,
+              ),
+            ],
+          );
+        }
+
+        if (isCompactHeight) {
+          return compactBody;
+        }
+
+        return Column(
+          children: [
+            _VideoSection(
+              lesson: lesson,
+              topSpacing: videoTopSpacing,
+              videoInitialized: _videoInitialized,
+              videoError: _videoError,
+              videoErrorMessage: _videoErrorMessage,
+              videoController: _videoController,
+              videoUnlocked: _isVideoUnlocked,
+              onWorkbookDismissed: _refreshLesson,
+              onRetry: _initVideo,
+              onBack: () => _handleBack(context),
+              onTogglePlayback: _toggleVideoPlayback,
+              onSeek: _seekVideo,
+              onToggleMute: _toggleMute,
+              onSkipForward: () => _skipVideoBy(30),
+              onSkipBackward: () => _skipVideoBy(-30),
+              showNextLessonPrompt: _showNextLessonPrompt,
+              showAssessmentPrompt: false,
+              autoNextRemainingSeconds: _autoNextRemainingSeconds,
+              autoNextCancelled: _autoNextCancelled,
+              onPlayNextLesson: () async {
+                final nextLesson = _autoNextTarget;
+                if (nextLesson == null) return;
+                _isAutoNavigating = true;
+                await _navigateToLesson(
+                  context,
+                  nextLesson.lessonId,
+                  autoPlayVideo: true,
+                  startFromBeginning: true,
+                );
+              },
+              onCancelAutoNext: () => _cancelAutoNextCountdown(),
+              onStartAssessment: () => _navigateToAssessmentIntro(context),
+              onCancelAssessment: _cancelAssessmentPrompt,
+              onOpenFullscreen: _openFullscreen,
+              nextLesson: _autoNextTarget,
+            ),
+            Expanded(
+              child: detailsScroll,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1669,15 +1923,14 @@ class _VideoNextLessonOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final countdownText = 'Next lesson starts in ${countdownSeconds ?? 0}s...';
-    final eyebrowText =
-        nextLesson.isFromNextModule ? 'NEXT MODULE' : 'NEXT LESSON';
+    const eyebrowText = 'NEXT LESSON';
 
     return ConstrainedBox(
       constraints: const BoxConstraints(
-        maxWidth: 220,
+        maxWidth: 190,
       ),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.78),
           borderRadius: BorderRadius.circular(AppRadius.modal),
@@ -1697,8 +1950,8 @@ class _VideoNextLessonOverlay extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(AppRadius.card),
@@ -1706,10 +1959,10 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                   child: const Icon(
                     Icons.skip_next_rounded,
                     color: AppColors.primary,
-                    size: 16,
+                    size: 14,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1719,10 +1972,10 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                         eyebrowText,
                         style: const TextStyle(
                           color: AppColors.textMuted,
-                          fontSize: 7,
+                          fontSize: 6,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
-                          letterSpacing: 1.0,
+                          letterSpacing: 0.8,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -1732,7 +1985,7 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
                         ),
@@ -1742,24 +1995,24 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             Text(
               countdownText,
               style: const TextStyle(
                 color: AppColors.primary,
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'Montserrat',
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: onPlayNow,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(AppRadius.button),
@@ -1769,7 +2022,7 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Montserrat',
                         ),
@@ -1777,13 +2030,13 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 GestureDetector(
                   onTap: onCancel,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
+                      horizontal: 8,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
@@ -1794,7 +2047,7 @@ class _VideoNextLessonOverlay extends StatelessWidget {
                       'Cancel',
                       style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Montserrat',
                       ),
@@ -2325,114 +2578,124 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: AspectRatio(
-                aspectRatio: widget.controller.value.aspectRatio <= 0
-                    ? 16 / 9
-                    : widget.controller.value.aspectRatio,
-                child: _InlineVideoPlayer(
-                  controller: widget.controller,
-                  fit: BoxFit.contain,
-                  nextLesson: widget.nextLesson,
-                  showNextLessonPrompt: false,
-                  showAssessmentPrompt: false,
-                  autoNextRemainingSeconds: null,
-                  autoNextCancelled: false,
-                  onTogglePlayback: widget.onTogglePlayback,
-                  onSeek: widget.onSeek,
-                  onToggleMute: widget.onToggleMute,
-                  onSkipForward: widget.onSkipForward,
-                  onSkipBackward: widget.onSkipBackward,
-                  onPlayNextLesson: _playNextLessonFromFullscreen,
-                  onCancelAutoNext: widget.onCancelAutoNext,
-                  onStartAssessment: _startAssessmentFromFullscreen,
-                  onCancelAssessment: widget.onCancelAssessment,
-                  onOpenFullscreen: () async => _closeFullscreen(),
-                ),
+      body: Stack(
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: widget.controller.value.aspectRatio <= 0
+                  ? 16 / 9
+                  : widget.controller.value.aspectRatio,
+              child: _InlineVideoPlayer(
+                controller: widget.controller,
+                fit: BoxFit.contain,
+                nextLesson: widget.nextLesson,
+                showNextLessonPrompt: false,
+                showAssessmentPrompt: false,
+                autoNextRemainingSeconds: null,
+                autoNextCancelled: false,
+                onTogglePlayback: widget.onTogglePlayback,
+                onSeek: widget.onSeek,
+                onToggleMute: widget.onToggleMute,
+                onSkipForward: widget.onSkipForward,
+                onSkipBackward: widget.onSkipBackward,
+                onPlayNextLesson: _playNextLessonFromFullscreen,
+                onCancelAutoNext: widget.onCancelAutoNext,
+                onStartAssessment: _startAssessmentFromFullscreen,
+                onCancelAssessment: widget.onCancelAssessment,
+                onOpenFullscreen: () async => _closeFullscreen(),
               ),
             ),
-            if (widget.nextLesson != null &&
-                _showNextLessonPrompt &&
-                _autoNextRemainingSeconds != null)
-              Positioned(
-                right: 20,
-                bottom: 92,
-                child: _VideoNextLessonOverlay(
-                  nextLesson: widget.nextLesson!,
-                  countdownSeconds: _autoNextRemainingSeconds,
-                  onPlayNow: _playNextLessonFromFullscreen,
-                  onCancel: () => _cancelAutoNextOverlay(),
-                ),
-              ),
-            if (_showAssessmentPrompt)
-              Positioned(
-                right: 20,
-                bottom: 92,
-                child: _VideoAssessmentOverlay(
-                  onStartAssessment: _startAssessmentFromFullscreen,
-                  onCancel: () {
-                    if (!mounted) return;
-                    setState(() => _showAssessmentPrompt = false);
-                    widget.onCancelAssessment();
-                  },
-                ),
-              ),
+          ),
+          if (widget.nextLesson != null &&
+              _showNextLessonPrompt &&
+              _autoNextRemainingSeconds != null)
             Positioned(
-              top: 24,
-              left: 12,
-              child: GestureDetector(
-                onTap: _showTransitionLoader ? null : () => _closeFullscreen(),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(AppRadius.modal),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+              right: 20,
+              bottom: 92,
+              child: _VideoNextLessonOverlay(
+                nextLesson: widget.nextLesson!,
+                countdownSeconds: _autoNextRemainingSeconds,
+                onPlayNow: _playNextLessonFromFullscreen,
+                onCancel: () => _cancelAutoNextOverlay(),
+              ),
+            ),
+          if (_showAssessmentPrompt)
+            Positioned(
+              right: 20,
+              bottom: 92,
+              child: _VideoAssessmentOverlay(
+                onStartAssessment: _startAssessmentFromFullscreen,
+                onCancel: () {
+                  if (!mounted) return;
+                  setState(() => _showAssessmentPrompt = false);
+                  widget.onCancelAssessment();
+                },
+              ),
+            ),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 12,
+            left: MediaQuery.paddingOf(context).left + 12,
+            child: GestureDetector(
+              onTap: _showTransitionLoader ? null : () => _closeFullscreen(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.55),
+                  borderRadius: BorderRadius.circular(AppRadius.modal),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 16,
                 ),
               ),
             ),
-            if (_showTransitionLoader)
-              Positioned.fill(
-                child: AbsorbPointer(
-                  child: Container(
-                    color: Colors.black.withOpacity(0.78),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
-                              strokeWidth: 2.6,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Loading next video...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'Montserrat',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+          ),
+          if (_showTransitionLoader)
+            Positioned.fill(
+              child: AbsorbPointer(
+                child: ColoredBox(
+                  color: Color.fromRGBO(0, 0, 0, 0.78),
+                  child: const _FullscreenTransitionLoader(),
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FullscreenTransitionLoader extends StatelessWidget {
+  const _FullscreenTransitionLoader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
+                strokeWidth: 2.6,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading next video...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Montserrat',
+              ),
+            ),
           ],
         ),
       ),
@@ -2938,6 +3201,23 @@ class _InlineAudioControls extends StatelessWidget {
 
   const _InlineAudioControls({required this.player});
 
+  Future<void> _seekBackward10() async {
+    final currentPosition = player.position;
+    final target = currentPosition - const Duration(seconds: 10);
+    await player.seek(target < Duration.zero ? Duration.zero : target);
+  }
+
+  Future<void> _seekForward10() async {
+    final currentPosition = player.position;
+    final maxDuration = player.duration ?? Duration.zero;
+    final target = currentPosition + const Duration(seconds: 10);
+    await player.seek(
+      maxDuration == Duration.zero || target <= maxDuration
+          ? target
+          : maxDuration,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<PlayerState>(
@@ -2982,12 +3262,7 @@ class _InlineAudioControls extends StatelessWidget {
                   children: [
                     _AudioIconButton(
                       icon: Icons.replay_10_rounded,
-                      onTap: () {
-                        final target = position - const Duration(seconds: 10);
-                        return player.seek(
-                          target < Duration.zero ? Duration.zero : target,
-                        );
-                      },
+                      onTap: _seekBackward10,
                     ),
                     const SizedBox(width: 8),
                     _AudioIconButton(
@@ -3006,15 +3281,7 @@ class _InlineAudioControls extends StatelessWidget {
                     const SizedBox(width: 8),
                     _AudioIconButton(
                       icon: Icons.forward_10_rounded,
-                      onTap: () {
-                        final maxDuration = player.duration ?? Duration.zero;
-                        final target = position + const Duration(seconds: 10);
-                        return player.seek(
-                          maxDuration == Duration.zero || target <= maxDuration
-                              ? target
-                              : maxDuration,
-                        );
-                      },
+                      onTap: _seekForward10,
                     ),
                     const Spacer(),
                     Text(
@@ -3299,8 +3566,8 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
           child: Row(
             children: [
               SizedBox(
-                width: 100,
-                height: 70,
+                width: 84,
+                height: 60,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -3318,7 +3585,7 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -3327,43 +3594,31 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                       'UP NEXT',
                       style: TextStyle(
                         color: AppColors.textMuted,
-                        fontSize: 9,
+                        fontSize: 8,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
-                        letterSpacing: 1.5,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
                       widget.nextLesson.title,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Montserrat',
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (widget.nextLesson.isFromNextModule) ...[
-                      const SizedBox(height: 4),
-                      const Text(
-                        'From the next module',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                    ],
                     if (countdownSeconds != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         'Auto next in ${countdownSeconds}s',
                         style: const TextStyle(
                           color: AppColors.primary,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'Montserrat',
                         ),
@@ -3373,11 +3628,11 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(right: 14),
+                padding: const EdgeInsets.only(right: 12),
                 child: const Icon(
                   Icons.play_arrow_rounded,
                   color: AppColors.primary,
-                  size: 22,
+                  size: 20,
                 ),
               ),
             ],

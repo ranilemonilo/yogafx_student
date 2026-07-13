@@ -319,7 +319,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.error.withOpacity(0.1),
                         borderRadius:
-                            BorderRadius.circular(AppRadius.card),
+                        BorderRadius.circular(AppRadius.card),
                         border: Border.all(
                           color: AppColors.error.withOpacity(0.25),
                         ),
@@ -389,11 +389,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildField(
-    TextEditingController controller,
-    String label, {
-    int maxLines = 1,
-    String? fieldKey,
-  }) {
+      TextEditingController controller,
+      String label, {
+        int maxLines = 1,
+        String? fieldKey,
+      }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
@@ -430,9 +430,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }) {
     final normalizedValue = _normalizeChoiceValue(controller.text);
     final selectedValue =
-        options.any((option) => option.value == normalizedValue)
-            ? normalizedValue
-            : null;
+    options.any((option) => option.value == normalizedValue)
+        ? normalizedValue
+        : null;
 
     return DropdownButtonFormField<String>(
       value: selectedValue,
@@ -450,17 +450,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       items: options
           .map(
             (option) => DropdownMenuItem<String>(
-              value: option.value,
-              child: Text(
-                option.label,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
+          value: option.value,
+          child: Text(
+            option.label,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontFamily: 'Montserrat',
             ),
-          )
+          ),
+        ),
+      )
           .toList(),
       onChanged: (value) {
         controller.text = value ?? '';
@@ -734,21 +734,20 @@ class _EditableProfileAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(AppRadius.avatar),
-        border: Border.all(color: AppColors.primary, width: 1.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: selectedProfilePhoto != null
           ? Image.file(selectedProfilePhoto!, fit: BoxFit.cover)
           : hasNetworkImage
-              ? AuthNetworkImage(
-                  imageUrl: imageUrl!,
-                  fit: BoxFit.cover,
-                  placeholderBuilder: (_) =>
-                      _AvatarFallback(name: profile.name),
-                  errorBuilderWidget: (_, __) =>
-                      _AvatarFallback(name: profile.name),
-                )
-              : _AvatarFallback(name: profile.name),
+          ? AuthNetworkImage(
+        imageUrl: imageUrl!,
+        fit: BoxFit.cover,
+        placeholderBuilder: (_) =>
+            _AvatarFallback(name: profile.name),
+        errorBuilderWidget: (_, __) =>
+            _AvatarFallback(name: profile.name),
+      )
+          : _AvatarFallback(name: profile.name),
     );
   }
 }
@@ -881,9 +880,9 @@ class _ActionButton extends StatelessWidget {
             border: primary
                 ? null
                 : Border.all(
-                    color: Colors.white.withOpacity(0.16),
-                    width: 0.8,
-                  ),
+              color: Colors.white.withOpacity(0.16),
+              width: 0.8,
+            ),
           ),
           child: Center(
             child: Text(
@@ -974,7 +973,7 @@ class _EditProfileLoadingStateState extends State<_EditProfileLoadingState>
                     const SizedBox(height: 24),
                     ...List.generate(
                       4,
-                      (_) => Padding(
+                          (_) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _bone(
                           width: double.infinity,

@@ -34,6 +34,11 @@ const _kShadowCard  = [BoxShadow(color: Color(0xCC000000), blurRadius: 24, offse
 const _kShadowModal = [BoxShadow(color: Color(0xE6000000), blurRadius: 40, offset: Offset(0, 16))];
 const _kShadowBtn   = [BoxShadow(color: Color(0xB3000000), blurRadius: 12, offset: Offset(0, 4))];
 
+bool _isTabletLandscapeLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width >= 900 && size.width > size.height;
+}
+
 // ─── Logic CTA (tidak diubah) ─────────────────────────────────────────────────
 
 void _openPrimaryModuleContent(BuildContext context, ModuleDetail module) {
@@ -194,6 +199,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
   Widget build(BuildContext context) {
     final module = widget.module;
     final assignments = _parseAssignments(module, widget.hasGeneratedCertificate);
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
 
     final shouldShowPrimaryCta = module.primaryCtaLabel != null &&
         !module.viewTypes.contains('ebook') &&
@@ -214,7 +220,7 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 280,
+            expandedHeight: isTabletLandscape ? 340 : 280,
             pinned: true,
             backgroundColor: _kHeaderBg.withOpacity(0.95),
             elevation: 0,
@@ -243,39 +249,51 @@ class _ModuleDetailContentState extends State<_ModuleDetailContent>
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (shouldShowPrimaryCta) ...[
-                    _buildAnimated(
-                      _ActionRow(module: module),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  _buildAnimated(
-                    _ModuleHeader(
-                      module: module,
-                      hasGeneratedCertificate: widget.hasGeneratedCertificate,
-                    ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isTabletLandscape ? 1180 : double.infinity,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    isTabletLandscape ? 24 : 16,
+                    16,
+                    isTabletLandscape ? 24 : 16,
+                    48,
                   ),
-                  const SizedBox(height: 24),
-                  if (module.showProgress) ...[
-                    _buildAnimated(_ModuleProgress(module: module)),
-                    const SizedBox(height: 24),
-                  ],
-                  if (module.description != null) ...[
-                    _buildAnimated(_Description(text: module.description!)),
-                    const SizedBox(height: 28),
-                  ],
-                  if (module.viewTypes.contains('video_lecturer'))
-                    ..._buildVideoLecturerList(module),
-                  if (module.viewTypes.contains('ebook')) ..._buildEbookList(module),
-                  if (module.viewTypes.contains('certificate')) ..._buildCertificateInfo(module),
-                  if (module.viewTypes.contains('lesson')) ..._buildLessonList(module),
-                  if (module.viewTypes.contains('assignment')) ..._buildAssignmentList(assignments),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (shouldShowPrimaryCta) ...[
+                        _buildAnimated(
+                          _ActionRow(module: module),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      _buildAnimated(
+                        _ModuleHeader(
+                          module: module,
+                          hasGeneratedCertificate: widget.hasGeneratedCertificate,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      if (module.showProgress) ...[
+                        _buildAnimated(_ModuleProgress(module: module)),
+                        const SizedBox(height: 24),
+                      ],
+                      if (module.description != null) ...[
+                        _buildAnimated(_Description(text: module.description!)),
+                        const SizedBox(height: 28),
+                      ],
+                      if (module.viewTypes.contains('video_lecturer'))
+                        ..._buildVideoLecturerList(module),
+                      if (module.viewTypes.contains('ebook')) ..._buildEbookList(module),
+                      if (module.viewTypes.contains('certificate')) ..._buildCertificateInfo(module),
+                      if (module.viewTypes.contains('lesson')) ..._buildLessonList(module),
+                      if (module.viewTypes.contains('assignment')) ..._buildAssignmentList(assignments),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -428,23 +446,7 @@ class _HeroBanner extends StatelessWidget {
           ),
         ),
 
-        if (isVideoLike && module.primaryCtaLabel != null)
-          Center(
-            child: GestureDetector(
-              onTap: () => _openPrimaryModuleContent(context, module),
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  // DS §Media Control Buttons: rgba(0,0,0,0.6), border putih tipis
-                  color: Colors.black.withOpacity(0.60),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
-                ),
-                child: Icon(heroIcon, color: Colors.white, size: 36),
-              ),
-            ),
-          ),
+
 
         if (!isVideoLike)
           Positioned(
@@ -1016,7 +1018,8 @@ class _VideoLecturerRowState extends State<_VideoLecturerRow>
                       children: [
                         Text(
                           '${widget.index + 1}. ',
-                          style: const TextStyle(
+                          style:
+                          const TextStyle(
                             color: _kTextMuted,
                             fontSize: 14,
                             fontFamily: 'Montserrat',
@@ -1341,6 +1344,43 @@ class _CertificateRow extends StatelessWidget {
 }
 
 // ─── Lesson Row ───────────────────────────────────────────────────────────────
+class _LessonCompletedBadge extends StatelessWidget {
+  const _LessonCompletedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: _kGreen,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _kGreen, width: 0.7),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_rounded,
+            color: Colors.white,
+            size: 9,
+          ),
+          SizedBox(width: 3),
+          Text(
+            'Completed',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.2,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _LessonRow extends StatefulWidget {
   final ModuleLesson lesson;
@@ -1463,18 +1503,28 @@ class _LessonRowState extends State<_LessonRow> with SingleTickerProviderStateMi
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (!isLocked && lesson.progressPercentage >= 100) ...[
-                          const SizedBox(width: 8),
-                          const _StatusBadge(status: 'completed'),
-                        ],
                       ],
                     ),
+
                     const SizedBox(height: 8),
+
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        if (lesson.hasVideo) const _MediaIcon(icon: Icons.play_circle_outline_rounded),
-                        if (lesson.hasAudio) const _MediaIcon(icon: Icons.headphones_rounded),
-                        if (lesson.hasWorkbook) const _MediaIcon(icon: Icons.description_rounded),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              if (lesson.hasVideo)
+                                const _MediaIcon(icon: Icons.play_circle_outline_rounded),
+                              if (lesson.hasAudio)
+                                const _MediaIcon(icon: Icons.headphones_rounded),
+                              if (lesson.hasWorkbook)
+                                const _MediaIcon(icon: Icons.description_rounded),
+                            ],
+                          ),
+                        ),
+                        if (!isLocked && lesson.progressPercentage >= 100)
+                          const _LessonCompletedBadge(),
                       ],
                     ),
                     if (!isLocked && lesson.progressPercentage > 0) ...[

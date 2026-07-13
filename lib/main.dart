@@ -8,10 +8,22 @@ import 'core/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Force portrait
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  final view = WidgetsBinding.instance.platformDispatcher.views.first;
+  final shortestSide =
+      (view.physicalSize.shortestSide / view.devicePixelRatio).round();
+
+  // Phones stay portrait, tablets can rotate so the layout can fill the screen.
+  if (shortestSide >= 600) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  } else {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  }
 
   // Status bar style
   SystemChrome.setSystemUIOverlayStyle(

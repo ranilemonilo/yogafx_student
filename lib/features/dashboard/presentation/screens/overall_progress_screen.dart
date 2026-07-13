@@ -49,7 +49,7 @@ class OverallProgressScreen extends StatelessWidget {
                     child: CustomPaint(
                       painter: _DonutPainter(
                         progress: overallProgressPercentage / 100,
-                        progressColor: AppColors.primary,
+                        progressColor: AppColors.secondary,
                         trackColor: AppColors.divider,
                       ),
                       child: Center(

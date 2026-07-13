@@ -1,11 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/error/app_exception.dart';
+import '../../../../core/storage/secure_storage.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../dashboard/presentation/providers/running_login_time_provider.dart';
+import '../../../module/presentation/providers/module_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../data/models/auth_user.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../../../../core/storage/secure_storage.dart';
 
 // State
-enum AuthStatus { initial, loading, authenticated, unauthenticated }
+enum AuthStatus {
+  initial,
+  loading,
+  authenticated,
+  unauthenticated,
+}
 
 class AuthState {
   final AuthStatus status;
@@ -35,31 +45,44 @@ class AuthState {
 
 // Notifier
 class AuthNotifier extends StateNotifier<AuthState> {
+  final Ref _ref;
   final AuthRepository _repository;
 
-  AuthNotifier(this._repository) : super(const AuthState()) {
+  AuthNotifier(
+    this._ref,
+    this._repository,
+  ) : super(const AuthState()) {
     _init();
   }
 
   Future<void> _init() async {
     final hasToken = await SecureStorageService.hasToken();
+
     if (!hasToken) {
-      state = state.copyWith(status: AuthStatus.unauthenticated);
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+      );
       return;
     }
 
     try {
       final user = await _repository.getCurrentUser();
+
       if (user != null) {
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: user,
+          error: null,
         );
       } else {
-        state = state.copyWith(status: AuthStatus.unauthenticated);
+        state = state.copyWith(
+          status: AuthStatus.unauthenticated,
+        );
       }
     } catch (_) {
-      state = state.copyWith(status: AuthStatus.unauthenticated);
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+      );
     }
   }
 
@@ -68,7 +91,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String otpCode,
     String deviceName = 'flutter_app',
   }) async {
-    state = state.copyWith(status: AuthStatus.loading, error: null);
+    state = state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+    );
 
     try {
       final response = await _repository.verifyLoginOtp(
@@ -76,29 +102,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
         otpCode: otpCode,
         deviceName: deviceName,
       );
+
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: response.user,
+        error: null,
       );
+
+      _resetUserScopedProviders();
+
       return true;
     } on AppException catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         error: e.message,
       );
+
       return false;
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         error: e.toString(),
       );
+
       return false;
     }
   }
 
   Future<void> logout() async {
     await _repository.logout();
-    state = const AuthState(status: AuthStatus.unauthenticated);
+
+    _resetUserScopedProviders();
+
+    state = const AuthState(
+      status: AuthStatus.unauthenticated,
+    );
   }
 
   Future<void> refreshCurrentUser() async {
@@ -106,8 +144,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     try {
       final user = await _repository.getCurrentUser();
+
       if (user == null) {
-        state = const AuthState(status: AuthStatus.unauthenticated);
+        state = const AuthState(
+          status: AuthStatus.unauthenticated,
+        );
         return;
       }
 
@@ -116,9 +157,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
         user: user,
         error: null,
       );
+
+      _resetUserScopedProviders();
     } catch (_) {
-      // Keep the current authenticated state if the background refresh fails.
+      // Pertahankan state authenticated jika refresh background gagal.
     }
+  }
+
+  void _resetUserScopedProviders() {
+    _ref.invalidate(dashboardProvider);
+    _ref.invalidate(runningLoginTimeProvider);
+    _ref.invalidate(profileProvider);
+    _ref.invalidate(moduleListProvider);
   }
 }
 
@@ -128,5 +178,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(authRepositoryProvider));
+  return AuthNotifier(
+    ref,
+    ref.read(authRepositoryProvider),
+  );
 });

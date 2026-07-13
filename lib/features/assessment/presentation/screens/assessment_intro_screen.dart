@@ -111,6 +111,11 @@ abstract class _DS {
 
 const double _kHeroHeight = 300;
 
+bool _isTabletLandscapeLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width >= 900 && size.width > size.height;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Root screen — LOGIKA TIDAK DIUBAH
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,6 +326,7 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
 
   @override
   Widget build(BuildContext context) {
+    final isTabletLandscape = _isTabletLandscapeLayout(context);
     return RefreshIndicator(
       color: _DS.red,
       backgroundColor: _DS.surfaceRaised,
@@ -340,44 +346,59 @@ class _AssessmentDetailViewState extends ConsumerState<_AssessmentDetailView>
                 opacity: _fade,
                 child: SlideTransition(
                   position: _slide,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      _DS.sp24, _DS.sp20, _DS.sp24, _DS.sp40,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _LessonTag(label: widget.lessonTitle),
-                        const SizedBox(height: _DS.sp10),
-                        Text(widget.title, style: _DS.title()),
-                        const SizedBox(height: _DS.sp16),
-                        const _ThinDivider(),
-                        const SizedBox(height: _DS.sp16),
-                        if (widget.description != null) ...[
-                          Text(
-                            widget.description!,
-                            style: _DS.body(),
-                          ),
-                          const SizedBox(height: _DS.sp20),
-                        ],
-                        _MetaRow(
-                          durationMinutes: widget.durationMinutes,
-                          allowBackNavigation: widget.allowBackNavigation,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: isTabletLandscape ? 1100 : double.infinity,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          isTabletLandscape ? 28 : _DS.sp24,
+                          _DS.sp20,
+                          isTabletLandscape ? 28 : _DS.sp24,
+                          _DS.sp40,
                         ),
-                        const SizedBox(height: _DS.sp28),
-                        _EligibilitySection(
-                          isUnlocked: widget.isUnlocked,
-                          requiresWatchProgress: widget.requiresWatchProgress,
-                          progressLabel: widget.watchProgressLabel,
-                          progressFraction: widget.progressFraction,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _LessonTag(label: widget.lessonTitle),
+                            const SizedBox(height: _DS.sp10),
+                            Text(widget.title, style: _DS.title()),
+                            const SizedBox(height: _DS.sp16),
+                            const _ThinDivider(),
+                            const SizedBox(height: _DS.sp16),
+                            if (widget.description != null) ...[
+                              Text(
+                                widget.description!,
+                                style: _DS.body(),
+                              ),
+                              const SizedBox(height: _DS.sp20),
+                            ],
+                            _MetaRow(
+                              durationMinutes: widget.durationMinutes,
+                              allowBackNavigation: widget.allowBackNavigation,
+                            ),
+                            const SizedBox(height: _DS.sp28),
+                            _EligibilitySection(
+                              isUnlocked: widget.isUnlocked,
+                              requiresWatchProgress: widget.requiresWatchProgress,
+                              progressLabel: widget.watchProgressLabel,
+                              progressFraction: widget.progressFraction,
+                            ),
+                            const SizedBox(height: _DS.sp32),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: isTabletLandscape ? 360 : double.infinity,
+                              ),
+                              child: _StartButton(
+                                isUnlocked: widget.isUnlocked,
+                                label: widget.startLabel,
+                                onTap: widget.onStart,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: _DS.sp32),
-                        _StartButton(
-                          isUnlocked: widget.isUnlocked,
-                          label: widget.startLabel,
-                          onTap: widget.onStart,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

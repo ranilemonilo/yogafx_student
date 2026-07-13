@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../providers/dialog_provider.dart';
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
 class DialogDetailScreen extends ConsumerWidget {
   final String dialogKey;
+
   const DialogDetailScreen({super.key, required this.dialogKey});
 
   @override
@@ -16,7 +16,7 @@ class DialogDetailScreen extends ConsumerWidget {
     final dialogAsync = ref.watch(dialogDetailProvider(dialogKey));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.black,
       body: dialogAsync.when(
         loading: () => const _DialogDetailSkeleton(),
         error: (e, _) => _DialogDetailError(
@@ -29,10 +29,9 @@ class DialogDetailScreen extends ConsumerWidget {
   }
 }
 
-// ─── Content ──────────────────────────────────────────────────────────────────
-
 class _DialogDetailContent extends StatefulWidget {
   final dynamic dialog;
+
   const _DialogDetailContent({required this.dialog});
 
   @override
@@ -54,7 +53,7 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
     );
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.06),
+      begin: const Offset(0, 0.04),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
 
@@ -77,201 +76,177 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        // ── App Bar ──
         SliverAppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: Colors.black,
           expandedHeight: 0,
           floating: true,
           snap: true,
           elevation: 0,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xD0000000), Colors.transparent],
+          leadingWidth: 56,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 12, top: 6, bottom: 6),
+            child: GestureDetector(
+              onTap: () => context.pop(),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141414),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.10),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
-            ),
-          ),
-          leading: GestureDetector(
-            onTap: () => context.pop(),
-            child: Container(
-              margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.divider, width: 0.8),
-              ),
-              child: const Icon(
-                Icons.arrow_back_rounded,
-                color: AppColors.textPrimary,
-                size: 15,
-              ),
-            ),
-          ),
-          title: Text(
-            dialog.title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Montserrat',
             ),
           ),
         ),
-
-        // ── Body ──
         SliverToBoxAdapter(
           child: FadeTransition(
             opacity: _fadeAnim,
             child: SlideTransition(
               position: _slideAnim,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Section label
-                    Row(
-                      children: [
-                        Container(
-                          width: 3,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'MESSAGE CONTENT',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Montserrat',
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      dialog.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                        height: 1.15,
+                      ),
                     ),
-                    const SizedBox(height: 16),
-
-                    content.isEmpty
-                        ? const Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded,
-                            color: AppColors.textMuted, size: 16),
-                        SizedBox(width: 10),
-                        Text(
-                          'No content available yet.',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 13,
-                            fontFamily: 'Montserrat',
-                            fontStyle: FontStyle.italic,
+                    const SizedBox(height: 20),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(18, 20, 18, 22),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.35),
+                            blurRadius: 28,
+                            offset: const Offset(0, 12),
                           ),
-                        ),
-                      ],
-                    )
-                        : Html(
-                      data: content,
-                      style: {
-                        'html': Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                          // §2: textSecondary = rgba(255,255,255,0.65)
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Montserrat',
-                          fontSize: FontSize(13),
-                          lineHeight: const LineHeight(1.75),
-                        ),
-                        'body': Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                          color: AppColors.textSecondary,
-                          backgroundColor: Colors.transparent,
-                        ),
-                        'p': Style(
-                          margin: Margins.only(bottom: 14),
-                        ),
-                        'div': Style(
-                          margin: Margins.only(bottom: 14),
-                        ),
-                        'br': Style(
-                          lineHeight: const LineHeight(1.75),
-                        ),
-                        'strong': Style(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        'b': Style(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        'em': Style(
-                          fontStyle: FontStyle.italic,
-                        ),
-                        'i': Style(
-                          fontStyle: FontStyle.italic,
-                        ),
-                        'u': Style(
-                          textDecoration: TextDecoration.underline,
-                        ),
-                        'h1': Style(
-                          margin: Margins.only(bottom: 16),
-                          fontFamily: 'Montserrat',
-                          lineHeight: const LineHeight(1.35),
-                        ),
-                        'h2': Style(
-                          margin: Margins.only(bottom: 14),
-                          fontFamily: 'Montserrat',
-                          lineHeight: const LineHeight(1.35),
-                        ),
-                        'h3': Style(
-                          margin: Margins.only(bottom: 12),
-                          fontFamily: 'Montserrat',
-                          lineHeight: const LineHeight(1.4),
-                        ),
-                        'h4': Style(
-                          margin: Margins.only(bottom: 10),
-                          fontFamily: 'Montserrat',
-                          lineHeight: const LineHeight(1.45),
-                        ),
-                        'h5': Style(
-                          margin: Margins.only(bottom: 10),
-                          fontFamily: 'Montserrat',
-                          lineHeight: const LineHeight(1.5),
-                        ),
-                        'h6': Style(
-                          margin: Margins.only(bottom: 8),
-                          fontFamily: 'Montserrat',
-                          lineHeight: const LineHeight(1.5),
-                        ),
-                        'ul': Style(
-                          margin: Margins.only(bottom: 14, left: 14),
-                          padding: HtmlPaddings.zero,
-                        ),
-                        'ol': Style(
-                          margin: Margins.only(bottom: 14, left: 14),
-                          padding: HtmlPaddings.zero,
-                        ),
-                        'li': Style(
-                          margin: Margins.only(bottom: 8),
-                        ),
-                        // §1: surface (#141110) untuk blockquote bg
-                        'blockquote': Style(
-                          color: AppColors.textPrimary,
-                          backgroundColor: AppColors.surface,
-                          border: Border(
-                            left: BorderSide(
-                              color: AppColors.primary.withOpacity(0.8),
-                              width: 3,
+                        ],
+                      ),
+                      child: content.isEmpty
+                          ? const Text(
+                              'No dialog content has been added yet.',
+                              style: TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 14,
+                                fontFamily: 'Montserrat',
+                              ),
+                            )
+                          : Html(
+                              data: content,
+                              style: {
+                            'html': Style(
+                              margin: Margins.zero,
+                              padding: HtmlPaddings.zero,
+                              fontFamily: 'Montserrat',
+                              fontSize: FontSize(14),
+                              lineHeight: const LineHeight(1.75),
+                              backgroundColor: Colors.white,
                             ),
-                          ),
-                          padding: HtmlPaddings.only(
-                              left: 14, top: 8, bottom: 8),
-                          margin: Margins.only(bottom: 14),
-                        ),
-                      },
+                            'body': Style(
+                              margin: Margins.zero,
+                              padding: HtmlPaddings.zero,
+                              backgroundColor: Colors.white,
+                            ),
+                            'p': Style(
+                              margin: Margins.only(bottom: 14),
+                            ),
+                            'div': Style(
+                              margin: Margins.only(bottom: 14),
+                            ),
+                            'strong': Style(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            'b': Style(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            'h1': Style(
+                              margin: Margins.only(bottom: 16),
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              lineHeight: const LineHeight(1.25),
+                            ),
+                            'h2': Style(
+                              margin: Margins.only(bottom: 14),
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              lineHeight: const LineHeight(1.3),
+                            ),
+                            'h3': Style(
+                              margin: Margins.only(bottom: 12),
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              lineHeight: const LineHeight(1.35),
+                            ),
+                            'h4': Style(
+                              margin: Margins.only(bottom: 10),
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              lineHeight: const LineHeight(1.4),
+                            ),
+                            'h5': Style(
+                              margin: Margins.only(bottom: 10),
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              lineHeight: const LineHeight(1.45),
+                            ),
+                            'h6': Style(
+                              margin: Margins.only(bottom: 8),
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              lineHeight: const LineHeight(1.45),
+                                ),
+                                'ul': Style(
+                                  margin: Margins.only(bottom: 14, left: 14),
+                                  padding: HtmlPaddings.zero,
+                                ),
+                                'ol': Style(
+                                  margin: Margins.only(bottom: 14, left: 14),
+                                  padding: HtmlPaddings.zero,
+                                ),
+                            'li': Style(
+                              margin: Margins.only(bottom: 8),
+                            ),
+                            'span': Style(
+                              fontFamily: 'Montserrat',
+                            ),
+                            'font': Style(
+                              fontFamily: 'Montserrat',
+                            ),
+                            'blockquote': Style(
+                              backgroundColor: const Color(0xFFF8FAFC),
+                              border: Border(
+                                left: BorderSide(
+                                      color: const Color(0xFFE2E8F0),
+                                      width: 3,
+                                    ),
+                                  ),
+                                  padding: HtmlPaddings.only(
+                                    left: 14,
+                                    top: 8,
+                                    bottom: 8,
+                                  ),
+                                  margin: Margins.only(bottom: 14),
+                                ),
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -283,8 +258,6 @@ class _DialogDetailContentState extends State<_DialogDetailContent>
     );
   }
 }
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 class _DialogDetailSkeleton extends StatefulWidget {
   const _DialogDetailSkeleton();
@@ -321,23 +294,21 @@ class _DialogDetailSkeletonState extends State<_DialogDetailSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
-        // §1: shimmer (#281D16) → shimmerHighlight (#3A2A1E)
-        final shimmer = Color.lerp(
-            AppColors.shimmer, AppColors.shimmerHighlight, _anim.value)!;
+        final shimmer =
+            Color.lerp(AppColors.shimmer, AppColors.shimmerHighlight, _anim.value)!;
         return CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: AppColors.background,
+              backgroundColor: Colors.black,
               floating: true,
               snap: true,
               leading: Container(
                 margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
                 decoration: BoxDecoration(
                   color: shimmer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              title: _Bone(width: 140, height: 14, color: shimmer),
             ),
             SliverToBoxAdapter(
               child: Padding(
@@ -345,10 +316,13 @@ class _DialogDetailSkeletonState extends State<_DialogDetailSkeleton>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Bone(width: 80, height: 9, color: shimmer),
-                    const SizedBox(height: 16),
+                    _Bone(width: 220, height: 30, color: shimmer),
+                    const SizedBox(height: 20),
                     _Bone(
-                        width: double.infinity, height: 240, color: shimmer),
+                      width: double.infinity,
+                      height: 260,
+                      color: shimmer,
+                    ),
                   ],
                 ),
               ),
@@ -364,8 +338,12 @@ class _Bone extends StatelessWidget {
   final double width;
   final double height;
   final Color color;
-  const _Bone(
-      {required this.width, required this.height, required this.color});
+
+  const _Bone({
+    required this.width,
+    required this.height,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -374,17 +352,16 @@ class _Bone extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(10),
       ),
     );
   }
 }
 
-// ─── Error ────────────────────────────────────────────────────────────────────
-
 class _DialogDetailError extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
+
   const _DialogDetailError({required this.message, required this.onRetry});
 
   @override
@@ -401,11 +378,15 @@ class _DialogDetailError extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.10),
                 shape: BoxShape.circle,
-                border:
-                Border.all(color: AppColors.primary.withOpacity(0.25)),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.25),
+                ),
               ),
-              child: const Icon(Icons.wifi_off_rounded,
-                  color: AppColors.primary, size: 28),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                color: AppColors.primary,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -422,8 +403,10 @@ class _DialogDetailError extends StatelessWidget {
             GestureDetector(
               onTap: onRetry,
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(AppRadius.button),
@@ -438,8 +421,11 @@ class _DialogDetailError extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.refresh_rounded,
-                        color: AppColors.textPrimary, size: 15),
+                    Icon(
+                      Icons.refresh_rounded,
+                      color: AppColors.textPrimary,
+                      size: 15,
+                    ),
                     SizedBox(width: 6),
                     Text(
                       'Try again',
