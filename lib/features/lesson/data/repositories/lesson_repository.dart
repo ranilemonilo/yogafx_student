@@ -90,4 +90,22 @@ class LessonRepository {
       throw e.error as AppException? ?? const ServerException();
     }
   }
+
+  Future<Map<String, dynamic>> reportIrregularActivity(int lessonId) async {
+    try {
+      final response = await _dio.post(
+        '/lessons/$lessonId/irregular-activity',
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+      if (data is Map) {
+        return Map<String, dynamic>.from(data);
+      }
+      return const <String, dynamic>{};
+    } on DioException catch (e) {
+      throw e.error as AppException? ?? const ServerException();
+    }
+  }
 }

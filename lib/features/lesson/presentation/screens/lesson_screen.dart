@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/error/app_exception.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -246,7 +247,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _isAssessmentPromptOpen = false;
   bool _autoNextCancelled = false;
   _AutoNextTarget? _autoNextTarget;
-  bool _irregularAlertShown = false;
+  bool _accountBlocked = false;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -283,6 +284,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     super.initState();
     _currentWatchProgress = widget.lesson.progress.watchProgress;
     _lastReportedProgress = widget.lesson.progress.watchProgress;
+    _loadAccountBlockState();
 
     if (!widget.autoOpenFullscreen) {
       unawaited(_restoreDefaultUi());
@@ -319,6 +321,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       _initAudio();
     }
     _primeAutoNextTarget();
+  }
+
+  Future<void> _loadAccountBlockState() async {
+    final blocked = await SecureStorageService.isAccountBlocked();
+    if (!mounted) return;
+    if (!blocked) return;
+    setState(() => _accountBlocked = true);
+    await _showIrregularActivityDialog();
   }
 
   Future<void> _primeAutoNextTarget() async {
@@ -452,33 +462,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     return normalized != 'admin' && normalized != 'tester';
   }
 
-  String _irregularActivityCountKey() {
-    final userId = ref.read(authProvider).user?.id ?? 0;
-    return 'irregular_activity_count_${userId}_${widget.lesson.id}';
-  }
-
-  Future<int> _readIrregularActivityCount() async {
-    final raw = await SecureStorageService.readValue(_irregularActivityCountKey());
-    return int.tryParse(raw ?? '') ?? 0;
-  }
-
-  Future<void> _writeIrregularActivityCount(int value) async {
-    if (value <= 0) {
-      await SecureStorageService.deleteValue(_irregularActivityCountKey());
-      return;
-    }
-    await SecureStorageService.writeValue(
-      _irregularActivityCountKey(),
-      value.toString(),
-    );
-  }
-
   Future<bool> _recordIrregularExit() async {
     if (!_shouldTrackIrregularActivity()) return false;
-    if (_irregularAlertShown) return true;
+    if (_accountBlocked) return true;
     if (!(widget.lesson.video?.isReady ?? false)) return false;
     if (widget.lesson.progress.isDone) {
-      await _writeIrregularActivityCount(0);
       return false;
     }
 
@@ -492,19 +480,27 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     final position = value.position;
     final watchedFullVideo = position >= duration;
     if (watchedFullVideo || _effectiveWatchProgress >= 100) {
-      await _writeIrregularActivityCount(0);
       return false;
     }
 
-    final currentCount = await _readIrregularActivityCount();
-    final nextCount = currentCount + 1;
-    await _writeIrregularActivityCount(nextCount);
+    final response = await ref
+        .read(lessonRepositoryProvider)
+        .reportIrregularActivity(widget.lesson.id);
+    final violationCount =
+        int.tryParse(response['violation_count']?.toString() ?? '') ?? 0;
+    final blocked = response['blocked'] == true ||
+        response['is_blocked'] == true ||
+        violationCount >= 3;
 
-    if (nextCount >= 3 && mounted) {
-      _irregularAlertShown = true;
+    if (blocked) {
+      _accountBlocked = true;
+      await SecureStorageService.setAccountBlocked(true);
       await _showIrregularActivityDialog();
-      await _writeIrregularActivityCount(0);
       return true;
+    }
+
+    if (violationCount > 0) {
+      await _showIrregularActivityWarning(violationCount);
     }
 
     return false;
@@ -552,8 +548,48 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     );
   }
 
+  Future<void> _showIrregularActivityWarning(int count) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.modal),
+          ),
+          title: Text(
+            'Warning $count of 3',
+            style: const TextStyle(
+              color: AppColors.warning,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          content: const Text(
+            'We detected that the lesson was exited before the video duration was completed. Please continue watching normally. The third warning will temporarily block the account.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontFamily: 'Montserrat',
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _initVideo() async {
     if (!_isVideoUnlocked) return;
+    if (_accountBlocked) return;
     final video = widget.lesson.video!;
     final lessonId = widget.lesson.id;
     final previousController = _videoController;
@@ -652,6 +688,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   void _onVideoProgress() {
     if (_isAutoNavigating) return;
+    if (_accountBlocked) return;
     final controller = _videoController;
     if (controller == null) return;
 
@@ -669,11 +706,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
       _lastReportedProgress = currentProgress;
-      unawaited(
-        ref
-            .read(lessonRepositoryProvider)
-            .updateProgress(widget.lesson.id, currentProgress),
-      );
+      unawaited(_reportProgress(currentProgress));
       if (currentProgress >= 100) {
         _refreshLearningState();
       }
@@ -1062,6 +1095,29 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           : const [DeviceOrientation.portraitUp],
     );
     await WidgetsBinding.instance.endOfFrame;
+  }
+
+  Future<void> _reportProgress(int progress) async {
+    try {
+      if (_accountBlocked) return;
+      await ref.read(lessonRepositoryProvider).updateProgress(
+            widget.lesson.id,
+            progress,
+          );
+    } on ForbiddenException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('irregular') || message.contains('blocked')) {
+        if (mounted) {
+          _accountBlocked = true;
+          await SecureStorageService.setAccountBlocked(true);
+          await _showIrregularActivityDialog();
+        }
+      }
+    } on AppException {
+      // Biarkan error non-irregular tidak memblokir playback.
+    } catch (_) {
+      // Ignore transient failures for progress reporting.
+    }
   }
 
   Future<void> _restorePortraitUi() async {

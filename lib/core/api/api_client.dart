@@ -81,7 +81,13 @@ class ApiClient {
       case 401:
         appException = const UnauthorizedException();
       case 403:
-        appException = const ForbiddenException();
+        final data = error.response?.data;
+        final message = data is Map ? data['message']?.toString() : null;
+        appException = ForbiddenException(
+          message: message == null || message.isEmpty
+              ? 'Access denied.'
+              : message,
+        );
       case 404:
         appException = const NotFoundException();
       case 422:

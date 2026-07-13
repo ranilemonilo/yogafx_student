@@ -6,6 +6,7 @@ class SecureStorageService {
   );
 
   static const _tokenKey = 'auth_token';
+  static const _blockedKey = 'account_blocked';
 
   static Future<void> saveToken(String token) async {
     await _storage.write(key: _tokenKey, value: token);
@@ -17,6 +18,19 @@ class SecureStorageService {
 
   static Future<void> deleteToken() async {
     await _storage.delete(key: _tokenKey);
+  }
+
+  static Future<void> setAccountBlocked(bool blocked) async {
+    if (!blocked) {
+      await _storage.delete(key: _blockedKey);
+      return;
+    }
+    await _storage.write(key: _blockedKey, value: 'true');
+  }
+
+  static Future<bool> isAccountBlocked() async {
+    final value = await _storage.read(key: _blockedKey);
+    return value == 'true';
   }
 
   static Future<bool> hasToken() async {
