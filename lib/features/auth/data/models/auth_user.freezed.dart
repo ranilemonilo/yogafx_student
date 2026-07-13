@@ -56,7 +56,9 @@ class _$AuthUserCopyWithImpl<$Res, $Val extends AuthUser>
     implements $AuthUserCopyWith<$Res> {
   _$AuthUserCopyWithImpl(this._value, this._then);
 
+  // ignore: unused_field
   final $Val _value;
+  // ignore: unused_field
   final $Res Function($Val) _then;
 
   @pragma('vm:prefer-inline')
@@ -209,6 +211,7 @@ class _$AuthUserImpl implements _AuthUser {
   @JsonKey(name: 'upgrade_options')
   List<UpgradeOption> get upgradeOptions {
     if (_upgradeOptions is EqualUnmodifiableListView) return _upgradeOptions;
+    // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_upgradeOptions);
   }
 
@@ -234,14 +237,8 @@ class _$AuthUserImpl implements _AuthUser {
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      name,
-      email,
-      avatar,
-      accessTier,
-      const DeepCollectionEquality().hash(_upgradeOptions));
+  int get hashCode => Object.hash(runtimeType, id, name, email, avatar,
+      accessTier, const DeepCollectionEquality().hash(_upgradeOptions));
 
   @JsonKey(ignore: true)
   @override
@@ -320,7 +317,9 @@ class _$AccessTierCopyWithImpl<$Res, $Val extends AccessTier>
     implements $AccessTierCopyWith<$Res> {
   _$AccessTierCopyWithImpl(this._value, this._then);
 
+  // ignore: unused_field
   final $Val _value;
+  // ignore: unused_field
   final $Res Function($Val) _then;
 
   @pragma('vm:prefer-inline')
@@ -505,7 +504,9 @@ class _$UpgradeOptionCopyWithImpl<$Res, $Val extends UpgradeOption>
     implements $UpgradeOptionCopyWith<$Res> {
   _$UpgradeOptionCopyWithImpl(this._value, this._then);
 
+  // ignore: unused_field
   final $Val _value;
+  // ignore: unused_field
   final $Res Function($Val) _then;
 
   @pragma('vm:prefer-inline')
@@ -700,8 +701,7 @@ class _$UpgradeOptionImpl implements _UpgradeOption {
   @override
   @pragma('vm:prefer-inline')
   _$$UpgradeOptionImplCopyWith<_$UpgradeOptionImpl> get copyWith =>
-      __$$UpgradeOptionImplCopyWithImpl<_$UpgradeOptionImpl>(
-          this, _$identity);
+      __$$UpgradeOptionImplCopyWithImpl<_$UpgradeOptionImpl>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -713,15 +713,15 @@ class _$UpgradeOptionImpl implements _UpgradeOption {
 
 abstract class _UpgradeOption implements UpgradeOption {
   const factory _UpgradeOption(
-      {required final int id,
-      required final String name,
-      required final String slug,
-      final String? description,
-      @JsonKey(name: 'currency_code') final String? currencyCode,
-      required final int level,
-      required final num price,
-      @JsonKey(name: 'upgrade_url')
-      required final String upgradeUrl}) = _$UpgradeOptionImpl;
+          {required final int id,
+          required final String name,
+          required final String slug,
+          final String? description,
+          @JsonKey(name: 'currency_code') final String? currencyCode,
+          required final int level,
+          required final num price,
+          @JsonKey(name: 'upgrade_url') required final String upgradeUrl}) =
+      _$UpgradeOptionImpl;
 
   factory _UpgradeOption.fromJson(Map<String, dynamic> json) =
       _$UpgradeOptionImpl.fromJson;

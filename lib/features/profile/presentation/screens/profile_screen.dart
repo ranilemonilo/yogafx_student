@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/auth_network_image.dart';
 import '../../../../core/widgets/running_login_time_card.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../auth/data/models/auth_user.dart';
 import '../../data/models/profile_model.dart';
 import '../providers/profile_provider.dart';
 

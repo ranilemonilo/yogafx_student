@@ -101,7 +101,9 @@ class _$ProfileDataCopyWithImpl<$Res, $Val extends ProfileData>
     implements $ProfileDataCopyWith<$Res> {
   _$ProfileDataCopyWithImpl(this._value, this._then);
 
+  // ignore: unused_field
   final $Val _value;
+  // ignore: unused_field
   final $Res Function($Val) _then;
 
   @pragma('vm:prefer-inline')
@@ -133,55 +135,92 @@ class _$ProfileDataCopyWithImpl<$Res, $Val extends ProfileData>
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
-          : id as int,
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
       name: null == name
           ? _value.name
-          : name as String,
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
       firstName: null == firstName
           ? _value.firstName
-          : firstName as String,
+          : firstName // ignore: cast_nullable_to_non_nullable
+              as String,
       lastName: null == lastName
           ? _value.lastName
-          : lastName as String,
+          : lastName // ignore: cast_nullable_to_non_nullable
+              as String,
       email: null == email
           ? _value.email
-          : email as String,
-      whatsapp: freezed == whatsapp ? _value.whatsapp : whatsapp as String?,
-      instagram:
-          freezed == instagram ? _value.instagram : instagram as String?,
-      country: freezed == country ? _value.country : country as String?,
-      birthDate: freezed == birthDate ? _value.birthDate : birthDate as String?,
-      gender: freezed == gender ? _value.gender : gender as String?,
+          : email // ignore: cast_nullable_to_non_nullable
+              as String,
+      whatsapp: freezed == whatsapp
+          ? _value.whatsapp
+          : whatsapp // ignore: cast_nullable_to_non_nullable
+              as String?,
+      instagram: freezed == instagram
+          ? _value.instagram
+          : instagram // ignore: cast_nullable_to_non_nullable
+              as String?,
+      country: freezed == country
+          ? _value.country
+          : country // ignore: cast_nullable_to_non_nullable
+              as String?,
+      birthDate: freezed == birthDate
+          ? _value.birthDate
+          : birthDate // ignore: cast_nullable_to_non_nullable
+              as String?,
+      gender: freezed == gender
+          ? _value.gender
+          : gender // ignore: cast_nullable_to_non_nullable
+              as String?,
       practicingYogaFor: freezed == practicingYogaFor
           ? _value.practicingYogaFor
-          : practicingYogaFor as String?,
+          : practicingYogaFor // ignore: cast_nullable_to_non_nullable
+              as String?,
       yogaSequenceExperience: freezed == yogaSequenceExperience
           ? _value.yogaSequenceExperience
-          : yogaSequenceExperience as String?,
-      hoursPerWeek:
-          freezed == hoursPerWeek ? _value.hoursPerWeek : hoursPerWeek as String?,
+          : yogaSequenceExperience // ignore: cast_nullable_to_non_nullable
+              as String?,
+      hoursPerWeek: freezed == hoursPerWeek
+          ? _value.hoursPerWeek
+          : hoursPerWeek // ignore: cast_nullable_to_non_nullable
+              as String?,
       currentFitnessLevel: freezed == currentFitnessLevel
           ? _value.currentFitnessLevel
-          : currentFitnessLevel as String?,
+          : currentFitnessLevel // ignore: cast_nullable_to_non_nullable
+              as String?,
       flexibilityRating: freezed == flexibilityRating
           ? _value.flexibilityRating
-          : flexibilityRating as String?,
-      motivation:
-          freezed == motivation ? _value.motivation : motivation as String?,
-      whyYogafx: freezed == whyYogafx ? _value.whyYogafx : whyYogafx as String?,
+          : flexibilityRating // ignore: cast_nullable_to_non_nullable
+              as String?,
+      motivation: freezed == motivation
+          ? _value.motivation
+          : motivation // ignore: cast_nullable_to_non_nullable
+              as String?,
+      whyYogafx: freezed == whyYogafx
+          ? _value.whyYogafx
+          : whyYogafx // ignore: cast_nullable_to_non_nullable
+              as String?,
       howDidYouFindUs: freezed == howDidYouFindUs
           ? _value.howDidYouFindUs
-          : howDidYouFindUs as String?,
-      profilePhoto:
-          freezed == profilePhoto ? _value.profilePhoto : profilePhoto as String?,
+          : howDidYouFindUs // ignore: cast_nullable_to_non_nullable
+              as String?,
+      profilePhoto: freezed == profilePhoto
+          ? _value.profilePhoto
+          : profilePhoto // ignore: cast_nullable_to_non_nullable
+              as String?,
       profileCompleted: null == profileCompleted
           ? _value.profileCompleted
-          : profileCompleted as bool,
-      accessTier:
-          null == accessTier ? _value.accessTier : accessTier as AccessTier,
+          : profileCompleted // ignore: cast_nullable_to_non_nullable
+              as bool,
+      accessTier: null == accessTier
+          ? _value.accessTier
+          : accessTier // ignore: cast_nullable_to_non_nullable
+              as AccessTier,
       upgradeOptions: null == upgradeOptions
           ? _value.upgradeOptions
-          : upgradeOptions as List<UpgradeOption>,
+          : upgradeOptions // ignore: cast_nullable_to_non_nullable
+              as List<UpgradeOption>,
     ) as $Val);
   }
 
@@ -265,47 +304,94 @@ class __$$ProfileDataImplCopyWithImpl<$Res>
     Object? upgradeOptions = null,
   }) {
     return _then(_$ProfileDataImpl(
-      id: null == id ? _value.id : id as int,
-      name: null == name ? _value.name : name as String,
-      firstName: null == firstName ? _value.firstName : firstName as String,
-      lastName: null == lastName ? _value.lastName : lastName as String,
-      email: null == email ? _value.email : email as String,
-      whatsapp: freezed == whatsapp ? _value.whatsapp : whatsapp as String?,
-      instagram:
-          freezed == instagram ? _value.instagram : instagram as String?,
-      country: freezed == country ? _value.country : country as String?,
-      birthDate: freezed == birthDate ? _value.birthDate : birthDate as String?,
-      gender: freezed == gender ? _value.gender : gender as String?,
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      firstName: null == firstName
+          ? _value.firstName
+          : firstName // ignore: cast_nullable_to_non_nullable
+              as String,
+      lastName: null == lastName
+          ? _value.lastName
+          : lastName // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: null == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String,
+      whatsapp: freezed == whatsapp
+          ? _value.whatsapp
+          : whatsapp // ignore: cast_nullable_to_non_nullable
+              as String?,
+      instagram: freezed == instagram
+          ? _value.instagram
+          : instagram // ignore: cast_nullable_to_non_nullable
+              as String?,
+      country: freezed == country
+          ? _value.country
+          : country // ignore: cast_nullable_to_non_nullable
+              as String?,
+      birthDate: freezed == birthDate
+          ? _value.birthDate
+          : birthDate // ignore: cast_nullable_to_non_nullable
+              as String?,
+      gender: freezed == gender
+          ? _value.gender
+          : gender // ignore: cast_nullable_to_non_nullable
+              as String?,
       practicingYogaFor: freezed == practicingYogaFor
           ? _value.practicingYogaFor
-          : practicingYogaFor as String?,
+          : practicingYogaFor // ignore: cast_nullable_to_non_nullable
+              as String?,
       yogaSequenceExperience: freezed == yogaSequenceExperience
           ? _value.yogaSequenceExperience
-          : yogaSequenceExperience as String?,
-      hoursPerWeek:
-          freezed == hoursPerWeek ? _value.hoursPerWeek : hoursPerWeek as String?,
+          : yogaSequenceExperience // ignore: cast_nullable_to_non_nullable
+              as String?,
+      hoursPerWeek: freezed == hoursPerWeek
+          ? _value.hoursPerWeek
+          : hoursPerWeek // ignore: cast_nullable_to_non_nullable
+              as String?,
       currentFitnessLevel: freezed == currentFitnessLevel
           ? _value.currentFitnessLevel
-          : currentFitnessLevel as String?,
+          : currentFitnessLevel // ignore: cast_nullable_to_non_nullable
+              as String?,
       flexibilityRating: freezed == flexibilityRating
           ? _value.flexibilityRating
-          : flexibilityRating as String?,
-      motivation:
-          freezed == motivation ? _value.motivation : motivation as String?,
-      whyYogafx: freezed == whyYogafx ? _value.whyYogafx : whyYogafx as String?,
+          : flexibilityRating // ignore: cast_nullable_to_non_nullable
+              as String?,
+      motivation: freezed == motivation
+          ? _value.motivation
+          : motivation // ignore: cast_nullable_to_non_nullable
+              as String?,
+      whyYogafx: freezed == whyYogafx
+          ? _value.whyYogafx
+          : whyYogafx // ignore: cast_nullable_to_non_nullable
+              as String?,
       howDidYouFindUs: freezed == howDidYouFindUs
           ? _value.howDidYouFindUs
-          : howDidYouFindUs as String?,
-      profilePhoto:
-          freezed == profilePhoto ? _value.profilePhoto : profilePhoto as String?,
+          : howDidYouFindUs // ignore: cast_nullable_to_non_nullable
+              as String?,
+      profilePhoto: freezed == profilePhoto
+          ? _value.profilePhoto
+          : profilePhoto // ignore: cast_nullable_to_non_nullable
+              as String?,
       profileCompleted: null == profileCompleted
           ? _value.profileCompleted
-          : profileCompleted as bool,
-      accessTier:
-          null == accessTier ? _value.accessTier : accessTier as AccessTier,
+          : profileCompleted // ignore: cast_nullable_to_non_nullable
+              as bool,
+      accessTier: null == accessTier
+          ? _value.accessTier
+          : accessTier // ignore: cast_nullable_to_non_nullable
+              as AccessTier,
       upgradeOptions: null == upgradeOptions
           ? _value._upgradeOptions
-          : upgradeOptions as List<UpgradeOption>,
+          : upgradeOptions // ignore: cast_nullable_to_non_nullable
+              as List<UpgradeOption>,
     ));
   }
 }
@@ -402,6 +488,7 @@ class _$ProfileDataImpl implements _ProfileData {
   @JsonKey(name: 'upgrade_options')
   List<UpgradeOption> get upgradeOptions {
     if (_upgradeOptions is EqualUnmodifiableListView) return _upgradeOptions;
+    // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_upgradeOptions);
   }
 
@@ -458,30 +545,31 @@ class _$ProfileDataImpl implements _ProfileData {
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      name,
-      firstName,
-      lastName,
-      email,
-      whatsapp,
-      instagram,
-      country,
-      birthDate,
-      gender,
-      practicingYogaFor,
-      yogaSequenceExperience,
-      hoursPerWeek,
-      currentFitnessLevel,
-      flexibilityRating,
-      motivation,
-      whyYogafx,
-      howDidYouFindUs,
-      profilePhoto,
-      profileCompleted,
-      accessTier,
-      const DeepCollectionEquality().hash(_upgradeOptions));
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        name,
+        firstName,
+        lastName,
+        email,
+        whatsapp,
+        instagram,
+        country,
+        birthDate,
+        gender,
+        practicingYogaFor,
+        yogaSequenceExperience,
+        hoursPerWeek,
+        currentFitnessLevel,
+        flexibilityRating,
+        motivation,
+        whyYogafx,
+        howDidYouFindUs,
+        profilePhoto,
+        profileCompleted,
+        accessTier,
+        const DeepCollectionEquality().hash(_upgradeOptions)
+      ]);
 
   @JsonKey(ignore: true)
   @override

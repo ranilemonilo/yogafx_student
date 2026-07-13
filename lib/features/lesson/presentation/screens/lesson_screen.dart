@@ -12,6 +12,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/auth_network_image.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../certificate/presentation/providers/certificate_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../module/data/models/module_model.dart';
@@ -22,10 +23,8 @@ import '../widgets/assessment/assessment_banner.dart';
 import '../providers/lesson_provider.dart';
 import '../widgets/shared/lesson_error.dart';
 import '../widgets/shared/lesson_skeleton.dart';
-import '../widgets/shared/locked_snackbar.dart';
 import '../widgets/shared/section_label.dart';
 import '../widgets/workbook/workbook_section.dart';
-import '../../../../features/lesson/data/repositories/lesson_repository.dart';
 
 bool _isTabletLandscapeLayout(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
@@ -247,6 +246,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _isAssessmentPromptOpen = false;
   bool _autoNextCancelled = false;
   _AutoNextTarget? _autoNextTarget;
+  bool _irregularAlertShown = false;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -443,6 +443,113 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     try {
       await controller.dispose();
     } catch (_) {}
+  }
+
+  bool _shouldTrackIrregularActivity() {
+    final tierSlug = ref.read(authProvider).user?.accessTier?.slug;
+    final normalized = tierSlug?.trim().toLowerCase() ?? '';
+    if (normalized.isEmpty) return true;
+    return normalized != 'admin' && normalized != 'tester';
+  }
+
+  String _irregularActivityCountKey() {
+    final userId = ref.read(authProvider).user?.id ?? 0;
+    return 'irregular_activity_count_${userId}_${widget.lesson.id}';
+  }
+
+  Future<int> _readIrregularActivityCount() async {
+    final raw = await SecureStorageService.readValue(_irregularActivityCountKey());
+    return int.tryParse(raw ?? '') ?? 0;
+  }
+
+  Future<void> _writeIrregularActivityCount(int value) async {
+    if (value <= 0) {
+      await SecureStorageService.deleteValue(_irregularActivityCountKey());
+      return;
+    }
+    await SecureStorageService.writeValue(
+      _irregularActivityCountKey(),
+      value.toString(),
+    );
+  }
+
+  Future<bool> _recordIrregularExit() async {
+    if (!_shouldTrackIrregularActivity()) return false;
+    if (_irregularAlertShown) return true;
+    if (!(widget.lesson.video?.isReady ?? false)) return false;
+    if (widget.lesson.progress.isDone) {
+      await _writeIrregularActivityCount(0);
+      return false;
+    }
+
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return false;
+
+    final value = controller.value;
+    final duration = value.duration;
+    if (duration == Duration.zero) return false;
+
+    final position = value.position;
+    final watchedFullVideo = position >= duration;
+    if (watchedFullVideo || _effectiveWatchProgress >= 100) {
+      await _writeIrregularActivityCount(0);
+      return false;
+    }
+
+    final currentCount = await _readIrregularActivityCount();
+    final nextCount = currentCount + 1;
+    await _writeIrregularActivityCount(nextCount);
+
+    if (nextCount >= 3 && mounted) {
+      _irregularAlertShown = true;
+      await _showIrregularActivityDialog();
+      await _writeIrregularActivityCount(0);
+      return true;
+    }
+
+    return false;
+  }
+
+  Future<void> _showIrregularActivityDialog() async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.modal),
+          ),
+          title: const Text(
+            'Irregular Activity Detected',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          content: const Text(
+            'Dear Student,\n\nPlease be advised that we have detected irregular activity on the platform and for security purposes, the account is temporarily blocked.\n\nPlease contact us some more support for more information and assistance.\n\nThank you\nYogaFX IT Support',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontFamily: 'Montserrat',
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _handleLessonBack(context);
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _initVideo() async {
@@ -860,6 +967,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     _isPreparingNavigation = true;
     _isAutoNavigating = true;
     try {
+      final blocked = await _recordIrregularExit();
+      if (blocked) return;
+
       final videoController = _videoController;
       final audioPlayer = _audioPlayer;
       _refreshLearningState();
