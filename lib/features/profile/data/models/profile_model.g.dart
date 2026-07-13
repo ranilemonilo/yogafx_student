@@ -30,6 +30,10 @@ _$ProfileDataImpl _$$ProfileDataImplFromJson(Map<String, dynamic> json) =>
       profileCompleted: json['profile_completed'] as bool,
       accessTier:
           AccessTier.fromJson(json['access_tier'] as Map<String, dynamic>),
+      upgradeOptions: (json['upgrade_options'] as List<dynamic>?)
+              ?.map((e) => UpgradeOption.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <UpgradeOption>[],
     );
 
 Map<String, dynamic> _$$ProfileDataImplToJson(_$ProfileDataImpl instance) =>
@@ -55,4 +59,5 @@ Map<String, dynamic> _$$ProfileDataImplToJson(_$ProfileDataImpl instance) =>
       'profile_photo': instance.profilePhoto,
       'profile_completed': instance.profileCompleted,
       'access_tier': instance.accessTier,
+      'upgrade_options': instance.upgradeOptions,
     };

@@ -26,6 +26,8 @@ mixin _$AuthUser {
   String? get avatar => throw _privateConstructorUsedError;
   @JsonKey(name: 'access_tier')
   AccessTier? get accessTier => throw _privateConstructorUsedError;
+  @JsonKey(name: 'upgrade_options')
+  List<UpgradeOption> get upgradeOptions => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -43,7 +45,8 @@ abstract class $AuthUserCopyWith<$Res> {
       String name,
       String email,
       String? avatar,
-      @JsonKey(name: 'access_tier') AccessTier? accessTier});
+      @JsonKey(name: 'access_tier') AccessTier? accessTier,
+      @JsonKey(name: 'upgrade_options') List<UpgradeOption> upgradeOptions});
 
   $AccessTierCopyWith<$Res>? get accessTier;
 }
@@ -53,9 +56,7 @@ class _$AuthUserCopyWithImpl<$Res, $Val extends AuthUser>
     implements $AuthUserCopyWith<$Res> {
   _$AuthUserCopyWithImpl(this._value, this._then);
 
-  // ignore: unused_field
   final $Val _value;
-  // ignore: unused_field
   final $Res Function($Val) _then;
 
   @pragma('vm:prefer-inline')
@@ -66,6 +67,7 @@ class _$AuthUserCopyWithImpl<$Res, $Val extends AuthUser>
     Object? email = null,
     Object? avatar = freezed,
     Object? accessTier = freezed,
+    Object? upgradeOptions = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -88,6 +90,10 @@ class _$AuthUserCopyWithImpl<$Res, $Val extends AuthUser>
           ? _value.accessTier
           : accessTier // ignore: cast_nullable_to_non_nullable
               as AccessTier?,
+      upgradeOptions: null == upgradeOptions
+          ? _value.upgradeOptions
+          : upgradeOptions // ignore: cast_nullable_to_non_nullable
+              as List<UpgradeOption>,
     ) as $Val);
   }
 
@@ -117,7 +123,8 @@ abstract class _$$AuthUserImplCopyWith<$Res>
       String name,
       String email,
       String? avatar,
-      @JsonKey(name: 'access_tier') AccessTier? accessTier});
+      @JsonKey(name: 'access_tier') AccessTier? accessTier,
+      @JsonKey(name: 'upgrade_options') List<UpgradeOption> upgradeOptions});
 
   @override
   $AccessTierCopyWith<$Res>? get accessTier;
@@ -139,6 +146,7 @@ class __$$AuthUserImplCopyWithImpl<$Res>
     Object? email = null,
     Object? avatar = freezed,
     Object? accessTier = freezed,
+    Object? upgradeOptions = null,
   }) {
     return _then(_$AuthUserImpl(
       id: null == id
@@ -161,6 +169,10 @@ class __$$AuthUserImplCopyWithImpl<$Res>
           ? _value.accessTier
           : accessTier // ignore: cast_nullable_to_non_nullable
               as AccessTier?,
+      upgradeOptions: null == upgradeOptions
+          ? _value._upgradeOptions
+          : upgradeOptions // ignore: cast_nullable_to_non_nullable
+              as List<UpgradeOption>,
     ));
   }
 }
@@ -173,7 +185,10 @@ class _$AuthUserImpl implements _AuthUser {
       required this.name,
       required this.email,
       this.avatar,
-      @JsonKey(name: 'access_tier') this.accessTier});
+      @JsonKey(name: 'access_tier') this.accessTier,
+      @JsonKey(name: 'upgrade_options')
+      final List<UpgradeOption> upgradeOptions = const <UpgradeOption>[]})
+      : _upgradeOptions = upgradeOptions;
 
   factory _$AuthUserImpl.fromJson(Map<String, dynamic> json) =>
       _$$AuthUserImplFromJson(json);
@@ -189,10 +204,17 @@ class _$AuthUserImpl implements _AuthUser {
   @override
   @JsonKey(name: 'access_tier')
   final AccessTier? accessTier;
+  final List<UpgradeOption> _upgradeOptions;
+  @override
+  @JsonKey(name: 'upgrade_options')
+  List<UpgradeOption> get upgradeOptions {
+    if (_upgradeOptions is EqualUnmodifiableListView) return _upgradeOptions;
+    return EqualUnmodifiableListView(_upgradeOptions);
+  }
 
   @override
   String toString() {
-    return 'AuthUser(id: $id, name: $name, email: $email, avatar: $avatar, accessTier: $accessTier)';
+    return 'AuthUser(id: $id, name: $name, email: $email, avatar: $avatar, accessTier: $accessTier, upgradeOptions: $upgradeOptions)';
   }
 
   @override
@@ -205,13 +227,21 @@ class _$AuthUserImpl implements _AuthUser {
             (identical(other.email, email) || other.email == email) &&
             (identical(other.avatar, avatar) || other.avatar == avatar) &&
             (identical(other.accessTier, accessTier) ||
-                other.accessTier == accessTier));
+                other.accessTier == accessTier) &&
+            const DeepCollectionEquality()
+                .equals(other._upgradeOptions, _upgradeOptions));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, name, email, avatar, accessTier);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      name,
+      email,
+      avatar,
+      accessTier,
+      const DeepCollectionEquality().hash(_upgradeOptions));
 
   @JsonKey(ignore: true)
   @override
@@ -229,12 +259,13 @@ class _$AuthUserImpl implements _AuthUser {
 
 abstract class _AuthUser implements AuthUser {
   const factory _AuthUser(
-          {required final int id,
-          required final String name,
-          required final String email,
-          final String? avatar,
-          @JsonKey(name: 'access_tier') final AccessTier? accessTier}) =
-      _$AuthUserImpl;
+      {required final int id,
+      required final String name,
+      required final String email,
+      final String? avatar,
+      @JsonKey(name: 'access_tier') final AccessTier? accessTier,
+      @JsonKey(name: 'upgrade_options')
+      final List<UpgradeOption> upgradeOptions}) = _$AuthUserImpl;
 
   factory _AuthUser.fromJson(Map<String, dynamic> json) =
       _$AuthUserImpl.fromJson;
@@ -250,6 +281,9 @@ abstract class _AuthUser implements AuthUser {
   @override
   @JsonKey(name: 'access_tier')
   AccessTier? get accessTier;
+  @override
+  @JsonKey(name: 'upgrade_options')
+  List<UpgradeOption> get upgradeOptions;
   @override
   @JsonKey(ignore: true)
   _$$AuthUserImplCopyWith<_$AuthUserImpl> get copyWith =>
@@ -286,9 +320,7 @@ class _$AccessTierCopyWithImpl<$Res, $Val extends AccessTier>
     implements $AccessTierCopyWith<$Res> {
   _$AccessTierCopyWithImpl(this._value, this._then);
 
-  // ignore: unused_field
   final $Val _value;
-  // ignore: unused_field
   final $Res Function($Val) _then;
 
   @pragma('vm:prefer-inline')
@@ -425,5 +457,295 @@ abstract class _AccessTier implements AccessTier {
   @override
   @JsonKey(ignore: true)
   _$$AccessTierImplCopyWith<_$AccessTierImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+UpgradeOption _$UpgradeOptionFromJson(Map<String, dynamic> json) {
+  return _UpgradeOption.fromJson(json);
+}
+
+/// @nodoc
+mixin _$UpgradeOption {
+  int get id => throw _privateConstructorUsedError;
+  String get name => throw _privateConstructorUsedError;
+  String get slug => throw _privateConstructorUsedError;
+  String? get description => throw _privateConstructorUsedError;
+  @JsonKey(name: 'currency_code')
+  String? get currencyCode => throw _privateConstructorUsedError;
+  int get level => throw _privateConstructorUsedError;
+  num get price => throw _privateConstructorUsedError;
+  @JsonKey(name: 'upgrade_url')
+  String get upgradeUrl => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $UpgradeOptionCopyWith<UpgradeOption> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $UpgradeOptionCopyWith<$Res> {
+  factory $UpgradeOptionCopyWith(
+          UpgradeOption value, $Res Function(UpgradeOption) then) =
+      _$UpgradeOptionCopyWithImpl<$Res, UpgradeOption>;
+  @useResult
+  $Res call(
+      {int id,
+      String name,
+      String slug,
+      String? description,
+      @JsonKey(name: 'currency_code') String? currencyCode,
+      int level,
+      num price,
+      @JsonKey(name: 'upgrade_url') String upgradeUrl});
+}
+
+/// @nodoc
+class _$UpgradeOptionCopyWithImpl<$Res, $Val extends UpgradeOption>
+    implements $UpgradeOptionCopyWith<$Res> {
+  _$UpgradeOptionCopyWithImpl(this._value, this._then);
+
+  final $Val _value;
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? slug = null,
+    Object? description = freezed,
+    Object? currencyCode = freezed,
+    Object? level = null,
+    Object? price = null,
+    Object? upgradeUrl = null,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      slug: null == slug
+          ? _value.slug
+          : slug // ignore: cast_nullable_to_non_nullable
+              as String,
+      description: freezed == description
+          ? _value.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String?,
+      currencyCode: freezed == currencyCode
+          ? _value.currencyCode
+          : currencyCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      level: null == level
+          ? _value.level
+          : level // ignore: cast_nullable_to_non_nullable
+              as int,
+      price: null == price
+          ? _value.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as num,
+      upgradeUrl: null == upgradeUrl
+          ? _value.upgradeUrl
+          : upgradeUrl // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$UpgradeOptionImplCopyWith<$Res>
+    implements $UpgradeOptionCopyWith<$Res> {
+  factory _$$UpgradeOptionImplCopyWith(
+          _$UpgradeOptionImpl value, $Res Function(_$UpgradeOptionImpl) then) =
+      __$$UpgradeOptionImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {int id,
+      String name,
+      String slug,
+      String? description,
+      @JsonKey(name: 'currency_code') String? currencyCode,
+      int level,
+      num price,
+      @JsonKey(name: 'upgrade_url') String upgradeUrl});
+}
+
+/// @nodoc
+class __$$UpgradeOptionImplCopyWithImpl<$Res>
+    extends _$UpgradeOptionCopyWithImpl<$Res, _$UpgradeOptionImpl>
+    implements _$$UpgradeOptionImplCopyWith<$Res> {
+  __$$UpgradeOptionImplCopyWithImpl(
+      _$UpgradeOptionImpl _value, $Res Function(_$UpgradeOptionImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? slug = null,
+    Object? description = freezed,
+    Object? currencyCode = freezed,
+    Object? level = null,
+    Object? price = null,
+    Object? upgradeUrl = null,
+  }) {
+    return _then(_$UpgradeOptionImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      slug: null == slug
+          ? _value.slug
+          : slug // ignore: cast_nullable_to_non_nullable
+              as String,
+      description: freezed == description
+          ? _value.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String?,
+      currencyCode: freezed == currencyCode
+          ? _value.currencyCode
+          : currencyCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      level: null == level
+          ? _value.level
+          : level // ignore: cast_nullable_to_non_nullable
+              as int,
+      price: null == price
+          ? _value.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as num,
+      upgradeUrl: null == upgradeUrl
+          ? _value.upgradeUrl
+          : upgradeUrl // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$UpgradeOptionImpl implements _UpgradeOption {
+  const _$UpgradeOptionImpl(
+      {required this.id,
+      required this.name,
+      required this.slug,
+      this.description,
+      @JsonKey(name: 'currency_code') this.currencyCode,
+      required this.level,
+      required this.price,
+      @JsonKey(name: 'upgrade_url') required this.upgradeUrl});
+
+  factory _$UpgradeOptionImpl.fromJson(Map<String, dynamic> json) =>
+      _$$UpgradeOptionImplFromJson(json);
+
+  @override
+  final int id;
+  @override
+  final String name;
+  @override
+  final String slug;
+  @override
+  final String? description;
+  @override
+  @JsonKey(name: 'currency_code')
+  final String? currencyCode;
+  @override
+  final int level;
+  @override
+  final num price;
+  @override
+  @JsonKey(name: 'upgrade_url')
+  final String upgradeUrl;
+
+  @override
+  String toString() {
+    return 'UpgradeOption(id: $id, name: $name, slug: $slug, description: $description, currencyCode: $currencyCode, level: $level, price: $price, upgradeUrl: $upgradeUrl)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$UpgradeOptionImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.slug, slug) || other.slug == slug) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
+            (identical(other.currencyCode, currencyCode) ||
+                other.currencyCode == currencyCode) &&
+            (identical(other.level, level) || other.level == level) &&
+            (identical(other.price, price) || other.price == price) &&
+            (identical(other.upgradeUrl, upgradeUrl) ||
+                other.upgradeUrl == upgradeUrl));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, id, name, slug, description,
+      currencyCode, level, price, upgradeUrl);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$UpgradeOptionImplCopyWith<_$UpgradeOptionImpl> get copyWith =>
+      __$$UpgradeOptionImplCopyWithImpl<_$UpgradeOptionImpl>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$UpgradeOptionImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _UpgradeOption implements UpgradeOption {
+  const factory _UpgradeOption(
+      {required final int id,
+      required final String name,
+      required final String slug,
+      final String? description,
+      @JsonKey(name: 'currency_code') final String? currencyCode,
+      required final int level,
+      required final num price,
+      @JsonKey(name: 'upgrade_url')
+      required final String upgradeUrl}) = _$UpgradeOptionImpl;
+
+  factory _UpgradeOption.fromJson(Map<String, dynamic> json) =
+      _$UpgradeOptionImpl.fromJson;
+
+  @override
+  int get id;
+  @override
+  String get name;
+  @override
+  String get slug;
+  @override
+  String? get description;
+  @override
+  @JsonKey(name: 'currency_code')
+  String? get currencyCode;
+  @override
+  int get level;
+  @override
+  num get price;
+  @override
+  @JsonKey(name: 'upgrade_url')
+  String get upgradeUrl;
+  @override
+  @JsonKey(ignore: true)
+  _$$UpgradeOptionImplCopyWith<_$UpgradeOptionImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

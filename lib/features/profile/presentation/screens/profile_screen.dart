@@ -732,13 +732,13 @@ class _ProfileButton extends StatelessWidget {
   }
 }
 
-class _UpgradeAccessSection extends ConsumerWidget {
+class _UpgradeAccessSection extends StatelessWidget {
   final ProfileData profile;
 
   const _UpgradeAccessSection({required this.profile});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final upgradeOptions = profile.upgradeOptions;
     final hasOptions = upgradeOptions.isNotEmpty;
 
