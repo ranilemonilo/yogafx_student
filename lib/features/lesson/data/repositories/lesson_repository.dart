@@ -91,10 +91,22 @@ class LessonRepository {
     }
   }
 
-  Future<Map<String, dynamic>> reportIrregularActivity(int lessonId) async {
+  Future<Map<String, dynamic>> reportIrregularActivity(
+    int lessonId, {
+    required int watchProgress,
+    required int watchTimeSeconds,
+    required int videoDurationSeconds,
+    required bool lessonCompleted,
+  }) async {
     try {
       final response = await _dio.post(
         '/lessons/$lessonId/irregular-activity',
+        data: {
+          'watch_progress': watchProgress,
+          'watch_time_seconds': watchTimeSeconds,
+          'video_duration_seconds': videoDurationSeconds,
+          'lesson_completed': lessonCompleted,
+        },
       );
       final data = response.data;
       if (data is Map<String, dynamic>) {

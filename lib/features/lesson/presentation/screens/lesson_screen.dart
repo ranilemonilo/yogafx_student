@@ -485,7 +485,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     final response = await ref
         .read(lessonRepositoryProvider)
-        .reportIrregularActivity(widget.lesson.id);
+        .reportIrregularActivity(
+          widget.lesson.id,
+          watchProgress: _effectiveWatchProgress,
+          watchTimeSeconds: position.inSeconds,
+          videoDurationSeconds: duration.inSeconds,
+          lessonCompleted: widget.lesson.progress.isDone || watchedFullVideo,
+        );
     final violationCount =
         int.tryParse(response['violation_count']?.toString() ?? '') ?? 0;
     final blocked = response['blocked'] == true ||
@@ -585,6 +591,11 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         );
       },
     );
+  }
+
+  Future<void> _markAccountBlockedFromServer() async {
+    _accountBlocked = true;
+    await SecureStorageService.setAccountBlocked(true);
   }
 
   Future<void> _initVideo() async {
@@ -1108,8 +1119,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       final message = e.message.toLowerCase();
       if (message.contains('irregular') || message.contains('blocked')) {
         if (mounted) {
-          _accountBlocked = true;
-          await SecureStorageService.setAccountBlocked(true);
+          await _markAccountBlockedFromServer();
           await _showIrregularActivityDialog();
         }
       }
