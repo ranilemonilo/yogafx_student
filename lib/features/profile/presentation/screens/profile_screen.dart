@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -16,7 +17,12 @@ bool _isTabletLandscapeProfileLayout(BuildContext context) {
 }
 
 class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+  final bool autoFocusUpgrade;
+
+  const ProfileScreen({
+    super.key,
+    this.autoFocusUpgrade = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,7 +36,10 @@ class ProfileScreen extends ConsumerWidget {
           message: e.toString(),
           onRetry: () => ref.invalidate(profileProvider),
         ),
-        data: (profile) => _ProfileContent(profile: profile),
+        data: (profile) => _ProfileContent(
+          profile: profile,
+          autoFocusUpgrade: autoFocusUpgrade,
+        ),
       ),
     );
   }
@@ -195,8 +204,12 @@ Future<void> _sendPasswordResetEmail(
 
 class _ProfileContent extends ConsumerStatefulWidget {
   final ProfileData profile;
+  final bool autoFocusUpgrade;
 
-  const _ProfileContent({required this.profile});
+  const _ProfileContent({
+    required this.profile,
+    required this.autoFocusUpgrade,
+  });
 
   @override
   ConsumerState<_ProfileContent> createState() => _ProfileContentState();
@@ -205,9 +218,10 @@ class _ProfileContent extends ConsumerStatefulWidget {
 class _ProfileContentState extends ConsumerState<_ProfileContent>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  static const int _slotCount = 7;
+  static const int _slotCount = 8;
   late final List<Animation<double>> _fades;
   late final List<Animation<Offset>> _slides;
+  final GlobalKey _upgradeSectionKey = GlobalKey();
 
   @override
   void initState() {
@@ -242,6 +256,11 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
     Future.delayed(const Duration(milliseconds: 60), () {
       if (mounted) _controller.forward();
     });
+    if (widget.autoFocusUpgrade) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToUpgradeSection();
+      });
+    }
   }
 
   @override
@@ -254,6 +273,21 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
     return FadeTransition(
       opacity: _fades[slot],
       child: SlideTransition(position: _slides[slot], child: child),
+    );
+  }
+
+  Future<void> _scrollToUpgradeSection() async {
+    await Future.delayed(const Duration(milliseconds: 260));
+    if (!mounted) return;
+
+    final context = _upgradeSectionKey.currentContext;
+    if (context == null) return;
+
+    await Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      alignment: 0.08,
     );
   }
 
@@ -319,228 +353,284 @@ class _ProfileContentState extends ConsumerState<_ProfileContent>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                      _animated(
-                        0,
-                        Row(
-                          children: [
-                            _MetaBadge(
-                              icon: Icons.workspace_premium_outlined,
-                              label: profile.accessTier.name.toUpperCase(),
-                              tone: AppColors.primary,
-                              large: true,
-                            ),
-                            const Spacer(),
-                            const RunningLoginTimeCard(
-                              size: RunningLoginTimeCardSize.compact,
-                            ),
-                          ],
+                  _animated(
+                    0,
+                    Row(
+                      children: [
+                        _MetaBadge(
+                          icon: Icons.workspace_premium_outlined,
+                          label: profile.accessTier.name.toUpperCase(),
+                          tone: AppColors.primary,
+                          large: true,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      _animated(1, _ProfileHeroCard(profile: profile)),
-                      const SizedBox(height: 14),
-                      _animated(
-                        2,
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _ProfileButton(
-                                label: 'Edit Profile',
-                                icon: Icons.edit_outlined,
-                                onTap: () => context.push(AppRoutes.editProfile),
-                                variant: _ProfileButtonVariant.primary,
-                              ),
+                        const Spacer(),
+                        const RunningLoginTimeCard(
+                          size: RunningLoginTimeCardSize.compact,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _animated(
+                    1,
+                    _ProfileHeroCard(profile: profile),
+                  ),
+                  const SizedBox(height: 14),
+                  _animated(
+                    2,
+                    KeyedSubtree(
+                      key: _upgradeSectionKey,
+                      child: _UpgradeAccessSection(profile: profile),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _animated(
+                    3,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _ProfileButton(
+                            label: 'Edit Profile',
+                            icon: Icons.edit_outlined,
+                            onTap: () => context.push(AppRoutes.editProfile),
+                            variant: _ProfileButtonVariant.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ProfileButton(
+                            label: 'Reset Password',
+                            icon: Icons.lock_reset_outlined,
+                            onTap: () => _sendPasswordResetEmail(
+                              context,
+                              ref,
+                              profile,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _ProfileButton(
-                                label: 'Reset Password',
-                                icon: Icons.lock_reset_outlined,
-                                onTap: () => _sendPasswordResetEmail(
-                                  context,
-                                  ref,
-                                  profile,
+                            variant: _ProfileButtonVariant.secondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (useTabletLandscapeLayout)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _animated(
+                                4,
+                                _ProfileSectionCard(
+                                  title: 'Account',
+                                  icon: Icons.person_outline_rounded,
+                                  children: [
+                                    _InfoRow(
+                                      label: 'Full name',
+                                      value: profile.name,
+                                    ),
+                                    _InfoRow(
+                                      label: 'Email',
+                                      value: profile.email,
+                                    ),
+                                    _InfoRow(
+                                      label: 'WhatsApp',
+                                      value: profile.whatsapp,
+                                    ),
+                                    _InfoRow(
+                                      label: 'Instagram',
+                                      value: profile.instagram,
+                                    ),
+                                  ],
                                 ),
-                                variant: _ProfileButtonVariant.secondary,
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      if (useTabletLandscapeLayout)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _animated(
-                                    3,
-                                    _ProfileSectionCard(
-                                      title: 'Account',
-                                      icon: Icons.person_outline_rounded,
-                                      children: [
-                                        _InfoRow(label: 'Full name', value: profile.name),
-                                        _InfoRow(label: 'Email', value: profile.email),
-                                        _InfoRow(label: 'WhatsApp', value: profile.whatsapp),
-                                        _InfoRow(label: 'Instagram', value: profile.instagram),
-                                      ],
+                              const SizedBox(height: 10),
+                              _animated(
+                                5,
+                                _ProfileSectionCard(
+                                  title: 'Personal',
+                                  icon: Icons.badge_outlined,
+                                  children: [
+                                    _InfoRow(
+                                      label: 'Country',
+                                      value: profile.country,
                                     ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  _animated(
-                                    4,
-                                    _ProfileSectionCard(
-                                      title: 'Personal',
-                                      icon: Icons.badge_outlined,
-                                      children: [
-                                        _InfoRow(label: 'Country', value: profile.country),
-                                        _InfoRow(label: 'Birth date', value: profile.birthDate),
-                                        _InfoRow(label: 'Gender', value: profile.gender),
-                                      ],
+                                    _InfoRow(
+                                      label: 'Birth date',
+                                      value: profile.birthDate,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _animated(
-                                    5,
-                                    _ProfileSectionCard(
-                                      title: 'Practice',
-                                      icon: Icons.self_improvement_outlined,
-                                      children: [
-                                        _InfoRow(
-                                          label: 'Practicing yoga for',
-                                          value: profile.practicingYogaFor,
-                                        ),
-                                        _InfoRow(
-                                          label: 'Sequence experience',
-                                          value: profile.yogaSequenceExperience,
-                                        ),
-                                        _InfoRow(
-                                          label: 'Hours per week',
-                                          value: profile.hoursPerWeek,
-                                        ),
-                                        _InfoRow(
-                                          label: 'Fitness level',
-                                          value: profile.currentFitnessLevel,
-                                        ),
-                                        _InfoRow(
-                                          label: 'Flexibility',
-                                          value: profile.flexibilityRating,
-                                        ),
-                                      ],
+                                    _InfoRow(
+                                      label: 'Gender',
+                                      value: profile.gender,
                                     ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  _animated(
-                                    6,
-                                    _ProfileSectionCard(
-                                      title: 'Motivation',
-                                      icon: Icons.lightbulb_outline_rounded,
-                                      children: [
-                                        _InfoRow(
-                                          label: 'Motivation',
-                                          value: profile.motivation,
-                                        ),
-                                        _InfoRow(
-                                          label: 'Why YogaFX',
-                                          value: profile.whyYogafx,
-                                        ),
-                                        _InfoRow(
-                                          label: 'How you found us',
-                                          value: profile.howDidYouFindUs,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      else ...[
-                        _animated(
-                          3,
-                          _ProfileSectionCard(
-                            title: 'Account',
-                            icon: Icons.person_outline_rounded,
-                            children: [
-                              _InfoRow(label: 'Full name', value: profile.name),
-                              _InfoRow(label: 'Email', value: profile.email),
-                              _InfoRow(label: 'WhatsApp', value: profile.whatsapp),
-                              _InfoRow(label: 'Instagram', value: profile.instagram),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _animated(
-                          4,
-                          _ProfileSectionCard(
-                            title: 'Personal',
-                            icon: Icons.badge_outlined,
-                            children: [
-                              _InfoRow(label: 'Country', value: profile.country),
-                              _InfoRow(label: 'Birth date', value: profile.birthDate),
-                              _InfoRow(label: 'Gender', value: profile.gender),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _animated(
-                          5,
-                          _ProfileSectionCard(
-                            title: 'Practice',
-                            icon: Icons.self_improvement_outlined,
-                            children: [
-                              _InfoRow(
-                                label: 'Practicing yoga for',
-                                value: profile.practicingYogaFor,
-                              ),
-                              _InfoRow(
-                                label: 'Sequence experience',
-                                value: profile.yogaSequenceExperience,
-                              ),
-                              _InfoRow(
-                                label: 'Hours per week',
-                                value: profile.hoursPerWeek,
-                              ),
-                              _InfoRow(
-                                label: 'Fitness level',
-                                value: profile.currentFitnessLevel,
-                              ),
-                              _InfoRow(
-                                label: 'Flexibility',
-                                value: profile.flexibilityRating,
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        _animated(
-                          6,
-                          _ProfileSectionCard(
-                            title: 'Motivation',
-                            icon: Icons.lightbulb_outline_rounded,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
                             children: [
-                              _InfoRow(label: 'Motivation', value: profile.motivation),
-                              _InfoRow(
-                                label: 'Why YogaFX',
-                                value: profile.whyYogafx,
+                              _animated(
+                                6,
+                                _ProfileSectionCard(
+                                  title: 'Practice',
+                                  icon: Icons.self_improvement_outlined,
+                                  children: [
+                                    _InfoRow(
+                                      label: 'Practicing yoga for',
+                                      value: profile.practicingYogaFor,
+                                    ),
+                                    _InfoRow(
+                                      label: 'Sequence experience',
+                                      value: profile.yogaSequenceExperience,
+                                    ),
+                                    _InfoRow(
+                                      label: 'Hours per week',
+                                      value: profile.hoursPerWeek,
+                                    ),
+                                    _InfoRow(
+                                      label: 'Fitness level',
+                                      value: profile.currentFitnessLevel,
+                                    ),
+                                    _InfoRow(
+                                      label: 'Flexibility',
+                                      value: profile.flexibilityRating,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              _InfoRow(
-                                label: 'How you found us',
-                                value: profile.howDidYouFindUs,
+                              const SizedBox(height: 10),
+                              _animated(
+                                7,
+                                _ProfileSectionCard(
+                                  title: 'Motivation',
+                                  icon: Icons.lightbulb_outline_rounded,
+                                  children: [
+                                    _InfoRow(
+                                      label: 'Motivation',
+                                      value: profile.motivation,
+                                    ),
+                                    _InfoRow(
+                                      label: 'Why YogaFX',
+                                      value: profile.whyYogafx,
+                                    ),
+                                    _InfoRow(
+                                      label: 'How you found us',
+                                      value: profile.howDidYouFindUs,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ],
+                    )
+                  else ...[
+                    _animated(
+                      4,
+                      _ProfileSectionCard(
+                        title: 'Account',
+                        icon: Icons.person_outline_rounded,
+                        children: [
+                          _InfoRow(
+                            label: 'Full name',
+                            value: profile.name,
+                          ),
+                          _InfoRow(
+                            label: 'Email',
+                            value: profile.email,
+                          ),
+                          _InfoRow(
+                            label: 'WhatsApp',
+                            value: profile.whatsapp,
+                          ),
+                          _InfoRow(
+                            label: 'Instagram',
+                            value: profile.instagram,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _animated(
+                      5,
+                      _ProfileSectionCard(
+                        title: 'Personal',
+                        icon: Icons.badge_outlined,
+                        children: [
+                          _InfoRow(
+                            label: 'Country',
+                            value: profile.country,
+                          ),
+                          _InfoRow(
+                            label: 'Birth date',
+                            value: profile.birthDate,
+                          ),
+                          _InfoRow(
+                            label: 'Gender',
+                            value: profile.gender,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _animated(
+                      6,
+                      _ProfileSectionCard(
+                        title: 'Practice',
+                        icon: Icons.self_improvement_outlined,
+                        children: [
+                          _InfoRow(
+                            label: 'Practicing yoga for',
+                            value: profile.practicingYogaFor,
+                          ),
+                          _InfoRow(
+                            label: 'Sequence experience',
+                            value: profile.yogaSequenceExperience,
+                          ),
+                          _InfoRow(
+                            label: 'Hours per week',
+                            value: profile.hoursPerWeek,
+                          ),
+                          _InfoRow(
+                            label: 'Fitness level',
+                            value: profile.currentFitnessLevel,
+                          ),
+                          _InfoRow(
+                            label: 'Flexibility',
+                            value: profile.flexibilityRating,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _animated(
+                      7,
+                      _ProfileSectionCard(
+                        title: 'Motivation',
+                        icon: Icons.lightbulb_outline_rounded,
+                        children: [
+                          _InfoRow(
+                            label: 'Motivation',
+                            value: profile.motivation,
+                          ),
+                          _InfoRow(
+                            label: 'Why YogaFX',
+                            value: profile.whyYogafx,
+                          ),
+                          _InfoRow(
+                            label: 'How you found us',
+                            value: profile.howDidYouFindUs,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -811,6 +901,215 @@ class _ProfileButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _UpgradeAccessSection extends StatelessWidget {
+  final ProfileData profile;
+
+  const _UpgradeAccessSection({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final upgradeOptions = profile.upgradeOptions;
+    final hasOptions = upgradeOptions.isNotEmpty;
+
+    return _ProfileSectionCard(
+      title: 'Upgrade Access',
+      icon: Icons.workspace_premium_outlined,
+      children: [
+        Text(
+          hasOptions
+              ? 'Choose a higher access tier to continue your learning journey.'
+              : 'You already have the highest access tier available on your account.',
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            fontFamily: 'Montserrat',
+            height: 1.55,
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (hasOptions)
+          ...upgradeOptions.map(
+            (option) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _UpgradeOptionCard(option: option),
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.divider, width: 0.8),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                  ),
+                  child: const Icon(
+                    Icons.verified_rounded,
+                    color: AppColors.success,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '${profile.accessTier.name} is your current top tier.',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Montserrat',
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _UpgradeOptionCard extends StatelessWidget {
+  final UpgradeOption option;
+
+  const _UpgradeOptionCard({required this.option});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDescription = (option.description ?? '').trim().isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceCard.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.divider, width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.name,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _buildUpgradePriceLabel(option),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _MetaBadge(
+                icon: Icons.trending_up_rounded,
+                label: 'LEVEL ${option.level}',
+                tone: AppColors.primary,
+              ),
+            ],
+          ),
+          if (hasDescription) ...[
+            const SizedBox(height: 12),
+            Text(
+              option.description!.trim(),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontFamily: 'Montserrat',
+                height: 1.55,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _openUpgradeUrl(context, option),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: Text('Upgrade to ${option.name}'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 46),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _buildUpgradePriceLabel(UpgradeOption option) {
+  final currency = option.currencyCode?.trim();
+  final price = option.price;
+
+  if (price == 0) {
+    return currency == null || currency.isEmpty ? 'Contact admin' : '$currency 0';
+  }
+
+  final priceLabel =
+      price % 1 == 0 ? price.toInt().toString() : price.toString();
+
+  if (currency == null || currency.isEmpty) return priceLabel;
+  return '$currency $priceLabel';
+}
+
+Future<void> _openUpgradeUrl(BuildContext context, UpgradeOption option) async {
+  final uri = Uri.tryParse(option.upgradeUrl);
+  if (uri == null) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Upgrade link is not available right now.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    return;
+  }
+
+  final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (launched) return;
+
+  if (context.mounted) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Unable to open the upgrade page.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
   }
 }
 
