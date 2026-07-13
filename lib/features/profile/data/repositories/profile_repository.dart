@@ -82,6 +82,7 @@ class ProfileRepository {
     );
     data['profile_completed'] = _asBool(data['profile_completed']);
     data['access_tier'] = _normalizeAccessTier(data['access_tier']);
+    data['upgrade_options'] = _normalizeUpgradeOptions(data['upgrade_options']);
   }
 
   Map<String, dynamic> _normalizeAccessTier(dynamic value) {
@@ -94,6 +95,25 @@ class ProfileRepository {
       'name': _asString(tier['name']),
       'slug': _asString(tier['slug']),
     };
+  }
+
+  List<Map<String, dynamic>> _normalizeUpgradeOptions(dynamic value) {
+    if (value is! List) return const [];
+
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .map((option) => <String, dynamic>{
+              'id': _asInt(option['id']),
+              'name': _asString(option['name']),
+              'slug': _asString(option['slug']),
+              'description': _asNullableString(option['description']),
+              'currency_code': _asNullableString(option['currency_code']),
+              'level': _asInt(option['level']),
+              'price': _asNum(option['price']),
+              'upgrade_url': _asString(option['upgrade_url']),
+            })
+        .toList();
   }
 
   String? _normalizeChoiceValue(dynamic value) {
@@ -122,6 +142,12 @@ class ProfileRepository {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  num _asNum(dynamic value) {
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value) ?? 0;
     return 0;
   }
 

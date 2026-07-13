@@ -2,12 +2,16 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/reset_password_link_parser.dart';
 
-class ResetPasswordDeepLinkHandler extends StatefulWidget {
+class ResetPasswordDeepLinkHandler extends ConsumerStatefulWidget {
   final Widget child;
 
   const ResetPasswordDeepLinkHandler({
@@ -16,12 +20,13 @@ class ResetPasswordDeepLinkHandler extends StatefulWidget {
   });
 
   @override
-  State<ResetPasswordDeepLinkHandler> createState() =>
+  ConsumerState<ResetPasswordDeepLinkHandler> createState() =>
       _ResetPasswordDeepLinkHandlerState();
 }
 
 class _ResetPasswordDeepLinkHandlerState
-    extends State<ResetPasswordDeepLinkHandler> {
+    extends ConsumerState<ResetPasswordDeepLinkHandler>
+    with WidgetsBindingObserver {
   final AppLinks _appLinks = AppLinks();
   StreamSubscription<Uri>? _subscription;
   bool _handledInitialUri = false;
@@ -29,11 +34,24 @@ class _ResetPasswordDeepLinkHandlerState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _listenInitialUri();
     _subscription = _appLinks.uriLinkStream.listen(
       _handleUri,
       onError: (_) {},
     );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+
+    final authState = ref.read(authProvider);
+    if (!authState.isAuthenticated) return;
+
+    ref.read(authProvider.notifier).refreshCurrentUser();
+    ref.invalidate(profileProvider);
+    ref.invalidate(dashboardProvider);
   }
 
   Future<void> _listenInitialUri() async {
@@ -63,6 +81,7 @@ class _ResetPasswordDeepLinkHandlerState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _subscription?.cancel();
     super.dispose();
   }

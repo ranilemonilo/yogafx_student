@@ -28,6 +28,9 @@ class ProfileData with _$ProfileData {
     @JsonKey(name: 'profile_photo') String? profilePhoto,
     @JsonKey(name: 'profile_completed') required bool profileCompleted,
     @JsonKey(name: 'access_tier') required AccessTier accessTier,
+    @JsonKey(name: 'upgrade_options')
+    @Default(<UpgradeOption>[])
+    List<UpgradeOption> upgradeOptions,
   }) = _ProfileData;
 
   factory ProfileData.fromJson(Map<String, dynamic> json) =>

@@ -100,6 +100,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _repository.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
+
+  Future<void> refreshCurrentUser() async {
+    if (!state.isAuthenticated) return;
+
+    try {
+      final user = await _repository.getCurrentUser();
+      if (user == null) {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+        return;
+      }
+
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        user: user,
+        error: null,
+      );
+    } catch (_) {
+      // Keep the current authenticated state if the background refresh fails.
+    }
+  }
 }
 
 // Providers
