@@ -108,16 +108,68 @@ class LessonRepository {
           'lesson_completed': lessonCompleted,
         },
       );
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        return data;
-      }
-      if (data is Map) {
-        return Map<String, dynamic>.from(data);
-      }
-      return const <String, dynamic>{};
+      final payload = _extractPayload(response.data);
+      _throwIfAccountBlocked(payload);
+      return payload;
     } on DioException catch (e) {
-      throw e.error as AppException? ?? const ServerException();
+      final payload = _extractPayload(e.response?.data);
+      final existingError = e.error;
+
+      if (existingError is AccountBlockedException) {
+        throw existingError;
+      }
+
+      if (payload.isNotEmpty && _isAccountBlockedPayload(payload)) {
+        throw AccountBlockedException(
+          message: payload['message']?.toString() ??
+              'Account temporarily blocked.',
+          violationCount:
+              int.tryParse(payload['violation_count']?.toString() ?? '') ??
+                  3,
+          statusCode: e.response?.statusCode,
+        );
+      }
+
+      throw existingError as AppException? ?? const ServerException();
     }
+  }
+
+  Map<String, dynamic> _extractPayload(dynamic rawData) {
+    if (rawData is Map<String, dynamic>) {
+      final nested = rawData['data'];
+      if (nested is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(nested);
+      }
+      return Map<String, dynamic>.from(rawData);
+    }
+
+    if (rawData is Map) {
+      final data = Map<String, dynamic>.from(rawData);
+      final nested = data['data'];
+      if (nested is Map) {
+        return Map<String, dynamic>.from(nested);
+      }
+      return data;
+    }
+
+    return const <String, dynamic>{};
+  }
+
+  bool _isAccountBlockedPayload(Map<String, dynamic> payload) {
+    final code = payload['code']?.toString().toUpperCase();
+    return payload['blocked'] == true ||
+        payload['is_blocked'] == true ||
+        code == 'ACCOUNT_TEMPORARILY_BLOCKED';
+  }
+
+  void _throwIfAccountBlocked(Map<String, dynamic> payload) {
+    if (!_isAccountBlockedPayload(payload)) return;
+
+    throw AccountBlockedException(
+      message:
+          payload['message']?.toString() ?? 'Account temporarily blocked.',
+      violationCount:
+          int.tryParse(payload['violation_count']?.toString() ?? '') ?? 3,
+    );
   }
 }

@@ -81,6 +81,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   void _navigateNext() {
     if (!mounted) return;
     final authState = ref.read(authProvider);
+    if (authState.status == AuthStatus.initial ||
+        authState.status == AuthStatus.loading) {
+      Future<void>.delayed(const Duration(milliseconds: 250), _navigateNext);
+      return;
+    }
+
     if (authState.isAuthenticated) {
       context.go(AppRoutes.dashboard);
     } else {

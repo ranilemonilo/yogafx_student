@@ -35,8 +35,7 @@ bool _isTabletLandscapeLayout(BuildContext context) {
 
 bool _isTabletDeviceForOrientation() {
   final view = WidgetsBinding.instance.platformDispatcher.views.first;
-  final shortestSide =
-      view.physicalSize.shortestSide / view.devicePixelRatio;
+  final shortestSide = view.physicalSize.shortestSide / view.devicePixelRatio;
   return shortestSide >= 600;
 }
 
@@ -101,7 +100,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     _lessonContentKey = GlobalKey<_LessonContentState>();
 
     if (widget.autoOpenFullscreen) {
-      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
+      unawaited(
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
       unawaited(
         SystemChrome.setPreferredOrientations(const [
           DeviceOrientation.landscapeLeft,
@@ -155,7 +155,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
               : const LessonSkeleton(),
           error: (e, _) => LessonError(
             message: e.toString(),
-            onRetry: () => ref.invalidate(lessonDetailProvider(widget.lessonId)),
+            onRetry: () =>
+                ref.invalidate(lessonDetailProvider(widget.lessonId)),
             onBack: () => _handleLessonBack(context),
           ),
           data: (lesson) => _LessonContent(
@@ -181,10 +182,10 @@ void _handleLessonBack(BuildContext context) {
 }
 
 void _showLockedSnackBar(
-    BuildContext context, {
-      required String fallbackMessage,
-      String? reason,
-    }) {
+  BuildContext context, {
+  required String fallbackMessage,
+  String? reason,
+}) {
   const lockedMessage =
       'This page is not available yet. Please complete the previous module first.';
 
@@ -248,6 +249,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _autoNextCancelled = false;
   _AutoNextTarget? _autoNextTarget;
   bool _accountBlocked = false;
+  bool _isIrregularDialogOpen = false;
+  bool _isReportingIrregularActivity = false;
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -261,13 +264,14 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
   bool get _requiresWorkbookFirst =>
       widget.lesson.workbook.isAvailable &&
-          !widget.lesson.progress.isWorkbookDownloaded;
+      !widget.lesson.progress.isWorkbookDownloaded;
 
   bool get _isVideoUnlocked => !_requiresWorkbookFirst;
 
   bool get _isAssessmentUnlocked {
     if (_requiresWorkbookFirst) return false;
-    final hasPlayableVideo = widget.lesson.video != null && widget.lesson.video!.isReady;
+    final hasPlayableVideo =
+        widget.lesson.video != null && widget.lesson.video!.isReady;
     if (!hasPlayableVideo) return true;
     return _effectiveWatchProgress >= 95;
   }
@@ -327,8 +331,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     final blocked = await SecureStorageService.isAccountBlocked();
     if (!mounted) return;
     if (!blocked) return;
-    setState(() => _accountBlocked = true);
-    await _showIrregularActivityDialog();
+    await _handleAccountBlocked();
   }
 
   Future<void> _primeAutoNextTarget() async {
@@ -409,7 +412,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         if (!_canAutoOpenModule(module, hasGeneratedCertificate)) continue;
 
         final detail = await ref.read(moduleDetailProvider(module.id).future);
-        final unlockedLessons = detail.lessons.where((lesson) => !lesson.isLocked);
+        final unlockedLessons =
+            detail.lessons.where((lesson) => !lesson.isLocked);
         final firstLesson =
             unlockedLessons.isEmpty ? null : unlockedLessons.first;
         if (firstLesson == null) continue;
@@ -432,9 +436,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   bool _canAutoOpenModule(ModuleItem module, bool hasGeneratedCertificate) {
     if (!module.isVisible) return false;
     return canOpenModuleByStatus(
-      module.status,
-      hasGeneratedCertificate: hasGeneratedCertificate,
-    ) &&
+          module.status,
+          hasGeneratedCertificate: hasGeneratedCertificate,
+        ) &&
         module.viewTypes.contains('lesson');
   }
 
@@ -456,15 +460,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   bool _shouldTrackIrregularActivity() {
-    final tierSlug = ref.read(authProvider).user?.accessTier?.slug;
-    final normalized = tierSlug?.trim().toLowerCase() ?? '';
-    if (normalized.isEmpty) return true;
-    return normalized != 'admin' && normalized != 'tester';
+    return true;
   }
 
   Future<bool> _recordIrregularExit() async {
     if (!_shouldTrackIrregularActivity()) return false;
     if (_accountBlocked) return true;
+    if (_isReportingIrregularActivity) return false;
     if (!(widget.lesson.video?.isReady ?? false)) return false;
     if (widget.lesson.progress.isDone) {
       return false;
@@ -483,75 +485,123 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       return false;
     }
 
-    final response = await ref
-        .read(lessonRepositoryProvider)
-        .reportIrregularActivity(
-          widget.lesson.id,
-          watchProgress: _effectiveWatchProgress,
-          watchTimeSeconds: position.inSeconds,
-          videoDurationSeconds: duration.inSeconds,
-          lessonCompleted: widget.lesson.progress.isDone || watchedFullVideo,
-        );
-    final violationCount =
-        int.tryParse(response['violation_count']?.toString() ?? '') ?? 0;
-    final blocked = response['blocked'] == true ||
-        response['is_blocked'] == true ||
-        violationCount >= 3;
+    _isReportingIrregularActivity = true;
+    try {
+      final response = await ref
+          .read(lessonRepositoryProvider)
+          .reportIrregularActivity(
+            widget.lesson.id,
+            watchProgress: _effectiveWatchProgress,
+            watchTimeSeconds: position.inSeconds,
+            videoDurationSeconds: duration.inSeconds,
+            lessonCompleted: widget.lesson.progress.isDone || watchedFullVideo,
+          );
 
-    if (blocked) {
-      _accountBlocked = true;
-      await SecureStorageService.setAccountBlocked(true);
-      await _showIrregularActivityDialog();
+      final violationCount = int.tryParse(
+            (response['violation_count'] ??
+                        response['violations_count'] ??
+                        response['warning_count'])
+                    ?.toString() ??
+                '',
+          ) ??
+          0;
+      final blocked = response['blocked'] == true ||
+          response['is_blocked'] == true ||
+          response['code']?.toString().toUpperCase() ==
+              'ACCOUNT_TEMPORARILY_BLOCKED';
+
+      if (blocked) {
+        await _handleAccountBlocked();
+        return true;
+      }
+
+      if (violationCount >= 3) {
+        await _handleAccountBlocked();
+        return true;
+      }
+
+      if (violationCount > 0) {
+        await _showIrregularActivityWarning(violationCount);
+      }
+
+      return false;
+    } on AccountBlockedException {
+      await _handleAccountBlocked();
       return true;
+    } on ForbiddenException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('irregular') ||
+          message.contains('blocked') ||
+          message.contains('temporarily blocked')) {
+        await _handleAccountBlocked();
+        return true;
+      }
+      rethrow;
+    } on AppException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('irregular') ||
+          message.contains('blocked') ||
+          message.contains('account_temporarily_blocked')) {
+        await _handleAccountBlocked();
+        return true;
+      }
+      return false;
+    } finally {
+      _isReportingIrregularActivity = false;
     }
-
-    if (violationCount > 0) {
-      await _showIrregularActivityWarning(violationCount);
-    }
-
-    return false;
   }
 
   Future<void> _showIrregularActivityDialog() async {
-    if (!mounted) return;
+    if (!mounted || _isIrregularDialogOpen) return;
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.modal),
-          ),
-          title: const Text(
-            'Irregular Activity Detected',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Montserrat',
+    _isIrregularDialogOpen = true;
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.modal),
             ),
-          ),
-          content: const Text(
-            'Dear Student,\n\nPlease be advised that we have detected irregular activity on the platform and for security purposes, the account is temporarily blocked.\n\nPlease contact us some more support for more information and assistance.\n\nThank you\nYogaFX IT Support',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontFamily: 'Montserrat',
-              height: 1.5,
+            title: const Text(
+              'Final Warning - Account Blocked',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Montserrat',
+              ),
             ),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _handleLessonBack(context);
-              },
-              child: const Text('OK'),
+            content: const Text(
+              'Dear Student,\n\n'
+              'Please be advised that we have detected irregular activity '
+              'on the platform and for security purposes, the account is '
+              'temporarily blocked.\n\n'
+              'Please contact YogaFX Support for more information and '
+              'assistance.\n\n'
+              'Thank you,\n'
+              'YogaFX IT Support',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontFamily: 'Montserrat',
+                height: 1.5,
+              ),
             ),
-          ],
-        );
-      },
-    );
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      _isIrregularDialogOpen = false;
+    }
   }
 
   Future<void> _showIrregularActivityWarning(int count) async {
@@ -575,7 +625,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             ),
           ),
           content: const Text(
-            'We detected that the lesson was exited before the video duration was completed. Please continue watching normally. The third warning will temporarily block the account.',
+            'We detected an attempt to skip part of the lesson video or leave '
+            'the lesson before it was completed. Please continue watching '
+            'normally. The third violation will temporarily block the account.',
             style: TextStyle(
               color: AppColors.textSecondary,
               fontFamily: 'Montserrat',
@@ -593,9 +645,22 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     );
   }
 
-  Future<void> _markAccountBlockedFromServer() async {
+  Future<void> _handleAccountBlocked() async {
+    if (_accountBlocked) {
+      await _showIrregularActivityDialog();
+      await ref.read(authProvider.notifier).blockSession();
+      return;
+    }
+
     _accountBlocked = true;
     await SecureStorageService.setAccountBlocked(true);
+
+    if (mounted) {
+      setState(() {});
+    }
+
+    await _showIrregularActivityDialog();
+    await ref.read(authProvider.notifier).blockSession();
   }
 
   Future<void> _initVideo() async {
@@ -617,7 +682,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
         if (mounted) {
           setState(() {
             _videoError = true;
-            _videoErrorMessage = 'No internet connection. Video could not be loaded.';
+            _videoErrorMessage =
+                'No internet connection. Video could not be loaded.';
           });
         }
         return;
@@ -629,7 +695,9 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       _videoController = controller;
       await controller.initialize();
 
-      if (!mounted || widget.lesson.id != lessonId || _videoController != controller) {
+      if (!mounted ||
+          widget.lesson.id != lessonId ||
+          _videoController != controller) {
         if (_videoController == controller) {
           _videoController = null;
         }
@@ -670,7 +738,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           if (!mounted) return;
 
           final currentController = _videoController;
-          if (currentController == null || !currentController.value.isInitialized) {
+          if (currentController == null ||
+              !currentController.value.isInitialized) {
             if (mounted) {
               setState(() => _isOpeningAutoFullscreen = false);
             }
@@ -707,7 +776,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (!value.isInitialized || value.duration.inSeconds == 0) return;
 
     final currentProgress =
-    ((value.position.inSeconds / value.duration.inSeconds) * 100).round();
+        ((value.position.inSeconds / value.duration.inSeconds) * 100).round();
 
     if (currentProgress != _currentWatchProgress && mounted) {
       setState(() {
@@ -715,7 +784,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       });
     }
 
-    if (currentProgress >= _lastReportedProgress + 5 && currentProgress <= 100) {
+    if (currentProgress >= _lastReportedProgress + 5 &&
+        currentProgress <= 100) {
       _lastReportedProgress = currentProgress;
       unawaited(_reportProgress(currentProgress));
       if (currentProgress >= 100) {
@@ -735,8 +805,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
 
     final nextLesson = _autoNextTarget;
     final shouldAutoNavigate =
-        nextLesson != null &&
-            widget.lesson.assessment == null;
+        nextLesson != null && widget.lesson.assessment == null;
 
     if (!shouldAutoNavigate) {
       _resetAutoNextState();
@@ -785,9 +854,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   void _handleAssessmentAutoStart(VideoPlayerValue value) {
     final remaining = value.duration - value.position;
     final remainingMillis = remaining.inMilliseconds;
-    final remainingSeconds = (remainingMillis.clamp(0, 10000) / 1000)
-        .ceil()
-        .clamp(0, 10);
+    final remainingSeconds =
+        (remainingMillis.clamp(0, 10000) / 1000).ceil().clamp(0, 10);
 
     if (remainingSeconds > 0 || !_isAssessmentUnlocked || _autoNextCancelled) {
       return;
@@ -951,7 +1019,7 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       if (!canReachAudioHost) {
         if (mounted) {
           setState(() => _audioError =
-          'No internet connection. Audio could not be loaded.');
+              'No internet connection. Audio could not be loaded.');
         }
         return;
       }
@@ -1045,13 +1113,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
   }
 
   Future<void> _navigateToLesson(
-        BuildContext context,
-        int lessonId, {
-         bool autoPlayVideo = false,
-         bool autoOpenFullscreen = false,
-         bool startFromBeginning = false,
-         bool restorePortrait = true,
-       }) async {
+    BuildContext context,
+    int lessonId, {
+    bool autoPlayVideo = false,
+    bool autoOpenFullscreen = false,
+    bool startFromBeginning = false,
+    bool restorePortrait = true,
+  }) async {
     _preserveLandscapeOnDispose = !restorePortrait;
     await prepareForNavigation(
       context,
@@ -1078,13 +1146,13 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (!mounted) return;
 
     await _navigateToLesson(
-        context,
-        lessonId,
-        autoPlayVideo: autoPlayVideo,
-        autoOpenFullscreen: true,
-        startFromBeginning: true,
-        restorePortrait: false,
-      );
+      context,
+      lessonId,
+      autoPlayVideo: autoPlayVideo,
+      autoOpenFullscreen: true,
+      startFromBeginning: true,
+      restorePortrait: false,
+    );
   }
 
   Future<void> _waitForOverlayToDetach() async {
@@ -1115,16 +1183,22 @@ class _LessonContentState extends ConsumerState<_LessonContent>
             widget.lesson.id,
             progress,
           );
+    } on AccountBlockedException {
+      await _handleAccountBlocked();
     } on ForbiddenException catch (e) {
       final message = e.message.toLowerCase();
-      if (message.contains('irregular') || message.contains('blocked')) {
-        if (mounted) {
-          await _markAccountBlockedFromServer();
-          await _showIrregularActivityDialog();
-        }
+      if (message.contains('irregular') ||
+          message.contains('blocked') ||
+          message.contains('temporarily blocked')) {
+        await _handleAccountBlocked();
       }
-    } on AppException {
-      // Biarkan error non-irregular tidak memblokir playback.
+    } on AppException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('irregular') ||
+          message.contains('blocked') ||
+          message.contains('account_temporarily_blocked')) {
+        await _handleAccountBlocked();
+      }
     } catch (_) {
       // Ignore transient failures for progress reporting.
     }
@@ -1196,7 +1270,16 @@ class _LessonContentState extends ConsumerState<_LessonContent>
     if (controller == null || !controller.value.isInitialized) return;
     final duration = controller.value.duration;
     final safePosition = position > duration ? duration : position;
-    await controller.seekTo(safePosition < Duration.zero ? Duration.zero : safePosition);
+    final target = safePosition < Duration.zero ? Duration.zero : safePosition;
+    final seekDistance = (target - controller.value.position).abs();
+
+    // Ignore tiny timeline corrections, but report every deliberate user seek.
+    if (seekDistance >= const Duration(seconds: 2)) {
+      final blocked = await _recordIrregularExit();
+      if (blocked || _accountBlocked) return;
+    }
+
+    await controller.seekTo(target);
   }
 
   Future<void> _toggleMute() async {
@@ -1231,26 +1314,26 @@ class _LessonContentState extends ConsumerState<_LessonContent>
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
           pageBuilder: (_, __, ___) => _FullscreenVideoScreen(
-          controller: controller,
-          nextLesson: _autoNextTarget,
-          enableAutoNextOverlay: widget.lesson.assessment == null,
-          enableAssessmentPrompt: widget.lesson.assessment != null,
-          // Kirim false semua — fullscreen kelola sendiri dari controller listener
-          showNextLessonPrompt: false,
-          showAssessmentPrompt: false,
-          autoNextRemainingSeconds: null,
-          autoNextCancelled: _autoNextCancelled,
-          onTogglePlayback: _toggleVideoPlayback,
-          onSeek: _seekVideo,
-          onToggleMute: _toggleMute,
-          onSkipForward: () => _skipVideoBy(30),
-          onSkipBackward: () => _skipVideoBy(-30),
-          onCancelAutoNext: () => _cancelAutoNextCountdown(),
-          onStartAssessment: () => _navigateToAssessmentIntro(context),
-          onCancelAssessment: _cancelAssessmentPrompt,
+            controller: controller,
+            nextLesson: _autoNextTarget,
+            enableAutoNextOverlay: widget.lesson.assessment == null,
+            enableAssessmentPrompt: widget.lesson.assessment != null,
+            // Kirim false semua — fullscreen kelola sendiri dari controller listener
+            showNextLessonPrompt: false,
+            showAssessmentPrompt: false,
+            autoNextRemainingSeconds: null,
+            autoNextCancelled: _autoNextCancelled,
+            onTogglePlayback: _toggleVideoPlayback,
+            onSeek: _seekVideo,
+            onToggleMute: _toggleMute,
+            onSkipForward: () => _skipVideoBy(30),
+            onSkipBackward: () => _skipVideoBy(-30),
+            onCancelAutoNext: () => _cancelAutoNextCountdown(),
+            onStartAssessment: () => _navigateToAssessmentIntro(context),
+            onCancelAssessment: _cancelAssessmentPrompt,
+          ),
         ),
-      ),
-    );
+      );
     } finally {
       _isFullscreenOpen = false;
       await _waitForOverlayToDetach();
@@ -1263,8 +1346,8 @@ class _LessonContentState extends ConsumerState<_LessonContent>
       if (nextLesson == null) return;
 
       await _navigateToLessonKeepingFullscreen(
-          nextLesson.lessonId,
-          autoPlayVideo: true,
+        nextLesson.lessonId,
+        autoPlayVideo: true,
       );
       return;
     }
@@ -1703,8 +1786,10 @@ class _VideoSection extends StatelessWidget {
             AuthNetworkImage(
               imageUrl: lesson.thumbnailUrl!,
               fit: BoxFit.cover,
-              placeholderBuilder: (_) => Container(color: AppColors.surfaceElevated),
-              errorBuilderWidget: (_, __) => Container(color: AppColors.surfaceElevated),
+              placeholderBuilder: (_) =>
+                  Container(color: AppColors.surfaceElevated),
+              errorBuilderWidget: (_, __) =>
+                  Container(color: AppColors.surfaceElevated),
             ),
           Container(color: Colors.black.withOpacity(0.5)),
           const Center(
@@ -2384,7 +2469,8 @@ class _VideoControlsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxMillis = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
+    final maxMillis =
+        duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
     final currentMillis = position.inMilliseconds.clamp(0, maxMillis);
     final slider = SliderTheme(
       data: SliderTheme.of(context).copyWith(
@@ -2484,7 +2570,8 @@ class _VideoThinProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxMillis = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
+    final maxMillis =
+        duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
     final currentMillis = position.inMilliseconds.clamp(0, maxMillis);
     final progress = currentMillis / maxMillis;
 
@@ -2522,9 +2609,8 @@ class _VideoThinProgressBar extends StatelessWidget {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: FractionallySizedBox(
-                            widthFactor: progress.isNaN
-                                ? 0
-                                : progress.clamp(0.0, 1.0),
+                            widthFactor:
+                                progress.isNaN ? 0 : progress.clamp(0.0, 1.0),
                             child: Container(color: AppColors.primary),
                           ),
                         ),
@@ -2656,7 +2742,6 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
     widget.controller.addListener(_handleAutoNextOverlay);
   }
 
-
   @override
   void dispose() {
     _mounted = false;
@@ -2672,9 +2757,8 @@ class _FullscreenVideoScreenState extends State<_FullscreenVideoScreen> {
       final value = widget.controller.value;
       final remaining = value.duration - value.position;
       final remainingMillis = remaining.inMilliseconds;
-      final remainingSeconds = (remainingMillis.clamp(0, 10000) / 1000)
-          .ceil()
-          .clamp(0, 10);
+      final remainingSeconds =
+          (remainingMillis.clamp(0, 10000) / 1000).ceil().clamp(0, 10);
 
       if (remainingSeconds <= 0 && !_showAssessmentPrompt && mounted) {
         setState(() => _showAssessmentPrompt = true);
@@ -2919,8 +3003,10 @@ class _VideoPlaceholder extends StatelessWidget {
           AuthNetworkImage(
             imageUrl: thumbnailUrl!,
             fit: BoxFit.cover,
-            placeholderBuilder: (_) => Container(color: AppColors.surfaceElevated),
-            errorBuilderWidget: (_, __) => Container(color: AppColors.surfaceElevated),
+            placeholderBuilder: (_) =>
+                Container(color: AppColors.surfaceElevated),
+            errorBuilderWidget: (_, __) =>
+                Container(color: AppColors.surfaceElevated),
           ),
         Container(color: Colors.black.withOpacity(0.65)),
         Center(
@@ -2972,7 +3058,8 @@ class _VideoPlaceholder extends StatelessWidget {
                   GestureDetector(
                     onTap: onRetry,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(AppRadius.button),
@@ -3017,7 +3104,8 @@ class _ModuleBreadcrumb extends StatelessWidget {
       onTap: () => _handleLessonBack(context),
       child: Row(
         children: [
-          const Icon(Icons.layers_rounded, color: AppColors.textMuted, size: 12),
+          const Icon(Icons.layers_rounded,
+              color: AppColors.textMuted, size: 12),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
@@ -3152,9 +3240,7 @@ class _ActionRow extends StatelessWidget {
           _ActionChip(
             icon: Icons.quiz_rounded,
             label: isAssessmentUnlocked ? 'Assessment' : 'Assessment Locked',
-            onTap: isAssessmentUnlocked
-                ? onOpenAssessment
-                : null,
+            onTap: isAssessmentUnlocked ? onOpenAssessment : null,
           ),
       ],
     );
@@ -3223,7 +3309,8 @@ class _ActionChipState extends State<_ActionChip>
               Text(
                 widget.label,
                 style: TextStyle(
-                  color: enabled ? AppColors.textSecondary : AppColors.textMuted,
+                  color:
+                      enabled ? AppColors.textSecondary : AppColors.textMuted,
                   fontSize: 12,
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w500,
@@ -3327,8 +3414,8 @@ class _InlineAudioPlayerCard extends StatelessWidget {
                       audioLoading
                           ? 'Loading audio...'
                           : audioError != null
-                          ? audioError!
-                          : 'Play the audio for $title',
+                              ? audioError!
+                              : 'Play the audio for $title',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -3510,23 +3597,13 @@ class _AudioIconButton extends StatelessWidget {
 
 // ─── Workbook Section ─────────────────────────────────────────────────────────
 
-
-
 // ─── Workbook Sheet ───────────────────────────────────────────────────────────
-
-
 
 // ─── Audio Sheet ──────────────────────────────────────────────────────────────
 
-
-
 // ─── Sheet Button ─────────────────────────────────────────────────────────────
 
-
-
 // ─── Assessment Banner ────────────────────────────────────────────────────────
-
-
 
 // ─── Navigation Section ───────────────────────────────────────────────────────
 
@@ -3549,7 +3626,7 @@ class _NavigationSection extends StatelessWidget {
         const SectionLabel(text: 'All Lessons'),
         const SizedBox(height: 12),
         ...navigation.map(
-              (item) => Padding(
+          (item) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: _NavLessonRow(
               item: item,
@@ -3592,10 +3669,13 @@ class _NavLessonRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isCurrent ? const Color(0xFF130A08) : AppColors.surfaceElevated,
+          color:
+              isCurrent ? const Color(0xFF130A08) : AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(AppRadius.avatar),
           border: Border.all(
-            color: isCurrent ? AppColors.primary.withOpacity(0.3) : AppColors.divider,
+            color: isCurrent
+                ? AppColors.primary.withOpacity(0.3)
+                : AppColors.divider,
             width: 0.8,
           ),
         ),
@@ -3604,19 +3684,22 @@ class _NavLessonRow extends StatelessWidget {
             SizedBox(
               width: 24,
               child: item.isLocked
-                  ? const Icon(Icons.lock_rounded, color: AppColors.textMuted, size: 13)
+                  ? const Icon(Icons.lock_rounded,
+                      color: AppColors.textMuted, size: 13)
                   : item.status == 'completed'
-                  ? const Icon(Icons.check_circle_rounded,
-                  color: AppColors.secondary, size: 15)
-                  : Text(
-                '${item.sortOrder}',
-                style: TextStyle(
-                  color: isCurrent ? AppColors.primary : AppColors.textMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
+                      ? const Icon(Icons.check_circle_rounded,
+                          color: AppColors.secondary, size: 15)
+                      : Text(
+                          '${item.sortOrder}',
+                          style: TextStyle(
+                            color: isCurrent
+                                ? AppColors.primary
+                                : AppColors.textMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -3626,8 +3709,8 @@ class _NavLessonRow extends StatelessWidget {
                   color: item.isLocked
                       ? AppColors.textMuted
                       : isCurrent
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
                   fontSize: 13,
                   fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
                   fontFamily: 'Montserrat',
@@ -3821,11 +3904,6 @@ class _NextLessonBannerState extends State<_NextLessonBanner>
 
 // ─── Shared Widgets ───────────────────────────────────────────────────────────
 
-
-
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-
-
 // ─── Error ────────────────────────────────────────────────────────────────────
-

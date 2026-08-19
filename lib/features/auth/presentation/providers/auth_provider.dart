@@ -15,6 +15,7 @@ enum AuthStatus {
   loading,
   authenticated,
   unauthenticated,
+  blocked,
 }
 
 class AuthState {
@@ -56,6 +57,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _init() async {
+    final isBlocked = await SecureStorageService.isAccountBlocked();
+    if (isBlocked) {
+      state = const AuthState(status: AuthStatus.blocked);
+      return;
+    }
+
     final hasToken = await SecureStorageService.hasToken();
 
     if (!hasToken) {
@@ -79,7 +86,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
           status: AuthStatus.unauthenticated,
         );
       }
+    } on AppException catch (e) {
+      if (e is UnauthorizedException) {
+        state = state.copyWith(
+          status: AuthStatus.unauthenticated,
+        );
+        return;
+      }
+
+      if (hasToken) {
+        state = state.copyWith(
+          status: AuthStatus.authenticated,
+          error: e.message,
+        );
+        return;
+      }
+
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+      );
     } catch (_) {
+      if (hasToken) {
+        state = state.copyWith(
+          status: AuthStatus.authenticated,
+        );
+        return;
+      }
+
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
       );
@@ -109,6 +142,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: null,
       );
 
+      await SecureStorageService.setAccountBlocked(false);
+
       _resetUserScopedProviders();
 
       return true;
@@ -137,6 +172,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(
       status: AuthStatus.unauthenticated,
     );
+  }
+
+  Future<void> blockSession() async {
+    await SecureStorageService.setAccountBlocked(true);
+    await SecureStorageService.deleteToken();
+
+    _resetUserScopedProviders();
+
+    state = const AuthState(
+      status: AuthStatus.blocked,
+      error: 'Your student account has been temporarily blocked.',
+    );
+  }
+
+  Future<void> leaveBlockedSession() async {
+    await SecureStorageService.setAccountBlocked(false);
+    await SecureStorageService.deleteToken();
+    state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
   Future<void> refreshCurrentUser() async {

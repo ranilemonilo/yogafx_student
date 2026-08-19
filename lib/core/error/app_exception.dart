@@ -21,6 +21,16 @@ class ForbiddenException extends AppException {
   const ForbiddenException({super.message = 'Access denied.'});
 }
 
+class AccountBlockedException extends AppException {
+  final int violationCount;
+
+  const AccountBlockedException({
+    super.message = 'Account temporarily blocked.',
+    super.statusCode,
+    super.errors,
+    this.violationCount = 3,
+  });
+}
 
 class NotFoundException extends AppException {
   const NotFoundException({super.message = 'Resource not found.'});

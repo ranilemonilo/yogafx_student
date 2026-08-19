@@ -88,6 +88,15 @@ class ApiClient {
               ? 'Access denied.'
               : message,
         );
+      case 423:
+        final data = error.response?.data;
+        final message = data is Map ? data['message']?.toString() : null;
+        appException = AccountBlockedException(
+          message: message == null || message.isEmpty
+              ? 'Account temporarily blocked.'
+              : message,
+          statusCode: 423,
+        );
       case 404:
         appException = const NotFoundException();
       case 422:

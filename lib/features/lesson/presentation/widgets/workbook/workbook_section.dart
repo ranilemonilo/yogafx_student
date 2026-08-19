@@ -106,5 +106,5 @@ void showWorkbookOptions({
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
     builder: (_) => LessonWorkbookSheet(workbook: workbook),
-  ).whenComplete(onDismissed);
+  );
 }

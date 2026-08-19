@@ -10,24 +10,17 @@ class MainShell extends ConsumerWidget {
 
   const MainShell({super.key, required this.child});
 
-  int _selectedIndex(BuildContext context, bool hasUpgradeAccess) {
+  int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    final state = GoRouterState.of(context);
-    final isUpgradeFocus =
-        state.uri.queryParameters['focus'] == 'upgrade' &&
-        location.startsWith(AppRoutes.profile);
-
     if (location.startsWith(AppRoutes.modules)) return 1;
-    if (hasUpgradeAccess && isUpgradeFocus) return 2;
-    if (location.startsWith(AppRoutes.profile)) return hasUpgradeAccess ? 3 : 2;
+    if (location.startsWith(AppRoutes.profile)) return 2;
     return 0; // dashboard
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final hasUpgradeAccess = authState.user?.upgradeOptions.isNotEmpty ?? false;
-    final selectedIndex = _selectedIndex(context, hasUpgradeAccess);
+    ref.watch(authProvider);
+    final selectedIndex = _selectedIndex(context);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -52,13 +45,6 @@ class MainShell extends ConsumerWidget {
                     context.go(AppRoutes.modules);
                     return;
                   case 2:
-                    if (hasUpgradeAccess) {
-                      context.go('${AppRoutes.profile}?focus=upgrade');
-                      return;
-                    }
-                    context.go(AppRoutes.profile);
-                    return;
-                  case 3:
                     context.go(AppRoutes.profile);
                     return;
                 }
@@ -74,12 +60,6 @@ class MainShell extends ConsumerWidget {
                   activeIcon: Icon(Icons.play_circle),
                   label: 'Modules',
                 ),
-                if (hasUpgradeAccess)
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.workspace_premium_outlined),
-                    activeIcon: Icon(Icons.workspace_premium),
-                    label: 'Upgrade Access',
-                  ),
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.person_outline),
                   activeIcon: Icon(Icons.person),

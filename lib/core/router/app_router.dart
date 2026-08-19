@@ -9,6 +9,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/login_otp_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
+import '../../features/auth/presentation/screens/account_suspended_screen.dart';
 import '../../features/certificate/presentation/screens/certificate_detail_screen.dart';
 import '../../features/certificate/presentation/screens/certificate_list_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -35,6 +36,7 @@ class AppRoutes {
   static const loginOtp = '/login/otp';
   static const resetPassword = '/reset-password';
   static const resetPasswordNative = '/reset-password/:token';
+  static const accountSuspended = '/account-suspended';
   static const dashboard = '/dashboard';
   static const modules = '/modules';
   static const moduleDetail = '/modules/:moduleId';
@@ -70,8 +72,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isInitial = authState.status == AuthStatus.initial;
       final isLoading = authState.status == AuthStatus.loading;
       final isAuthenticated = authState.isAuthenticated;
+      final isBlocked = authState.status == AuthStatus.blocked;
 
       final isSplashRoute = state.matchedLocation == AppRoutes.splash;
+      final isSuspendedRoute =
+          state.matchedLocation == AppRoutes.accountSuspended;
+
+      if (isBlocked) {
+        return isSuspendedRoute ? null : AppRoutes.accountSuspended;
+      }
+
+      if (isSuspendedRoute) {
+        return isAuthenticated ? AppRoutes.dashboard : AppRoutes.login;
+      }
 
       final publicRoutes = {
         AppRoutes.login,
@@ -80,7 +93,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         AppRoutes.resetPasswordNative,
       };
       final isResetPasswordNativeRoute =
-      state.matchedLocation.startsWith('/reset-password/');
+          state.matchedLocation.startsWith('/reset-password/');
       final isPublicRoute = publicRoutes.contains(state.matchedLocation) ||
           isResetPasswordNativeRoute;
 
@@ -100,6 +113,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.splash,
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.accountSuspended,
+        name: 'account-suspended',
+        builder: (context, state) => const AccountSuspendedScreen(),
       ),
       GoRoute(
         path: AppRoutes.login,
@@ -152,8 +170,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.profile,
             name: 'profile',
             builder: (context, state) => ProfileScreen(
-              autoFocusUpgrade:
-                  state.uri.queryParameters['focus'] == 'upgrade',
+              autoFocusUpgrade: state.uri.queryParameters['focus'] == 'upgrade',
             ),
           ),
         ],
@@ -306,9 +323,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      body: const Center(
+    errorBuilder: (context, state) => const Scaffold(
+      backgroundColor: Color(0xFF0A0A0A),
+      body: Center(
         child: Text(
           'Page not found',
           style: TextStyle(color: Colors.white),
